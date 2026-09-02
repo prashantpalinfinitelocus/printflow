@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   PrintFlow design system
+   Beverage-retail DTC language: one saturated red doing all the
+   shouting, a warm cream ground, ink-black type, generous radii and
+   chunky pill controls. Red is reserved for brand surfaces and the
+   primary action — status colours stay in their own muted family so a
+   red "FAILED" chip never competes with the brand.
+---------------------------------------------------------------- */
+
+@theme {
+  --color-brand-50: #fff1f2;
+  --color-brand-100: #ffe0e2;
+  --color-brand-200: #ffc6ca;
+  --color-brand-400: #f4404f;
+  --color-brand-500: #da1422;
+  --color-brand-600: #c00f1c;
+  --color-brand-700: #9b0b16;
+
+  --color-cream: #fff8f0;
+  --color-cream-200: #f6ece1;
+  --color-ink: #17110f;
+  --color-ink-600: #4a3f3c;
+  --color-ink-400: #7d716d;
+
+  --color-gold: #d6aa58;
+
+  --radius-card: 1.25rem;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgb(23 17 15 / 0.05), 0 8px 24px -12px rgb(23 17 15 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(23 17 15 / 0.06), 0 18px 40px -16px rgb(23 17 15 / 0.28);
+
+  --font-display: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- primitives ---- */
+
+/* `btn` is a @utility (not a plain class) so the variants below can @apply it —
+   Tailwind v4 only lets @apply reference utilities, never component classes. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-pill)] px-5 py-2.5
+         text-sm font-bold tracking-wide transition
+         disabled:cursor-not-allowed disabled:opacity-45;
+}
+
+@layer components {
+  .card {
+    @apply rounded-[var(--radius-card)] border border-cream-200 bg-white shadow-[var(--shadow-card)];
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700
+           shadow-[0_6px_16px_-6px_var(--color-brand-500)];
+  }
+  .btn-secondary {
+    @apply btn border border-ink/15 bg-white text-ink hover:border-ink/35 hover:bg-cream;
+  }
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-cream-200 hover:text-ink;
+  }
+  /* Declared last so it wins the padding cascade against the variants above. */
+  .btn-sm {
+    @apply px-3.5 py-1.5 text-xs;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-sm text-ink
+           outline-none transition placeholder:text-ink-400
+           focus:border-brand-500 focus:ring-4 focus:ring-brand-500/12;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-bold uppercase tracking-[0.08em] text-ink-600;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-2.5 py-1
+           text-[11px] font-bold uppercase tracking-[0.06em];
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-black uppercase tracking-[0.18em] text-brand-500;
+  }
+
+  .th {
+    @apply px-4 py-3 text-left text-[11px] font-black uppercase tracking-[0.08em] text-ink-400;
+  }
+  .td {
+    @apply px-4 py-3.5 text-sm text-ink align-middle;
+  }
+}
+
+/* Slim scrollbars inside scrollable panels. */
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: var(--color-cream-200);
+  border-radius: 999px;
+}
+
+@keyframes pf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: pf-rise 0.22s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
+}

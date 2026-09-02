@@ -1,0 +1,14 @@
+api/.venv/
+api/.env
+api/__pycache__/
+**/__pycache__/
+web/node_modules/
+web/.next/
+data/output/
+data/inbox/*.csv
+!data/inbox/sample_orders.csv
+.DS_Store
+.env
+data/psd/*
+!data/psd/.gitkeep
+web/*.tsbuildinfo

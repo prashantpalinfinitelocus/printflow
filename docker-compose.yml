@@ -1,0 +1,74 @@
+# PrintFlow — API + web in containers, data on the host.
+#
+#   docker compose up --build
+#
+# The ./data directory is bind-mounted into the API, so PSD templates, brand
+# fonts, the CSV inbox and rendered TIFFs/PDFs stay on your laptop where you can
+# open them in Finder. Nothing that matters lives inside a container.
+#
+# Postgres runs as a container with a named volume. To use a Postgres you
+# already have on the host instead, set in .env:
+#   PRINTFLOW_DATABASE_URL=postgresql+psycopg://host.docker.internal/printflow
+# and start with:  docker compose up api web
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: printflow
+      POSTGRES_USER: printflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-printflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Exposed so you can psql into it from the host. Every host port here is
+      # configurable because a dev laptop usually has other stacks running —
+      # override in .env if one collides.
+      - "${DB_PORT:-15432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U printflow -d printflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PRINTFLOW_DATABASE_URL: >-
+        ${PRINTFLOW_DATABASE_URL:-postgresql+psycopg://printflow:${POSTGRES_PASSWORD:-printflow}@db:5432/printflow}
+      # Generate one with: openssl rand -hex 32
+      PRINTFLOW_JWT_SECRET: ${PRINTFLOW_JWT_SECRET:?set PRINTFLOW_JWT_SECRET in .env — see SETUP.md}
+      PRINTFLOW_CORS_ORIGINS: ${PRINTFLOW_CORS_ORIGINS:-http://localhost:3000}
+      # Off by default: a container cannot reach the host's CUPS without extra
+      # setup, and a print button that fails silently is worse than one that
+      # says printing is unavailable. See SETUP.md → Printing from Docker.
+      PRINTFLOW_PRINTING_ENABLED: ${PRINTFLOW_PRINTING_ENABLED:-false}
+      CUPS_SERVER: ${CUPS_SERVER:-}
+    volumes:
+      # The whole point: designs, fonts, inbox and output stay on the host.
+      - ./data:/data
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  web:
+    build: ./web
+    depends_on:
+      api:
+        condition: service_healthy
+        required: false
+    environment:
+      # Container-to-container address. The browser never uses this — it calls
+      # /api/proxy/* on the web server, which forwards server-side.
+      #
+      # Override to http://host.docker.internal:8000 to point the container at
+      # an API running natively on the laptop — the way to keep printing, since
+      # macOS CUPS only listens on localhost. See SETUP.md → Printing.
+      API_BASE_URL: ${WEB_API_BASE_URL:-http://api:8000}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  pgdata:

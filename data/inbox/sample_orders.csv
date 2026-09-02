@@ -1,0 +1,9 @@
+order_id,store_id,amount,print_format,text
+ORD-1001,MUM01,499.00,GIFT_TAG,"Happy Birthday, Riya!"
+ORD-1002,MUM01,1250.50,THANK_YOU,"Thank you for shopping with us"
+ORD-1003,DEL01,899.00,BOTTLE_LABEL,"Share with Arjun"
+ORD-1004,DEL01,349.75,GIFT_TAG,"With love, from the Sharma family"
+ORD-1005,BLR01,2100.00,THANK_YOU,"Congratulations on the new home!"
+ORD-1006,BLR01,650.00,BOTTLE_LABEL,"Cheers, Team Indiranagar"
+ORD-1007,MUM01,180.00,GIFT_TAG,"Get well soon"
+ORD-1008,BLR01,4999.00,THANK_YOU,"A very long dedication that has to wrap across several lines so the auto-fit logic has something real to chew on"
