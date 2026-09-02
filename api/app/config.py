@@ -47,6 +47,24 @@ class Settings(BaseSettings):
     lp_binary: str = "lp"
     lpstat_binary: str = "lpstat"
 
+    # Text moderation — every imported `text` is checked by Gemini before it can
+    # print. The SDK reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the environment.
+    moderation_enabled: bool = True
+    moderation_model: str = "gemini-3.5-flash"
+    # Texts per API call. The system prompt is paid once per call, so bigger
+    # batches are cheaper; 25 keeps the reply small enough that the model never
+    # loses track of indexes.
+    moderation_batch_size: int = 25
+    # Parallel calls per import. Bounded so a 1,000-row file does not hit the
+    # per-minute request limit.
+    moderation_concurrency: int = 4
+    # Gemini 3.x thinks by default (billed as output). Classification of short
+    # gift-tag strings does not need it — MINIMAL is 3-4x cheaper per call.
+    moderation_thinking_level: str = "MINIMAL"
+    moderation_timeout_seconds: float = 60.0
+    # Comma-separated brands to treat as competitors in addition to the built-in list.
+    moderation_extra_competitors: str = ""
+
     bootstrap_admin_email: str = "admin@printflow.local"
     bootstrap_admin_password: str = "admin123"
 

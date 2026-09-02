@@ -171,3 +171,70 @@ def operator_headers(client):
 @pytest.fixture
 def stub_log(_environment) -> Path:
     return _environment["stub_log"]
+
+
+# ---------------- moderation (Gemini) ----------------
+#
+# Every CSV import moderates its text column through Gemini. Tests must never
+# reach the network, so the SDK client is replaced with a scriptable fake that
+# understands the batch payload the service sends and answers in the schema it
+# asks for. Default behaviour: every text is CLEAR.
+
+
+class FakeGemini:
+    """Stand-in for `google.genai.Client` limited to what the service uses.
+
+    `flag` maps exact text -> (categories, reason). `fail_on_call` raises on the
+    Nth call (1-based). `drop_indexes` omits those item indexes from the reply,
+    imitating a model that skipped rows. `calls` records every (model, config,
+    texts) so tests can assert on batching and request shape.
+    """
+
+    def __init__(self) -> None:
+        self.flag: dict[str, tuple[list[str], str]] = {}
+        self.fail_on_call: set[int] = set()
+        self.drop_indexes: set[int] = set()
+        self.calls: list[dict] = []
+        self.usage = {"prompt": 100, "candidates": 40, "thoughts": 0}
+        self.models = self  # so `client.models.generate_content` resolves
+
+    def generate_content(self, *, model, contents, config):
+        import json
+        from types import SimpleNamespace
+
+        from app.services import moderation
+
+        items = json.loads(contents)
+        texts = [it["t"] for it in items]
+        self.calls.append({"model": model, "config": config, "texts": texts})
+        if len(self.calls) in self.fail_on_call:
+            raise RuntimeError("simulated Gemini outage")
+
+        results = []
+        for it in items:
+            if it["i"] in self.drop_indexes:
+                continue
+            if it["t"] in self.flag:
+                cats, reason = self.flag[it["t"]]
+                results.append({"i": it["i"], "v": "FLAGGED", "c": cats, "r": reason})
+            else:
+                results.append({"i": it["i"], "v": "CLEAR", "c": [], "r": None})
+        parsed = moderation.BatchResult.model_validate({"results": results})
+        usage = SimpleNamespace(
+            prompt_token_count=self.usage["prompt"],
+            candidates_token_count=self.usage["candidates"],
+            thoughts_token_count=self.usage["thoughts"],
+        )
+        return SimpleNamespace(parsed=parsed, text=parsed.model_dump_json(), usage_metadata=usage)
+
+
+@pytest.fixture(autouse=True)
+def fake_gemini(app_modules, monkeypatch) -> FakeGemini:
+    from app.config import settings
+    from app.services import moderation
+
+    fake = FakeGemini()
+    monkeypatch.setattr(moderation, "_make_client", lambda: fake)
+    monkeypatch.setattr(settings, "moderation_enabled", True)
+    monkeypatch.setattr(settings, "moderation_batch_size", 25)
+    return fake

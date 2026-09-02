@@ -26,6 +26,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .moderation import apply_verdict, is_held, moderate_texts
 from ..models import CsvBatch, Order, PrintFormat, Store
 
 REQUIRED_COLUMNS = {"order_id", "store_id", "sku_code", "brand", "print_format", "text"}
@@ -194,6 +195,7 @@ def import_csv(
     db.flush()
 
     seen_in_file: set[str] = set()
+    created: list[Order] = []
     for index, row in enumerate(rows, start=2):  # row 1 is the header
         order_ref = row.get("order_id", "")
         if not order_ref:
@@ -245,24 +247,34 @@ def import_csv(
             result.error(index, order_ref, "order_id already exists in the system")
             continue
 
-        db.add(
-            Order(
-                order_ref=order_ref,
-                store_id=store.id,
-                # What the file called the store, kept alongside the resolved
-                # Store row rather than overwriting it.
-                store_name=row.get("store_name") or None,
-                city=row.get("city") or None,
-                sku_code=sku_code,
-                brand=brand,
-                amount=amount,
-                print_format_id=fmt.id,
-                print_text=row.get("text", ""),
-                batch_id=batch.id,
-            )
+        order = Order(
+            order_ref=order_ref,
+            store_id=store.id,
+            # What the file called the store, kept alongside the resolved
+            # Store row rather than overwriting it.
+            store_name=row.get("store_name") or None,
+            city=row.get("city") or None,
+            sku_code=sku_code,
+            brand=brand,
+            amount=amount,
+            print_format_id=fmt.id,
+            print_text=row.get("text", ""),
+            batch_id=batch.id,
         )
+        db.add(order)
+        created.append(order)
         seen_in_file.add(order_ref)
         result.imported += 1
+
+    # Brand-safety gate. Rows are imported either way; a held row simply cannot
+    # be printed until an admin releases it.
+    outcome = moderate_texts([o.print_text for o in created])
+    for order, verdict in zip(created, outcome.verdicts, strict=True):
+        apply_verdict(order, verdict)
+    batch.flagged = sum(is_held(v) for v in outcome.verdicts)
+    batch.moderation_prompt_tokens = outcome.prompt_tokens
+    batch.moderation_output_tokens = outcome.output_tokens
+    batch.moderation_thought_tokens = outcome.thought_tokens
 
     batch.imported = result.imported
     batch.skipped = result.skipped

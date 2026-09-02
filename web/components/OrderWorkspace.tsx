@@ -11,8 +11,11 @@ import { money } from "@/lib/format";
 
 import { Banner, Spinner, StatCard } from "./ui";
 
-const FILTERS: { label: string; value: OrderStatus | "ALL" }[] = [
+type Filter = OrderStatus | "ALL" | "ON_HOLD";
+
+const FILTERS: { label: string; value: Filter }[] = [
   { label: "Pending", value: "PENDING" },
+  { label: "On hold", value: "ON_HOLD" },
   { label: "Printed", value: "PRINTED" },
   { label: "Failed", value: "FAILED" },
   { label: "All", value: "ALL" },
@@ -23,11 +26,14 @@ const PAGE_SIZE = 25;
 export function OrderWorkspace({
   showStore = false,
   stores = [],
+  canReview = false,
 }: {
   showStore?: boolean;
   stores?: Store[];
+  /** Admins can release or refuse orders the moderation gate held. */
+  canReview?: boolean;
 }) {
-  const [status, setStatus] = useState<OrderStatus | "ALL">("PENDING");
+  const [status, setStatus] = useState<Filter>("PENDING");
   const [storeId, setStoreId] = useState<string>("");
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -51,7 +57,8 @@ export function OrderWorkspace({
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) });
-    if (status !== "ALL") params.set("status", status);
+    if (status === "ON_HOLD") params.set("on_hold", "true");
+    else if (status !== "ALL") params.set("status", status);
     if (storeId) params.set("store_id", storeId);
     if (debounced) params.set("q", debounced);
 
@@ -89,8 +96,13 @@ export function OrderWorkspace({
   return (
     <div className="space-y-5">
       {stats && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <StatCard label="Pending" value={stats.pending} accent hint={money(stats.amount_pending)} />
+          <StatCard
+            label="On hold"
+            value={stats.on_hold}
+            hint={stats.on_hold > 0 ? "Text needs a review" : "Text moderation"}
+          />
           <StatCard label="Printed" value={stats.printed} />
           <StatCard label="Failed" value={stats.failed} />
           <StatCard label="Total orders" value={stats.total} />
@@ -155,7 +167,9 @@ export function OrderWorkspace({
           emptyHint={
             status === "PENDING"
               ? "Nothing waiting to print. New orders appear here as soon as an admin uploads a CSV."
-              : "Try a different filter or search term."
+              : status === "ON_HOLD"
+                ? "No order text is waiting on a moderation decision."
+                : "Try a different filter or search term."
           }
         />
       )}
@@ -191,6 +205,7 @@ export function OrderWorkspace({
           void load();
         }}
         onPrinted={applyOrderUpdate}
+        canReview={canReview}
       />
     </div>
   );

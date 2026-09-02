@@ -126,10 +126,11 @@ export function CsvIntake({
             <header className="border-b border-cream-200 px-5 py-4">
               <h2 className="font-black tracking-tight">Import result — {result.filename}</h2>
             </header>
-            <div className="grid grid-cols-3 divide-x divide-cream-200 border-b border-cream-200">
+            <div className="grid grid-cols-4 divide-x divide-cream-200 border-b border-cream-200">
               {[
                 ["Rows", result.total_rows, "text-ink"],
                 ["Imported", result.imported, "text-emerald-600"],
+                ["Held", result.flagged, result.flagged > 0 ? "text-amber-600" : "text-ink-400"],
                 ["Skipped", result.skipped, "text-rose-600"],
               ].map(([label, value, tone]) => (
                 <div key={String(label)} className="px-5 py-4 text-center">
@@ -140,6 +141,20 @@ export function CsvIntake({
                 </div>
               ))}
             </div>
+            {result.flagged > 0 && (
+              <div className="border-b border-cream-200 px-5 py-3">
+                <Banner kind="warning">
+                  {result.flagged} {result.flagged === 1 ? "row was" : "rows were"} imported but held by the
+                  text check. Review {result.flagged === 1 ? "it" : "them"} under{" "}
+                  <strong>All orders → On hold</strong> before {result.flagged === 1 ? "it" : "they"} can print.
+                </Banner>
+              </div>
+            )}
+            <p className="border-b border-cream-200 px-5 py-2 text-[11px] text-ink-400">
+              Text check spend: {result.moderation_prompt_tokens.toLocaleString()} prompt ·{" "}
+              {result.moderation_output_tokens.toLocaleString()} output ·{" "}
+              {result.moderation_thought_tokens.toLocaleString()} thinking tokens
+            </p>
             {result.errors.length > 0 && (
               <ul className="scroll-slim max-h-64 divide-y divide-cream-200 overflow-y-auto">
                 {result.errors.map((rowError, index) => (
@@ -213,7 +228,7 @@ ORD-1001,${stores[0]?.code ?? "MUM01"},499.00,${formats[0]?.code ?? "GIFT_TAG"},
                 ["store_id", "Must match a store code exactly."],
                 ["amount", "Decimal. Shown in the queue, not printed."],
                 ["print_format", "Must match a print format code (the PSD template)."],
-                ["text", "The text stamped into the template's text box."],
+                ["text", "The text stamped into the template's text box. Checked by Gemini for politics, abuse, competitor brands and similar; held rows import but cannot print until an admin approves them."],
               ].map(([field, meaning]) => (
                 <div key={field} className="flex gap-3">
                   <dt className="w-28 shrink-0 font-mono text-xs font-bold text-brand-600">
@@ -277,6 +292,11 @@ ORD-1001,${stores[0]?.code ?? "MUM01"},499.00,${formats[0]?.code ?? "GIFT_TAG"},
                   <p className="shrink-0 text-xs">
                     <span className="font-black text-emerald-600">{batch.imported}</span>
                     <span className="text-ink-400"> / {batch.total_rows}</span>
+                    {batch.flagged > 0 && (
+                      <span className="ml-2 font-black text-amber-600" title="Held by the text check">
+                        {batch.flagged} held
+                      </span>
+                    )}
                   </p>
                 </li>
               ))}

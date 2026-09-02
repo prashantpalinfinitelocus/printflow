@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 
-import type { OrderStatus } from "@/lib/types";
+import type { ModerationStatus, OrderStatus } from "@/lib/types";
 
 /* ---------------- status chip ---------------- */
 
@@ -25,6 +25,38 @@ export function StatusChip({ status }: { status: OrderStatus }) {
     <span className={`chip ${STATUS_STYLE[status]}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status]}`} />
       {status}
+    </span>
+  );
+}
+
+/* ---------------- moderation chip ---------------- */
+
+const MODERATION_STYLE: Record<ModerationStatus, { chip: string; dot: string; label: string }> = {
+  UNCHECKED: { chip: "bg-cream-200 text-ink-600", dot: "bg-ink-400", label: "Unchecked" },
+  CLEAR: { chip: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-400", label: "Text OK" },
+  FLAGGED: { chip: "bg-rose-100 text-rose-800", dot: "bg-rose-500", label: "Flagged" },
+  NEEDS_REVIEW: { chip: "bg-amber-100 text-amber-800", dot: "bg-amber-500", label: "Needs review" },
+  APPROVED: { chip: "bg-sky-100 text-sky-800", dot: "bg-sky-500", label: "Approved" },
+  REJECTED: { chip: "bg-ink text-cream", dot: "bg-rose-400", label: "Rejected" },
+};
+
+/** Brand-safety state of the order text. CLEAR is the quiet default and is
+ *  hidden unless `always` is set, so the queue only draws the eye to holds. */
+export function ModerationChip({
+  status,
+  reason,
+  always = false,
+}: {
+  status: ModerationStatus;
+  reason?: string | null;
+  always?: boolean;
+}) {
+  if (status === "CLEAR" && !always) return null;
+  const style = MODERATION_STYLE[status];
+  return (
+    <span className={`chip ${style.chip}`} title={reason ?? undefined}>
+      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+      {style.label}
     </span>
   );
 }
