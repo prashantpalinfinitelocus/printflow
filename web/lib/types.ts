@@ -118,6 +118,8 @@ export interface PrintJob {
   printer_name: string | null;
   status: JobStatus;
   passes: number;
+  /** Point size the text was actually drawn at — font_size is only a ceiling. */
+  font_size_used: number | null;
   cups_job_id: string | null;
   error: string | null;
   created_at: string;
@@ -156,4 +158,17 @@ export type PageSize = {
   name: string;
   width_in: number;
   height_in: number;
+};
+
+export type FitText = {
+  font_size_used: number;
+  font_size_used_pt: number;
+  requested_pt: number;
+  capped: boolean;
+  lines: number;
+  line_height: number;
+  line_height_mm: number;
+  /** Box the requested size needs on one line — the actionable number. */
+  min_box_width: number;
+  min_box_height: number;
 };

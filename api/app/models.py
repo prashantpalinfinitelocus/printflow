@@ -199,6 +199,11 @@ class PrintJob(Base):
     #: not N jobs, so a multi-pass print stays a single fulfilment and never
     #: inflates `Order.reprint_count`.
     passes: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    #: Point size the text was actually drawn at. The format's `font_size` is a
+    #: starting point that shrinks to fit the text box, so this is the only place
+    #: that records what went on the object — and the only way to notice that a
+    #: box is capping the type far below what was asked for.
+    font_size_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
     #: CUPS job id per pass, comma-separated when there is more than one.
     cups_job_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

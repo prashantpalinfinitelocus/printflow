@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { Banner, EmptyState, Modal, Spinner } from "@/components/ui";
 import { del, get, patch, post, upload } from "@/lib/client";
-import type { DetectPlaceholderResponse, Font, PageSize, PrintFormat } from "@/lib/types";
+import type {
+  DetectPlaceholderResponse,
+  FitText,
+  Font,
+  PageSize,
+  PrintFormat,
+} from "@/lib/types";
 
 type Draft = {
   code: string;
@@ -101,6 +107,8 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
   const [detected, setDetected] = useState<string | null>(null);
   const [fonts, setFonts] = useState<Font[]>([]);
   const [pageSizes, setPageSizes] = useState<PageSize[]>([]);
+  const [fit, setFit] = useState<FitText | null>(null);
+  const [sampleText, setSampleText] = useState("Sample Name");
   const psdInput = useRef<HTMLInputElement>(null);
   const fontInput = useRef<HTMLInputElement>(null);
 
@@ -113,6 +121,37 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
       .then(setPageSizes)
       .catch(() => setPageSizes([]));
   }, []);
+
+  // The size the renderer will actually use. font_size is a ceiling it shrinks
+  // from, so without this an admin sets 400, sees no change, and concludes the
+  // field is broken — which is exactly what happened.
+  useEffect(() => {
+    if (!draft.w || !draft.h) {
+      setFit(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void post<FitText>("/print-formats/fit-text", {
+        text_box: { x: draft.x, y: draft.y, w: draft.w, h: draft.h },
+        font_size: draft.font_size,
+        font_path: draft.font_path || null,
+        text: sampleText || "Sample Name",
+        dpi: draft.dpi || 300,
+      })
+        .then(setFit)
+        .catch(() => setFit(null));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [
+    draft.x,
+    draft.y,
+    draft.w,
+    draft.h,
+    draft.font_size,
+    draft.font_path,
+    draft.dpi,
+    sampleText,
+  ]);
 
   function openCreate() {
     setDraft(EMPTY);
@@ -533,7 +572,7 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="label" htmlFor="fmt-size">
-                Font size (px)
+                Font size (max)
               </label>
               <input
                 id="fmt-size"
@@ -542,6 +581,9 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
                 value={draft.font_size}
                 onChange={(e) => setDraft({ ...draft, font_size: Number(e.target.value) || 12 })}
               />
+              <p className="mt-1 text-[11px] text-ink-400">
+                = {(draft.font_size / ((draft.dpi || 300) / 72)).toFixed(1)} pt at {draft.dpi}dpi
+              </p>
             </div>
             <div>
               <label className="label" htmlFor="fmt-color">
@@ -570,6 +612,95 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
                 <option value="right">Right</option>
               </select>
             </div>
+          </div>
+
+          {/* What the renderer will actually use. Font size is a ceiling it
+              shrinks from, and the box is usually the real constraint. */}
+          <div className="rounded-xl border border-cream-200 bg-cream px-4 py-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-[9rem]">
+                <label className="label" htmlFor="fmt-sample">
+                  Test with
+                </label>
+                <input
+                  id="fmt-sample"
+                  className="input"
+                  value={sampleText}
+                  placeholder="Longest name you expect"
+                  onChange={(e) => setSampleText(e.target.value)}
+                />
+              </div>
+              <div className="text-right">
+                <p className="label">Actual size</p>
+                {fit ? (
+                  <>
+                    <p className="text-lg leading-tight font-bold">
+                      {fit.font_size_used_pt} pt
+                      {fit.lines > 1 && (
+                        <span className="text-sm font-normal text-ink-400">
+                          {" "}
+                          · {fit.lines} lines
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-ink-400">
+                      {fit.font_size_used}px · {fit.line_height_mm}mm line
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-lg leading-tight font-bold text-ink-400">—</p>
+                )}
+              </div>
+            </div>
+            {fit && (
+              <p className="mt-2 text-xs text-ink-400">
+                {fit.capped ? (
+                  <>
+                    <strong className="text-brand-600">
+                      The box caps this at {fit.font_size_used_pt} pt
+                    </strong>{" "}
+                    — you asked for {fit.requested_pt} pt, and raising{" "}
+                    <strong>Font size</strong> further changes nothing. To reach{" "}
+                    {fit.requested_pt} pt this name needs a box of at least{" "}
+                    <strong>
+                      {fit.min_box_width}×{fit.min_box_height}px
+                    </strong>
+                    ; it is {draft.w}×{draft.h} now.
+                  </>
+                ) : (
+                  <>
+                    Fits at the full {fit.requested_pt} pt. Font size is a maximum in pixels — the
+                    renderer shrinks it until the text fits the box.
+                  </>
+                )}
+                {fit.lines > 1 && (
+                  <>
+                    {" "}
+                    This name wraps onto {fit.lines} lines, which is what dropped the size — widen
+                    the box to keep it on one.
+                  </>
+                )}
+              </p>
+            )}
+            {fit?.capped && (
+              <button
+                type="button"
+                className="btn-secondary btn-sm mt-2.5"
+                onClick={() =>
+                  setDraft({
+                    ...draft,
+                    // Grow around the box's own centre so the text stays where
+                    // the placeholder is rather than drifting down the artwork.
+                    x: Math.max(0, Math.round(draft.x + draft.w / 2 - Math.max(draft.w, fit.min_box_width) / 2)),
+                    y: Math.max(0, Math.round(draft.y + draft.h / 2 - Math.max(draft.h, fit.min_box_height) / 2)),
+                    w: Math.max(draft.w, fit.min_box_width),
+                    h: Math.max(draft.h, fit.min_box_height),
+                  })
+                }
+              >
+                Grow box to fit {fit.requested_pt} pt
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
