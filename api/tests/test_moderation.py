@@ -362,3 +362,15 @@ def test_prompt_names_indian_political_parties_and_gives_examples(fake_gemini):
     # Few-shot section: at least one flagged and one clear worked example.
     assert "Examples" in system
     assert '-> FLAGGED' in system and '-> CLEAR' in system
+
+
+def test_prompt_lists_hindi_and_english_abuse_terms_with_variants(fake_gemini):
+    from app.services.moderation import moderate_texts
+
+    moderate_texts(["hello"])
+
+    system = fake_gemini.calls[0]["config"].system_instruction
+    for term in ("chutiya", "madarchod", "bhenchod", "BSDK", "MC", "fuck", "bitch", "f*ck", "b!tch"):
+        assert term in system, term
+    # Ordinary names that merely resemble an abuse must stay printable.
+    assert "Bhosle" in system

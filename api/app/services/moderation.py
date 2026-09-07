@@ -129,6 +129,57 @@ POLITICAL_TERMS = {
     ],
 }
 
+# Illustrative, not exhaustive — the model must also catch anything of the same
+# kind that is not listed, in any language, spelling or script. Variants show the
+# obfuscation patterns (vowel drops, symbols, spacing, acronyms) the model must
+# see through. Names that merely resemble an abuse must still print.
+ABUSE_TERMS = {
+    "Hindi / Hinglish": [
+        "chutiya", "chutiye", "chutiyapa", "madarchod", "maderchod", "behenchod", "bhenchod", "bhen ke",
+        "bhosdike", "bhosdi ke", "bhosadike", "gandu", "gaandu", "gaand", "gand mara", "lodu", "laude",
+        "lauda", "lavde", "lawde", "chodu", "chod", "randi", "randwa", "harami", "haramzada", "haramkhor",
+        "kamina", "kameena", "kaminey", "nalayak", "ullu ka pattha", "suar", "suar ki aulad", "kutte",
+        "kutiya", "jhaant", "jhatu", "tatti", "hijra", "chakka", "bhadwa", "bhadwe", "dalla", "rakhail",
+        "teri maa ki", "teri behen ki", "maa chuda", "gandi naali", "saala kutta", "besharam kutta",
+    ],
+    "Hindi acronyms and codes": [
+        "MC", "BC", "BKL", "BSDK", "MKC", "TMKC", "BMKC", "TMKB", "TBKC", "KLPD", "LKB", "MKB",
+    ],
+    "regional": [
+        "zavadya", "aaichya gavat", "bhikarchot", "randichya",  # Marathi
+        "thevidiya", "punda", "otha", "ommala", "koothi",  # Tamil
+        "lanja", "dengey", "pukulo", "modda",  # Telugu
+        "bokachoda", "khanki", "chodna", "banchod",  # Bengali
+        "bhosdina", "gandina", "lodano",  # Gujarati
+        "bevarsi", "boli maga", "tullu",  # Kannada
+        "pehnchod", "bhenchodd", "khotte da puttar", "kanjar",  # Punjabi
+        "myre", "poori mone", "thayoli", "kunna",  # Malayalam
+    ],
+    "English": [
+        "fuck", "fucking", "fucker", "motherfucker", "mofo", "shit", "bullshit", "bitch", "biatch", "asshole",
+        "arsehole", "ass", "bastard", "dick", "dickhead", "cock", "pussy", "cunt", "slut", "whore", "hoe",
+        "prick", "twat", "wanker", "bollocks", "douche", "douchebag", "dumbass", "jackass", "retard",
+        "moron", "idiot", "loser", "scum", "piss off", "screw you", "suck my", "go to hell", "kill yourself",
+        "kys", "wtf", "stfu", "gtfo", "lmfao", "af", "milf", "dilf", "thot", "simp", "incel",
+    ],
+    "slurs (any language)": [
+        "chinki", "chinky", "kaalu", "kallu", "bhangi", "chamar", "chura", "dhed", "katua", "mulla",
+        "mullah (as insult)", "sulla", "jihadi", "bhakt (as insult)", "madrasi", "bihari (as insult)",
+        "bhaiya (as insult)", "gorkha (as insult)", "chapri", "nigger", "nigga", "paki", "faggot", "fag",
+        "tranny", "dyke", "retard", "spastic",
+    ],
+    "obfuscation patterns to see through": [
+        "f*ck", "f**k", "fck", "fuk", "fuq", "phuck", "fvck", "f u c k", "f.u.c.k", "sh*t", "sh1t", "$hit",
+        "b!tch", "b*tch", "b1tch", "biatch", "a$$", "a**", "@ss", "a55", "c*nt", "d!ck", "d1ck", "p*ssy",
+        "ch*tiya", "chu**ya", "chutiy@", "c h u t i y a", "chu tiya", "ch00tiya", "m@darchod", "m*derchod",
+        "madarch0d", "bh*nchod", "bhen ch0d", "b3hnchod", "g@ndu", "g*ndu", "g4ndu", "l0du", "l@ude",
+        "r@ndi", "r*ndi", "bsdk", "b$dk", "🖕", "🍆 (sexual)", "🍑 (sexual)", "💦 (sexual)",
+        "trailing or leading letters to dodge filters (fuckk, chutiyaa)", "mixed scripts (चुtiya, mAdarचod)",
+        "reversed or split across words (ya chuti)", "acrostics whose first letters spell an abuse",
+    ],
+}
+
+
 # Worked examples: how to think about borderline text. Keep short — they are
 # paid on every call.
 EXAMPLES = [
@@ -152,6 +203,7 @@ def build_system_prompt() -> str:
     own = ", ".join(OWN_BRANDS)
     categories = "\n".join(f"- {c.value}" for c in Category)
     political = "\n".join(f"  - {kind}: {', '.join(terms)}" for kind, terms in POLITICAL_TERMS.items())
+    abuse = "\n".join(f"  - {kind}: {', '.join(terms)}" for kind, terms in ABUSE_TERMS.items())
     examples = "\n".join(
         f'- "{text}" -> {verdict}' + (f" ({why})" if why else "") for text, verdict, why in EXAMPLES
     )
@@ -173,7 +225,12 @@ Category guidance:
   Patriotic phrases used as a personal congratulation ("Jai Hind", "Proud Indian") are CLEAR unless they
   are paired with a party, politician, slogan, or a jibe at the other side.
 - ABUSE_PROFANITY: swearing, insults, slurs, bullying, threats — including Hindi/Hinglish/regional slang,
-  leetspeak, deliberate misspellings, spaced-out letters, or emoji substitutions.
+  leetspeak, deliberate misspellings, spaced-out letters, or emoji substitutions. Examples (illustrative —
+  flag anything of the same kind even if not listed here):
+{abuse}
+  Judge intent: "saala", "kutta", "pagal", "idiot" between friends on a birthday tag are usually CLEAR;
+  the same words aimed at someone as an insult are FLAGGED. Surnames and place names that merely resemble
+  an abuse (Bhosle, Chodavaram, Gandhi, Dixit, Lund, Randhawa, Chutia district) are always CLEAR.
 - HATE: content demeaning a group by religion, caste, ethnicity, gender, sexuality, disability, nationality.
 - SEXUAL: sexual content, innuendo, or requests, however mild.
 - VIOLENCE: threats, glorification of violence, self-harm, terrorism, weapons.
