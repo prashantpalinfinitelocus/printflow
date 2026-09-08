@@ -180,6 +180,34 @@ ABUSE_TERMS = {
 }
 
 
+# The message is printed beside the Coca-Cola logo, so a fragment with no subject
+# of its own borrows the brand as its subject: "not ok" on a Diet Coke can reads
+# "Diet Coke not ok". Illustrative, not exhaustive.
+PACK_READING_PHRASES = [
+    "is bad", "so bad", "not ok", "not okay", "not good", "not great", "not worth it", "no good", "is the worst",
+    "worst ever", "sucks", "sux", "is trash", "is garbage", "is rubbish", "is overrated", "is fake", "is cheap",
+    "is boring", "is a scam", "is a joke", "is a flop", "is poison", "is toxic", "is unhealthy", "makes you fat",
+    "rots your teeth", "gives you diabetes", "tastes like", "never again", "no thanks", "not for me", "I hate",
+    "hate this", "hate it", "hate you", "disgusting", "gross", "yuck", "ew", "eww", "bleh", "meh", "boo",
+    "thumbs down", "👎", "🤮", "🤢", "💩", "0/10", "1 star", "do not buy", "don't buy", "avoid", "expired",
+    "bakwaas", "bekaar", "ganda", "kharab", "faltu", "bakwas hai", "achha nahi", "theek nahi", "pasand nahi",
+    "zeher", "bimaar kar dega", "mota kar dega", "daant kharab", "kachra", "waste", "dhokha", "nakli",
+]
+
+# Phrases that only become a jab beside a particular brand. Keyed by the exact
+# value of `moderation_campaign_brand`.
+BRAND_SPECIFIC_PHRASES = {
+    "Diet Coke": [
+        "diet? lol", "diet, really?", "diet my foot", "no diet", "no more diet", "diet fail", "diet failed",
+        "diet is a lie", "diet is fake", "diet doesn't work", "diet nahi", "diet chhod", "diet kar le", "diet karo",
+        "you need a diet", "go on a diet", "time for a diet", "skip the diet", "forget the diet", "cheat day",
+        "cheat meal", "still fat", "motu", "moti", "mota", "golu", "haathi", "fatso", "chubby", "weight",
+        "lose weight", "weight loss", "calories", "zero calories my", "sugar free = taste free", "fake sugar",
+        "aspartame", "chemicals", "artificial", "cancer", "acidic", "acid", "tooth decay", "not real coke",
+        "not the real thing", "real coke is better", "give me normal coke", "tastes like medicine",
+    ],
+}
+
 # Worked examples: how to think about borderline text. Keep short — they are
 # paid on every call.
 EXAMPLES = [
@@ -194,6 +222,14 @@ EXAMPLES = [
     ("Thums Up to the best coach ever", "CLEAR", "Thums Up is a Coca-Cola brand"),
     ("Call me 98xxxxxxxx", "FLAGGED", "PERSONAL_DATA — phone number"),
     ("Tu bahut b@dtameez hai bhai", "FLAGGED", "ABUSE_PROFANITY — obfuscated Hindi insult"),
+    ("is bad", "FLAGGED", "BRAND_DISPARAGEMENT — beside the logo this reads 'Diet Coke is bad'"),
+    ("not ok", "FLAGGED", "BRAND_DISPARAGEMENT — reads 'Coke not ok' on the pack"),
+    ("You're the worst, love Anu", "FLAGGED", "BRAND_DISPARAGEMENT — 'the worst' sits next to the brand; the joke does not survive the can"),
+    ("Rahul is bad at cricket but great at life", "FLAGGED", "BRAND_DISPARAGEMENT — 'is bad' is printed beside the brand even though Rahul is the subject"),
+    ("Bakwaas mat kar, party kar!", "FLAGGED", "BRAND_DISPARAGEMENT — 'bakwaas' reads as a verdict on the drink"),
+    ("Diet kar le, Happy Birthday", "FLAGGED", "BRAND_DISPARAGEMENT — 'diet' jibe beside a Diet Coke logo, and body-shaming"),
+    ("Real Coke is better, love Sam", "FLAGGED", "BRAND_DISPARAGEMENT — disparages Diet Coke against its sibling"),
+    ("You are the best, Diet Coke and me agree", "CLEAR", "positive; the brand reading is flattering"),
 ]
 
 
@@ -203,16 +239,29 @@ def build_system_prompt() -> str:
     own = ", ".join(OWN_BRANDS)
     categories = "\n".join(f"- {c.value}" for c in Category)
     political = "\n".join(f"  - {kind}: {', '.join(terms)}" for kind, terms in POLITICAL_TERMS.items())
+    brand = settings.moderation_campaign_brand.strip() or "Coca-Cola"
+    pack_phrases = ", ".join(PACK_READING_PHRASES + BRAND_SPECIFIC_PHRASES.get(brand, []))
     abuse = "\n".join(f"  - {kind}: {', '.join(terms)}" for kind, terms in ABUSE_TERMS.items())
     examples = "\n".join(
         f'- "{text}" -> {verdict}' + (f" ({why})" if why else "") for text, verdict, why in EXAMPLES
     )
-    return f"""You are the brand-safety reviewer for a Coca-Cola India personalised-label campaign.
-Customers submit a short message that is printed onto Coca-Cola packaging (bottle labels, gift tags,
-thank-you cards). You decide whether each message may be printed on Coca-Cola branded artwork.
+    return f"""You are the brand-safety reviewer for a Coca-Cola India personalised-label campaign. This campaign prints
+on {brand} packaging only. Customers submit a short message that is printed onto {brand} artwork
+(bottle labels, gift tags, thank-you cards). You decide whether each message may be printed there.
 
 You receive a JSON array of items, each with an index `i` and the text `t`. Return one verdict per
 item with the same `i`. Never skip, merge or reorder items.
+
+PLACEMENT RULE — read every message twice. First as the customer meant it. Then as a stranger sees it
+printed directly beside the {brand} logo, where "{brand}" is the nearest noun. A fragment with no
+subject of its own borrows the brand as its subject: "not ok" becomes "{brand} not ok"; "is bad" becomes
+"{brand} is bad"; "you're the worst" becomes a verdict on the drink. If either reading is negative,
+mocking, unhealthy, dangerous or dismissive, flag it as BRAND_DISPARAGEMENT — even when the customer
+clearly meant a person, and even when the message is otherwise a harmless in-joke. Words in the brand
+name itself carry extra weight: on {brand} packaging, jokes about dieting, weight, sugar, calories,
+"real" vs "diet", or health are all read as jabs at the drink or at the recipient's body, and are
+FLAGGED. Negative words that are explicitly and unmistakably about a named person or thing AND cannot be
+lifted off the pack as a standalone phrase are the only exception, and when in doubt, flag.
 
 Flag (v = "FLAGGED") a message that contains, implies, or is clearly an attempt to smuggle in:
 {categories}
@@ -237,7 +286,11 @@ Category guidance:
 - COMPETITOR_BRAND: any competing beverage, snack, or FMCG brand or its slogan/mascot. Competitors include:
   {competitors}. These are Coca-Cola's own brands and are NOT competitors: {own}.
 - BRAND_DISPARAGEMENT: mocking or disparaging Coca-Cola or its brands, parodying its slogans, health
-  claims about it, or using the brand in a misleading way.
+  claims about it, or using the brand in a misleading way — AND any message that, read beside the logo
+  under the PLACEMENT RULE, becomes a negative statement about the drink. Phrases that trigger this
+  (illustrative — flag anything of the same kind, in any language): {pack_phrases}.
+  Negation and negative sentiment with no explicit subject ("no", "not", "never", "worst", "bad", "hate")
+  default to FLAGGED. Positive or neutral fragments ("is the best", "forever", "cheers") are CLEAR.
 - ALCOHOL_DRUGS_TOBACCO: alcohol, mixers-with-alcohol, drugs, smoking, vaping, intoxication.
 - PERSONAL_DATA: phone numbers, email addresses, street addresses, ID numbers, URLs, social handles.
 - OTHER: anything else a brand manager would refuse to print (scams, medical claims, defamation of a

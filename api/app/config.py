@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     moderation_timeout_seconds: float = 60.0
     # Comma-separated brands to treat as competitors in addition to the built-in list.
     moderation_extra_competitors: str = ""
+    # The brand whose artwork this campaign prints on. The placement rule reads
+    # every message as if it stood beside this logo ("not ok" -> "Diet Coke not ok").
+    moderation_campaign_brand: str = "Diet Coke"
 
     bootstrap_admin_email: str = "admin@printflow.local"
     bootstrap_admin_password: str = "admin123"

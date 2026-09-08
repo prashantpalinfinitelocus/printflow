@@ -1,6 +1,6 @@
 # PrintFlow — Text Moderation: What Gets Blocked
 
-Every `text` value in an imported CSV is checked by Google Gemini (`gemini-3.5-flash`) before an operator can print it. Rows the model flags are imported as **held** and appear under **All orders → On hold**, where an admin can approve, reject, or re-check them. If the model cannot be reached, the row is held as **Needs review** rather than printed unchecked.
+This campaign prints on **Diet Coke** artwork only. Every `text` value in an imported CSV is checked by Google Gemini (`gemini-3.5-flash`) before an operator can print it. Rows the model flags are imported as **held** and appear under **All orders → On hold**, where an admin can approve, reject, or re-check them. If the model cannot be reached, the row is held as **Needs review** rather than printed unchecked.
 
 ## Key point: there is no fixed word blocklist
 
@@ -21,10 +21,30 @@ Moderation is **LLM judgment, not word matching**. The model reads the *meaning*
 | **SEXUAL** | Sexual content, innuendo, or requests, however mild. |
 | **VIOLENCE** | Threats, glorification of violence, self-harm, terrorism, weapons. |
 | **COMPETITOR_BRAND** | Any competing beverage, snack, or FMCG brand, its slogan, or its mascot. Flagged even when used as a compliment ("Better than Pepsi"). |
-| **BRAND_DISPARAGEMENT** | Mocking or disparaging Coca-Cola or its brands, parodying its slogans, health claims about it, or misleading use of the brand. |
+| **BRAND_DISPARAGEMENT** | Mocking or disparaging Coca-Cola or its brands, parodying its slogans, health claims about it, or misleading use of the brand. **Also any message that reads as negative once printed beside the logo** (see Placement rule below). |
 | **ALCOHOL_DRUGS_TOBACCO** | Alcohol, mixers-with-alcohol, drugs, smoking, vaping, intoxication. |
 | **PERSONAL_DATA** | Phone numbers, email addresses, street addresses, ID numbers, URLs, social handles. |
 | **OTHER** | Anything else a brand manager would refuse to print: scams, medical claims, defamation of a named private person, hidden acrostics. |
+
+## Placement rule: the pack is the context
+
+The message is printed directly beside the Diet Coke logo. A fragment with no subject of its own borrows the brand as its subject. *"not ok"* reads **"Diet Coke not ok"**. *"is bad"* reads **"Diet Coke is bad"**. *"You're the worst, love Anu"* puts "the worst" next to the brand even though the customer meant a friend.
+
+Because the brand name contains the word **Diet**, jokes about dieting, weight, sugar, calories, "real" vs "diet", or health are read as jabs at the drink or at the recipient's body, and are flagged. *"Diet kar le, Happy Birthday"* and *"Real Coke is better"* are both held.
+
+The model is instructed to read every message twice: once as the customer meant it, once as a stranger sees it on the pack. If either reading is negative, mocking, unhealthy or dismissive about the drink, the row is flagged as BRAND_DISPARAGEMENT, even when the message is an otherwise harmless in-joke about a person. Negation and negative sentiment with no explicit subject ("no", "not", "never", "worst", "bad", "hate") default to flagged. Positive or neutral fragments ("is the best", "forever", "cheers") are cleared.
+
+**Phrases given to the model as examples (illustrative, any language, flag anything of the same kind):**
+
+is bad, so bad, not ok, not okay, not good, not great, not worth it, no good, is the worst, worst ever, sucks, sux, is trash, is garbage, is rubbish, is overrated, is fake, is cheap, is boring, is a scam, is a joke, is a flop, is poison, is toxic, is unhealthy, makes you fat, rots your teeth, gives you diabetes, tastes like, never again, no thanks, not for me, I hate, hate this, hate it, hate you, disgusting, gross, yuck, ew, eww, bleh, meh, boo, thumbs down, 👎, 🤮, 🤢, 💩, 0/10, 1 star, do not buy, don't buy, avoid, expired, bakwaas, bekaar, ganda, kharab, faltu, bakwas hai, achha nahi, theek nahi, pasand nahi, zeher, bimaar kar dega, mota kar dega, daant kharab, kachra, waste, dhokha, nakli
+
+**Diet Coke-specific phrases (illustrative):**
+
+diet? lol, diet really?, diet my foot, no diet, no more diet, diet fail, diet is a lie, diet is fake, diet doesn't work, diet nahi, diet chhod, diet kar le, diet karo, you need a diet, go on a diet, time for a diet, skip the diet, forget the diet, cheat day, cheat meal, still fat, motu, moti, mota, golu, haathi, fatso, chubby, weight, lose weight, weight loss, calories, zero calories my..., sugar free = taste free, fake sugar, aspartame, chemicals, artificial, cancer, acidic, acid, tooth decay, not real coke, not the real thing, real coke is better, give me normal coke, tastes like medicine
+
+The brand is a setting (`PRINTFLOW_MODERATION_CAMPAIGN_BRAND`, default `Diet Coke`). Changing it renames the brand in the rule and swaps the brand-specific phrase list; the generic phrases above always apply.
+
+**Known trade-off:** this rule will hold some genuinely friendly messages, for example *"Rahul is bad at cricket but great at life"*. That is intentional. The admin can approve them from the On hold queue after seeing how they sit on the artwork.
 
 ## Named terms in the prompt
 
@@ -112,7 +132,69 @@ The model is told **not** to flag:
 | Thums Up to the best coach ever | CLEAR | Thums Up is a Coca-Cola brand |
 | Call me 98xxxxxxxx | FLAGGED | PERSONAL_DATA — phone number |
 | Tu bahut b@dtameez hai bhai | FLAGGED | ABUSE_PROFANITY — obfuscated Hindi insult |
+| is bad | FLAGGED | BRAND_DISPARAGEMENT — beside the logo reads "Diet Coke is bad" |
+| not ok | FLAGGED | BRAND_DISPARAGEMENT — reads "Coke not ok" on the pack |
+| You're the worst, love Anu | FLAGGED | BRAND_DISPARAGEMENT — "the worst" sits next to the brand |
+| Rahul is bad at cricket but great at life | FLAGGED | BRAND_DISPARAGEMENT — "is bad" printed beside the brand |
+| Bakwaas mat kar, party kar! | FLAGGED | BRAND_DISPARAGEMENT — "bakwaas" reads as a verdict on the drink |
+| Diet kar le, Happy Birthday | FLAGGED | BRAND_DISPARAGEMENT — "diet" jibe beside a Diet Coke logo, and body-shaming |
+| Real Coke is better, love Sam | FLAGGED | BRAND_DISPARAGEMENT — disparages Diet Coke against its sibling |
+| You are the best, Diet Coke and me agree | CLEAR | Positive; the brand reading is flattering |
+
+## Verified against the live model
+
+Run on 2026-09-08 against `gemini-3.5-flash` with the current prompt. One batch of 20 messages. Every explicit and implied disparagement of Diet Coke was held; every positive control was cleared.
+
+| Message | Result | Model's reason |
+|---|---|---|
+| Diet Coke is not good | FLAGGED · BRAND_DISPARAGEMENT | Explicitly disparages Diet Coke as not good. |
+| Diet Coke is bad | FLAGGED · BRAND_DISPARAGEMENT | Explicitly disparages Diet Coke as bad. |
+| Diet Coke is not ok | FLAGGED · BRAND_DISPARAGEMENT | Explicitly disparages Diet Coke as not ok. |
+| not ok | FLAGGED · BRAND_DISPARAGEMENT | Under the placement rule, this reads as Diet Coke is not ok. |
+| is bad | FLAGGED · BRAND_DISPARAGEMENT | Under the placement rule, this reads as Diet Coke is bad. |
+| not good | FLAGGED · BRAND_DISPARAGEMENT | Under the placement rule, this reads as Diet Coke is not good. |
+| Diet Coke sucks | FLAGGED · BRAND_DISPARAGEMENT | Explicitly disparages Diet Coke as sucking. |
+| Diet Coke is the worst | FLAGGED · BRAND_DISPARAGEMENT | Explicitly disparages Diet Coke as the worst. |
+| Diet Coke tastes bad | FLAGGED · BRAND_DISPARAGEMENT | Explicitly disparages the taste of Diet Coke. |
+| I hate Diet Coke | FLAGGED · BRAND_DISPARAGEMENT | Expresses hatred for Diet Coke. |
+| Diet Coke nahi chahiye | FLAGGED · BRAND_DISPARAGEMENT | Rejects Diet Coke in Hindi. |
+| Diet Coke bakwaas hai | FLAGGED · BRAND_DISPARAGEMENT | Disparages Diet Coke as rubbish in Hindi. |
+| Diet kar le, Happy Birthday | FLAGGED · BRAND_DISPARAGEMENT | Contains a diet jibe and body-shaming reference on Diet Coke packaging. |
+| Real Coke is better | FLAGGED · BRAND_DISPARAGEMENT | Disparages Diet Coke by comparing it negatively to regular Coke. |
+| You're the worst, love Anu | FLAGGED · BRAND_DISPARAGEMENT | Under the placement rule, "the worst" sits next to the brand logo. |
+| Cheat day! Happy Birthday Riya | FLAGGED · BRAND_DISPARAGEMENT | Contains a diet-related cheat day reference on Diet Coke packaging. |
+| Happy Birthday, Riya! | CLEAR | |
+| Diet Coke is the best | CLEAR | |
+| Cheers to 10 years, Team Indiranagar | CLEAR | |
+| Love you Mom, forever | CLEAR | |
+
+The model's reason is stored on each held order and shown to the admin in the On hold queue, so the reviewer sees the same explanation as in this table.
+
+### Before and after the placement rule
+
+The client reported that fragments such as *"not ok"* and *"is bad"* were reaching print, where they read as "Diet Coke not ok" on the pack. That was correct for the original moderation prompt, which judged each message in isolation and only caught disparagement that named the brand. The placement rule closes this. Same phrases, same model, run on 2026-09-08 against both prompts:
+
+| Message | Original prompt (before) | Current prompt (after) |
+|---|---|---|
+| Diet Coke is not ok | FLAGGED | FLAGGED |
+| Diet Coke is bad | FLAGGED | FLAGGED |
+| not ok | **CLEAR** | FLAGGED |
+| is bad | **CLEAR** | FLAGGED |
+| not good | **CLEAR** | FLAGGED |
+| You're the worst, love Anu | FLAGGED | FLAGGED |
+| Diet kar le, Happy Birthday | **CLEAR** | FLAGGED |
+| Real Coke is better | **CLEAR** | FLAGGED |
+| Cheat day! Happy Birthday Riya | **CLEAR** | FLAGGED |
+| Happy Birthday, Riya! | CLEAR | CLEAR |
+
+Any deployment still running the original prompt will show the "before" column. The prompt is read at request time, so redeploying the API is enough; there is no data migration.
+
+### When the model is unavailable
+
+During one of the checks above, Gemini returned `503 UNAVAILABLE` (high demand). Every row in that batch was held as **Needs review** and nothing printed. This is the designed fail-closed behaviour: a failed call, a timeout, a missing API key, or a row the model skips all result in a hold, never a clear. The admin can re-check held rows from the On hold queue once the model is reachable.
+
+This is a spot check, not a guarantee. The model is non-deterministic in principle (temperature is set to 0, which makes it very stable but not provably identical run to run), and new phrasings will keep appearing. Re-run this check after any change to the prompt or model version.
 
 ## Where this lives
 
-The lists above are defined in `api/app/services/moderation.py` (`COMPETITORS`, `OWN_BRANDS`, `POLITICAL_TERMS`, `ABUSE_TERMS`, `EXAMPLES`). Changing a list changes the model's instructions on the next import; no retraining is involved. This document should be regenerated whenever those lists change.
+The lists above are defined in `api/app/services/moderation.py` (`COMPETITORS`, `OWN_BRANDS`, `POLITICAL_TERMS`, `ABUSE_TERMS`, `PACK_READING_PHRASES`, `BRAND_SPECIFIC_PHRASES`, `EXAMPLES`). Changing a list changes the model's instructions on the next import; no retraining is involved. This document should be regenerated whenever those lists change.

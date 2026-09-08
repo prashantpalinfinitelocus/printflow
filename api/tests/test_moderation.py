@@ -374,3 +374,33 @@ def test_prompt_lists_hindi_and_english_abuse_terms_with_variants(fake_gemini):
         assert term in system, term
     # Ordinary names that merely resemble an abuse must stay printable.
     assert "Bhosle" in system
+
+
+def test_prompt_applies_placement_rule_for_brand_adjacent_negatives(fake_gemini):
+    """Client rule: text sits beside the logo, so 'not ok' reads 'Diet Coke not ok'."""
+    from app.services.moderation import moderate_texts
+
+    moderate_texts(["hello"])
+
+    system = fake_gemini.calls[0]["config"].system_instruction
+    assert "PLACEMENT RULE" in system
+    for phrase in ("not ok", "is bad", "sucks", "bakwaas", "👎"):
+        assert phrase in system, phrase
+    assert '"is bad" -> FLAGGED' in system
+    assert '"not ok" -> FLAGGED' in system
+    # Campaign brand is named, and its brand-specific jabs are listed.
+    assert "beside the Diet Coke logo" in system
+    for phrase in ("diet kar le", "you need a diet", "aspartame", "real coke is better"):
+        assert phrase in system, phrase
+
+
+def test_campaign_brand_is_configurable(fake_gemini, monkeypatch):
+    from app.config import settings
+    from app.services.moderation import moderate_texts
+
+    monkeypatch.setattr(settings, "moderation_campaign_brand", "Thums Up")
+    moderate_texts(["hello"])
+
+    system = fake_gemini.calls[0]["config"].system_instruction
+    assert "beside the Thums Up logo" in system
+    assert "aspartame" not in system  # Diet Coke-only phrases stay out

@@ -131,7 +131,8 @@ text ──▶ CLEAR ───────────────────�
   of 4,096+ tokens and the moderation prompt is far shorter.
 - **Configuration** (`api/.env.example`): `GEMINI_API_KEY`,
   `PRINTFLOW_MODERATION_ENABLED`, `_MODEL`, `_BATCH_SIZE`, `_CONCURRENCY`,
-  `_THINKING_LEVEL`, `_EXTRA_COMPETITORS` for brands specific to a campaign.
+  `_THINKING_LEVEL`, `_EXTRA_COMPETITORS` for brands specific to a campaign,
+  `_CAMPAIGN_BRAND` (default `Diet Coke`) for the artwork the text is printed beside.
   With moderation disabled, rows import as `UNCHECKED` and print normally.
 
 ## Roles
