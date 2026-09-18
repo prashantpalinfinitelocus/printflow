@@ -223,6 +223,45 @@ class FontOut(BaseModel):
     family: str | None = None
 
 
+class FitTextRequest(BaseModel):
+    """Ask what size a box would actually produce, and what box a size needs.
+
+    `font_size` on a format is a ceiling in *pixels*, not a setting — the
+    renderer shrinks it until the text fits. Designers think in points, and at
+    508 dpi a point is 7.06 px, so a 68px cap is 9.6pt: far smaller than the
+    number suggests. Both halves of that confusion are answered here.
+    """
+
+    text_box: TextBox
+    font_size: int = Field(ge=1, le=2000)
+    font_path: str | None = None
+    #: Type the longest name you expect. Width binds before height on long text,
+    #: so a box that suits "Anjali" may halve the size for something longer.
+    text: str = Field(default="Sample Name", max_length=200)
+    #: The format's resolution — points only mean something against a dpi.
+    dpi: int = Field(default=300, ge=1, le=2400)
+
+
+class FitTextResponse(BaseModel):
+    #: Pixel size the renderer would use for this box, font and text.
+    font_size_used: int
+    #: The same size in points, which is the unit the artwork is specified in.
+    font_size_used_pt: float
+    #: What was asked for, in points, for a like-for-like comparison.
+    requested_pt: float
+    #: True when the box, not `font_size`, is deciding the size.
+    capped: bool
+    lines: int
+    line_height: int
+    #: Physical height of one line at the format's dpi, for a sanity check
+    #: against the object being printed.
+    line_height_mm: float
+    #: Box the requested size actually needs, on one line. This is the actionable
+    #: half: "24pt needs 1372x191" beats "your 400 became 68".
+    min_box_width: int
+    min_box_height: int
+
+
 class PageSizeOut(BaseModel):
     """A paper size a format can centre its label on, in portrait inches."""
 
@@ -344,6 +383,7 @@ class PrintJobOut(ORMModel):
     printer_name: str | None
     status: JobStatus
     passes: int
+    font_size_used: int | None
     cups_job_id: str | None
     error: str | None
     created_at: datetime

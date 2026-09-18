@@ -10,6 +10,8 @@ from ..models import Order, PrintFormat
 from ..schemas import (
     DetectPlaceholderRequest,
     DetectPlaceholderResponse,
+    FitTextRequest,
+    FitTextResponse,
     FontOut,
     PageSizeOut,
     PrintFormatCreate,
@@ -136,6 +138,44 @@ def detect_placeholder_box(payload: DetectPlaceholderRequest, _: AdminUser):
         ) from exc
     return DetectPlaceholderResponse(
         text_box=TextBox(x=box.x, y=box.y, w=box.w, h=box.h), fill=box.fill
+    )
+
+
+@router.post("/fit-text", response_model=FitTextResponse)
+def fit_text_preview(payload: FitTextRequest, _: CurrentUser):
+    """Report what a box will actually produce, and what a size actually needs.
+
+    `font_size` is a ceiling in pixels that the renderer shrinks from, so a
+    79px-tall box caps the type at 68px however large the format asks for. At
+    508 dpi that is 9.6pt — nothing like what "68" suggests, which is why the
+    field reads as broken. `min_box_*` is the half an admin can act on.
+    """
+    from PIL import Image, ImageDraw
+
+    from ..services.renderer import _line_height, _load_font, fit_text, select_font_path
+
+    box = (payload.text_box.x, payload.text_box.y, payload.text_box.w, payload.text_box.h)
+    draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    font_path, _missing = select_font_path(payload.text, payload.font_path)
+    lines, _font, used, leading = fit_text(draw, payload.text, box, payload.font_size, font_path)
+
+    px_per_pt = payload.dpi / 72
+    # Measure the requested size directly rather than extrapolating: line height
+    # is a font metric, not a fixed ratio of the point size.
+    wanted = _load_font(payload.font_size, font_path)
+    wanted_leading = int(_line_height(wanted, draw) * 1.25)
+    wanted_width = draw.textlength(payload.text or "Sample Name", font=wanted)
+
+    return FitTextResponse(
+        font_size_used=used,
+        font_size_used_pt=round(used / px_per_pt, 1),
+        requested_pt=round(payload.font_size / px_per_pt, 1),
+        capped=used < payload.font_size,
+        lines=len(lines),
+        line_height=leading,
+        line_height_mm=round(leading / max(1, payload.dpi) * 25.4, 2),
+        min_box_width=int(wanted_width) + 1,
+        min_box_height=wanted_leading,
     )
 
 

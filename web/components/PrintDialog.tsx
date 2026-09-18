@@ -85,6 +85,12 @@ export function PrintDialog({
   const passes = order.print_format?.print_passes ?? 1;
   // White is laid by the press from spot channels in the file, not by the app.
   const whitePasses = order.print_format?.white_passes ?? 0;
+  // What the type actually came out at. The format's font_size is only a
+  // ceiling the renderer shrinks from, so this is the number that matters.
+  const lastRenderSize =
+    lastJob?.font_size_used ??
+    history.find((j) => j.font_size_used !== null)?.font_size_used ??
+    null;
 
   async function run(delivery: Delivery, jobKind: JobKind) {
     if (!order) return;
@@ -181,6 +187,25 @@ export function PrintDialog({
             <div>
               <dt className="label">Print on</dt>
               <dd className="font-bold">{pageSize ?? "Label only"}</dd>
+            </div>
+            <div>
+              <dt className="label">Type size</dt>
+              <dd className="font-bold">
+                {lastRenderSize !== null ? (
+                  <>
+                    {lastRenderSize}px
+                    {order.print_format && lastRenderSize < order.print_format.font_size && (
+                      <span className="block text-[11px] font-normal text-ink-400">
+                        box capped it from {order.print_format.font_size}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-ink-400">
+                    max {order.print_format?.font_size ?? "—"}
+                  </span>
+                )}
+              </dd>
             </div>
             <div>
               <dt className="label">White</dt>

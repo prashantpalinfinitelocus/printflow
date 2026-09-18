@@ -129,6 +129,7 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
 
     job.tiff_path = str(result.tiff_path)
     job.pdf_path = str(result.pdf_path)
+    job.font_size_used = result.font_size_used
     job.status = JobStatus.RENDERED
     db.commit()
 

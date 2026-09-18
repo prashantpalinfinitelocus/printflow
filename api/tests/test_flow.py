@@ -1192,3 +1192,169 @@ def test_cmyk_gives_way_to_the_white_plates(client, admin_headers, operator_head
     _, tags = _read_spot_tiff(path)
     assert tags[262] == 2  # RGB, not separated
     assert tags[277] == 6
+
+
+# ---------------- font size is a ceiling, not a setting ----------------
+#
+# `font_size` is a starting point the renderer shrinks from until the text fits
+# the box, so a short box silently caps the type. An admin set 400 on a 79px box,
+# saw no change, and reasonably concluded the field was broken. These cover the
+# two things that make it legible: a probe the editor can ask, and a record of
+# what the type actually came out at.
+
+
+def test_font_size_is_capped_by_the_box_height(client, operator_headers):
+    """Raising font_size above the box's ceiling must change nothing — that is
+    the behaviour, and the reason the editor has to surface it."""
+    box = {"x": 0, "y": 0, "w": 616, "h": 79}
+    sizes = {}
+    for asked in (112, 200, 400, 1000):
+        res = client.post(
+            "/print-formats/fit-text",
+            headers=operator_headers,
+            json={"text_box": box, "font_size": asked, "text": "Anjali"},
+        )
+        assert res.status_code == 200, res.text
+        sizes[asked] = res.json()
+
+    used = {asked: body["font_size_used"] for asked, body in sizes.items()}
+    assert len(set(used.values())) == 1, f"box should cap them all equally, got {used}"
+    assert all(body["capped"] for body in sizes.values())
+    # And the ceiling is set by the box, not by the request.
+    assert used[400] < 400
+
+
+def test_a_taller_box_raises_the_ceiling(client, operator_headers):
+    """The box is the lever, so growing it has to actually move the size."""
+    previous = 0
+    for h in (79, 120, 160, 220):
+        body = client.post(
+            "/print-formats/fit-text",
+            headers=operator_headers,
+            json={
+                "text_box": {"x": 0, "y": 0, "w": 900, "h": h},
+                "font_size": 400,
+                "text": "Anjali",
+            },
+        ).json()
+        assert body["font_size_used"] > previous, f"h={h} did not grow the type"
+        previous = body["font_size_used"]
+
+
+def test_fit_text_reports_when_nothing_is_capping(client, operator_headers):
+    body = client.post(
+        "/print-formats/fit-text",
+        headers=operator_headers,
+        json={
+            "text_box": {"x": 0, "y": 0, "w": 2000, "h": 400},
+            "font_size": 48,
+            "text": "Anjali",
+        },
+    ).json()
+    assert body["font_size_used"] == 48
+    assert body["capped"] is False
+    assert body["lines"] == 1
+
+
+def test_fit_text_reports_wrapping(client, operator_headers):
+    """Width binds before height on a long name — the editor needs to say so,
+    because two lines halves the size for a reason that is not obvious."""
+    body = client.post(
+        "/print-formats/fit-text",
+        headers=operator_headers,
+        json={
+            "text_box": {"x": 0, "y": 0, "w": 300, "h": 400},
+            "font_size": 200,
+            "text": "Priya and Arjun forever",
+        },
+    ).json()
+    assert body["lines"] > 1
+    assert body["font_size_used"] < 200
+
+
+def test_the_job_records_the_size_the_type_came_out_at(
+    client, admin_headers, operator_headers
+):
+    """The only place that records what actually went on the object."""
+    fmt = _page_format(client, admin_headers, "FS_RECORD", font_size=400)
+    order, body = _render(client, admin_headers, operator_headers, "ORD-FS1", "FS_RECORD")
+
+    used = body["job"]["font_size_used"]
+    assert used is not None
+    assert used < 400, "a 100px-tall box cannot fit 400pt type"
+
+    # And it survives on the job history, not just the print response.
+    jobs = client.get(f"/orders/{order['id']}/jobs", headers=admin_headers).json()
+    assert jobs[0]["font_size_used"] == used
+
+    # The probe and the renderer must agree, or the editor lies to the admin.
+    probe = client.post(
+        "/print-formats/fit-text",
+        headers=operator_headers,
+        json={
+            "text_box": fmt["text_box"],
+            "font_size": 400,
+            "font_path": fmt["font_path"],
+            "text": "Print me",
+        },
+    ).json()
+    assert probe["font_size_used"] == used
+
+
+def test_fit_text_reports_points_and_the_box_a_size_needs(client, operator_headers):
+    """A pixel cap means nothing to a designer. At 508 dpi a 79px-tall box caps
+    the type at 9.6pt, and the number that lets an admin act is the box a
+    requested point size actually needs."""
+    px_per_pt = 508 / 72
+    want_pt = 24
+    body = client.post(
+        "/print-formats/fit-text",
+        headers=operator_headers,
+        json={
+            "text_box": {"x": 817, "y": 1228, "w": 616, "h": 79},
+            "font_size": round(want_pt * px_per_pt),
+            "font_path": "You2013 Regular.ttf",
+            "text": "Janhavi",
+            "dpi": 508,
+        },
+    ).json()
+
+    assert body["requested_pt"] == 24.0
+    assert body["capped"] is True
+    # The 79px box is under 10pt — the whole reason "68" reads as meaningless.
+    assert body["font_size_used_pt"] < 10
+    # And the box it would take is reported, height being the real blocker here.
+    assert body["min_box_height"] > 79
+    assert body["min_box_width"] <= 616
+
+
+def test_growing_the_box_to_the_reported_size_reaches_the_request(client, operator_headers):
+    """The advice has to actually work: adopt min_box_* and the request is met."""
+    px_per_pt = 508 / 72
+    ask = {
+        "font_size": round(24 * px_per_pt),
+        "font_path": "You2013 Regular.ttf",
+        "text": "Janhavi",
+        "dpi": 508,
+    }
+    first = client.post(
+        "/print-formats/fit-text",
+        headers=operator_headers,
+        json={"text_box": {"x": 0, "y": 0, "w": 616, "h": 79}, **ask},
+    ).json()
+
+    grown = client.post(
+        "/print-formats/fit-text",
+        headers=operator_headers,
+        json={
+            "text_box": {
+                "x": 0,
+                "y": 0,
+                "w": max(616, first["min_box_width"]),
+                "h": first["min_box_height"],
+            },
+            **ask,
+        },
+    ).json()
+    assert grown["capped"] is False
+    assert grown["font_size_used_pt"] >= 24.0
