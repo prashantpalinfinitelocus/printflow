@@ -107,7 +107,7 @@ Aliases (case / space / punctuation insensitive):
 | Canonical | Accepted as |
 | --- | --- |
 | `sku_code` | `sku`, `skucode`, `skuid`, `itemcode`, `materialcode` |
-| `brand` | `brandname`, `label` |
+| `brand` | `brandname` |
 | `store_name` | `storename`, `outlet`, `outletname` |
 | `city` | `town`, `storecity`, `location` |
 
@@ -151,6 +151,10 @@ flowchart TD
   J -- yes --> X9[skip: already exists]
   J -- no --> K[INSERT Order]
 ```
+
+Length limits are read off the `orders` columns at import time
+(`Order.__table__.c[...].type.length`) rather than restated in the parser, so
+widening a column cannot leave a stricter limit behind.
 
 Length checks run **before** the insert, not at COMMIT. `import_csv` commits
 once for the whole batch, so a value wider than its column would raise

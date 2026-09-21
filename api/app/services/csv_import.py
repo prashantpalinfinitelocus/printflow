@@ -50,16 +50,26 @@ COLUMN_ORDER = (
     "text",
 )
 
-#: Widths must track the `orders` columns in models.py. A value wider than its
-#: column raises at COMMIT, and the batch commits once — so one oversized cell
-#: would roll back every row that had already validated. Checked per row
-#: instead, which costs a `len()` and turns a lost batch into one skipped row.
+#: CSV column -> the `orders` column its value lands in.
+_LENGTH_SOURCES = {
+    "order_id": "order_ref",
+    "store_name": "store_name",
+    "city": "city",
+    "sku_code": "sku_code",
+    "brand": "brand",
+}
+
+#: A value wider than its column raises at COMMIT, and the batch commits once —
+#: so one oversized cell would roll back every row that had already validated.
+#: Checked per row instead, which costs a `len()` and turns a lost batch into
+#: one skipped row.
+#:
+#: Read off the model rather than restated here: a hand-kept copy drifts the
+#: moment someone widens a column, and it would drift silently, since a limit
+#: that is merely too strict fails no test.
 MAX_LENGTHS = {
-    "order_id": 128,
-    "store_name": 255,
-    "city": 128,
-    "sku_code": 64,
-    "brand": 128,
+    column: Order.__table__.c[attribute].type.length
+    for column, attribute in _LENGTH_SOURCES.items()
 }
 
 # Accepted aliases -> canonical column name.
@@ -83,7 +93,9 @@ ALIASES = {
     "materialcode": "sku_code",
     "brand": "brand",
     "brandname": "brand",
-    "label": "brand",
+    # Deliberately NOT `label`: in a label-printing system that word reads as
+    # the thing being printed at least as readily as the brand, and a wrong
+    # guess here lands the printed text in `brand` without erroring.
     "printformat": "print_format",
     "format": "print_format",
     "psd": "print_format",
@@ -150,6 +162,8 @@ def parse_rows(raw: bytes) -> list[dict[str, str]]:
 def _too_long(row: dict[str, str]) -> str | None:
     """The first over-long value in the row, as a reportable reason."""
     for column, limit in MAX_LENGTHS.items():
+        if limit is None:
+            continue  # unbounded column (TEXT) — nothing to check against
         value = row.get(column) or ""
         if len(value) > limit:
             return f"{column} is too long ({len(value)} > {limit} characters)"

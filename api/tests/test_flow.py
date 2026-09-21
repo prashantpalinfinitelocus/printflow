@@ -317,6 +317,45 @@ def test_an_overlong_value_skips_its_row_without_aborting_the_batch(client, admi
     assert _only(client, admin_headers, "ORD-LONGOK")["order_ref"] == "ORD-LONGOK"
 
 
+def test_the_length_limit_is_the_column_width_itself(client, admin_headers):
+    """A value exactly at the column width imports; one character more does not.
+
+    Pins the limits to the schema rather than to a number typed twice — a
+    hand-copied limit that is merely too strict fails no other test.
+    """
+    from app.models import Order
+    from app.services.csv_import import MAX_LENGTHS
+
+    width = Order.__table__.c.sku_code.type.length
+    assert MAX_LENGTHS["sku_code"] == width
+
+    body = _upload(
+        client,
+        admin_headers,
+        _csv(
+            _row("ORD-ATLIMIT", sku="S" * width),
+            _row("ORD-OVERLIMIT", sku="S" * (width + 1)),
+        ),
+        name="limits.csv",
+    ).json()
+
+    assert body["imported"] == 1
+    assert body["skipped"] == 1
+    assert _only(client, admin_headers, "ORD-ATLIMIT")["sku_code"] == "S" * width
+
+
+def test_label_is_not_an_alias_for_brand(client, admin_headers):
+    """In a label-printing system `label` reads as the printed thing, not the
+    brand. Mapping it would land print text in `brand` without erroring."""
+    payload = (
+        b"order_id,store_id,sku_code,label,print_format,text\n"
+        b"ORD-LABEL,TST01,SKU-1,Some printed label,TEST_FMT,Hello\n"
+    )
+    res = _upload(client, admin_headers, payload, name="label.csv")
+    assert res.status_code == 422
+    assert "brand" in res.json()["detail"]
+
+
 def test_csv_template_matches_what_the_importer_accepts(client, admin_headers):
     """The advertised template drifting from the parser is a real bug class."""
     from app.services.csv_import import OPTIONAL_COLUMNS, REQUIRED_COLUMNS
