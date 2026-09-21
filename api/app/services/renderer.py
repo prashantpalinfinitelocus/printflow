@@ -195,7 +195,7 @@ def select_font_path(text: str, preferred: str | None = None) -> tuple[str | Non
 def erase_placeholder(
     image: Image.Image,
     box: tuple[int, int, int, int],
-    placeholder_color: str,
+    placeholder_color: str | None,
     pad: int = 4,
 ) -> bool:
     """Remove the placeholder artwork (e.g. the red XXXXXXXX) from `box`.
@@ -205,6 +205,12 @@ def erase_placeholder(
     edges blend toward the background, so erasing only exact-colour pixels
     leaves a visible halo — repainting the whole box is what actually removes
     every trace.
+
+    `placeholder_color` is a safety check, not the mechanism: the box is only
+    repainted once that colour is confirmed present, so a mis-configured format
+    cannot blank out real artwork. Pass None to skip the check and clear the box
+    whatever is in it — right when the caller knows the area must end up empty,
+    as when printing an order without its text.
 
     Returns False and leaves the image untouched when the surrounding area is
     not a single flat colour, because repainting would then destroy artwork.
@@ -242,11 +248,14 @@ def erase_placeholder(
         return False
 
     # Confirm the placeholder is actually here before painting over anything.
-    target = np.array(_hex_to_rgb(placeholder_color))
-    region = rgba[y0:y1, x0:x1, :3].astype(int)
-    if not (np.abs(region - target).max(axis=2) <= 60).any():
-        log.warning("No %s placeholder found in the text box — nothing erased", placeholder_color)
-        return False
+    if placeholder_color is not None:
+        target = np.array(_hex_to_rgb(placeholder_color))
+        region = rgba[y0:y1, x0:x1, :3].astype(int)
+        if not (np.abs(region - target).max(axis=2) <= 60).any():
+            log.warning(
+                "No %s placeholder found in the text box — nothing erased", placeholder_color
+            )
+            return False
 
     patch = Image.new("RGBA", (x1 - x0, y1 - y0), tuple(int(v) for v in dominant))
     image.paste(patch, (x0, y0))
@@ -696,6 +705,7 @@ def render_order(
     preserve_alpha: bool = False,
     page_size: str | None = None,
     white_passes: int = 0,
+    clear_text_area: bool = False,
 ) -> RenderResult:
     psd_path = Path(psd_path)
     if not psd_path.is_absolute():
@@ -715,7 +725,14 @@ def render_order(
     # Wipe the mock-up text baked into the artwork before drawing the real text,
     # otherwise the order text prints on top of the XXXXXXXX.
     placeholder_erased = False
-    if placeholder_color:
+    if clear_text_area:
+        # Nothing is going to be drawn over this box, so whatever is baked into
+        # it is the finished label. A format with no `placeholder_color` set
+        # would otherwise ship its XXXXXXXX straight to the press — the colour
+        # check exists to stop a mis-configured format destroying artwork, and
+        # here the caller has already decided the area must end up empty.
+        placeholder_erased = erase_placeholder(image, box, None)
+    elif placeholder_color:
         placeholder_erased = erase_placeholder(image, box, placeholder_color)
 
     draw = ImageDraw.Draw(image)

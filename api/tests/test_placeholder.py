@@ -103,3 +103,64 @@ def test_parse_hex_rejects_junk():
     assert parse_hex("ed1c24") == (237, 28, 36)
     with pytest.raises(PlaceholderError):
         parse_hex("red")
+
+
+# ---------------- erasing the placeholder ----------------
+#
+# `erase_placeholder` repaints the box with the colour sampled from just
+# outside it. The colour argument is a safety check — confirm the placeholder
+# is really there before painting over artwork — not the mechanism.
+
+
+def _red_pixels_in(image: Image.Image, box: tuple[int, int, int, int]) -> int:
+    import numpy as np
+
+    x, y, w, h = box
+    region = np.array(image.convert("RGB").crop((x, y, x + w, y + h))).astype(int)
+    target = np.array([237, 28, 36])  # RED
+    return int((np.abs(region - target).max(axis=2) <= 60).sum())
+
+
+def test_erasing_with_no_colour_clears_whatever_is_in_the_box():
+    """The case a format with no placeholder_color set runs into.
+
+    Printing an order without its text draws nothing over the box, so anything
+    baked in there is the finished label. It has to go regardless of whether
+    the format declared a colour.
+    """
+    from app.services.renderer import erase_placeholder
+
+    image = canvas()
+    box = draw_glyph_run(image, 300, 200)
+    assert _red_pixels_in(image, box) > 0
+
+    assert erase_placeholder(image, box, None) is True
+    assert _red_pixels_in(image, box) == 0
+
+
+def test_erasing_with_no_colour_still_refuses_a_busy_background():
+    """The guard that stops this destroying real artwork stays in force."""
+    from app.services.renderer import erase_placeholder
+
+    image = canvas()
+    box = draw_glyph_run(image, 300, 200)
+    # Scribble around the box so the surrounding ring is no longer flat.
+    d = ImageDraw.Draw(image)
+    for i in range(0, 1200, 20):
+        d.line([(i, 0), (i, 600)], fill=(0, 120, 200, 255), width=6)
+
+    before = image.tobytes()
+    assert erase_placeholder(image, box, None) is False
+    assert image.tobytes() == before, "artwork must be left alone, not painted over"
+
+
+def test_a_wrong_placeholder_colour_still_protects_the_artwork():
+    """Unchanged behaviour on the normal path: no confirmed placeholder, no paint."""
+    from app.services.renderer import erase_placeholder
+
+    image = canvas()
+    box = draw_glyph_run(image, 300, 200)
+
+    before = image.tobytes()
+    assert erase_placeholder(image, box, "#00FF00") is False
+    assert image.tobytes() == before

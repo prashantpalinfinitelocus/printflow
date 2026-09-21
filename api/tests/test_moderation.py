@@ -604,3 +604,99 @@ def test_a_held_order_can_be_proofed_without_its_text(
     assert seen[0]["text"] == ""
     # PROOF leaves the queue alone.
     assert res.json()["order"]["status"] == "PENDING"
+
+
+def test_a_blank_print_removes_a_placeholder_the_format_never_declared(
+    client, admin_headers, operator_headers, fake_gemini, tmp_path
+):
+    """End to end: a red XXXXXXXX must not survive onto a blank label.
+
+    Reproduces the reported bug — POLAR_BEAR_FINAL has no `placeholder_color`,
+    so nothing erased the mock-up text and the blank print shipped the
+    XXXXXXXX itself.
+    """
+    import numpy as np
+    from PIL import Image
+
+    from app.config import settings
+    from app.services.psd_writer import write_psd
+    from app.services.renderer import render_order
+
+    box = (50, 150, 500, 100)
+    art = Image.new("RGBA", (600, 400), (255, 255, 255, 255))
+    glyphs = Image.new("RGBA", (300, 60), (0, 0, 0, 0))
+    from PIL import ImageDraw
+
+    d = ImageDraw.Draw(glyphs)
+    for i in range(8):
+        left = i * 38
+        d.line([(left, 4), (left + 30, 54)], fill="#ED1C24", width=8)
+        d.line([(left + 30, 4), (left, 54)], fill="#ED1C24", width=8)
+    art.alpha_composite(glyphs, (150, 170))
+
+    psd = settings.psd_dir / "placeholder_never_declared.psd"
+    write_psd(art.convert("RGB"), psd, 300)
+
+    def red_in_box(path) -> int:
+        region = np.array(Image.open(path).convert("RGB").crop(
+            (box[0], box[1], box[0] + box[2], box[1] + box[3])
+        )).astype(int)
+        return int((np.abs(region - np.array([237, 28, 36])).max(axis=2) <= 60).sum())
+
+    # Before the fix this was the shipped output: no colour declared, so the
+    # mock-up text stayed put.
+    with_text_area_kept = render_order(
+        psd_path=psd,
+        text="",
+        text_box={"x": box[0], "y": box[1], "w": box[2], "h": box[3]},
+        text_layer_name=None,
+        font_size=48,
+        font_color="#111111",
+        align="center",
+        dpi=300,
+        out_base=tmp_path / "kept",
+        placeholder_color=None,
+        clear_text_area=False,
+    )
+    assert red_in_box(with_text_area_kept.preview_path) > 0, "fixture should contain a placeholder"
+
+    cleared = render_order(
+        psd_path=psd,
+        text="",
+        text_box={"x": box[0], "y": box[1], "w": box[2], "h": box[3]},
+        text_layer_name=None,
+        font_size=48,
+        font_color="#111111",
+        align="center",
+        dpi=300,
+        out_base=tmp_path / "cleared",
+        placeholder_color=None,
+        clear_text_area=True,
+    )
+    assert cleared.placeholder_erased is True
+    assert red_in_box(cleared.preview_path) == 0, "the XXXXXXXX must not reach the label"
+
+
+def test_the_print_endpoint_clears_the_text_area_when_dropping_the_text(
+    client, admin_headers, operator_headers, fake_gemini, monkeypatch
+):
+    """The endpoint must actually ask for the clear, not just render empty text."""
+    order = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-11", "chiraand eleven")
+    seen = _spy_on_render(monkeypatch)
+
+    res = client.post(
+        f"/orders/{order['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True},
+    )
+    assert res.status_code == 200, res.text
+    assert seen[0]["clear_text_area"] is True
+
+    # And a normal print must not clear anything.
+    _, clear = _import_one(client, admin_headers, "ORD-BLANK-12", "Happy Birthday")
+    client.post(
+        f"/orders/{clear['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "DOWNLOAD"},
+    )
+    assert seen[1]["clear_text_area"] is False
