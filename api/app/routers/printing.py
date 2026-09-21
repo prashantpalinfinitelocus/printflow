@@ -133,6 +133,10 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
             preserve_alpha=fmt.preserve_alpha,
             page_size=fmt.page_size,
             white_passes=fmt.white_passes,
+            # No text is being drawn over the box, so whatever is baked into it
+            # is the finished label. Clear it even when the format declares no
+            # placeholder colour, or the mock-up text ships to the press.
+            clear_text_area=payload.without_text,
         )
     except (RenderError, OSError) as exc:
         job.status = JobStatus.FAILED
@@ -224,6 +228,12 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
         warnings.append(
             f"This format asks for {fmt.white_passes} pass(es) of white but the file was "
             "written without spot channels — the press will lay no white under the artwork."
+        )
+    if payload.without_text and not result.placeholder_erased:
+        warnings.append(
+            "The text area could not be cleared — the artwork behind it is not a flat "
+            "colour, so anything baked into that box (such as a XXXXXXXX mock-up) is "
+            "still on the label. Check the proof before committing stock."
         )
     if result.page_warning:
         warnings.append(result.page_warning)
