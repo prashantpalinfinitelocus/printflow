@@ -47,6 +47,24 @@ text="" if payload.without_text else order.print_text
 fed from its output. There is no second path the text could leak through — a
 property worth preserving if the render pipeline is ever split.
 
+### Clearing the text area
+
+The box is cleared by **ink extent**, not by the declared `text_box`.
+`text_box` says where copy would be typeset; it is not a promise about where
+the designer's mock-up ink falls, and in practice the mock-up is often taller.
+On `POLAR_BEAR_FINAL` the box was `h=60` against a detected placeholder of
+`h=79`, so the overflow both survived the clear and poisoned the background
+sample that `erase_placeholder` takes from a ring just outside the box — it
+read 78% flat, below the 90% guard, and correctly refused rather than paint
+over what it could not identify.
+
+`clear_ink_in_box` instead searches a window slightly larger than the box,
+takes the bounding box of everything that is not the dominant background
+colour, and repaints that. It needs no declared colour, because on this path
+there is no wrong ink to protect — the area ends up empty either way. What it
+does protect is *artwork*: if the ink runs to the window's edge it is part of
+the design rather than a placeholder, and the function refuses and warns.
+
 `render_order("")` is already safe: `fit_text` returns immediately (`total = 0
 <= h`, no shrink loop), the draw loop iterates zero lines, and
 `erase_placeholder` still wipes the baked-in mock-up text so the label comes
