@@ -121,41 +121,62 @@ def _red_pixels_in(image: Image.Image, box: tuple[int, int, int, int]) -> int:
     return int((np.abs(region - target).max(axis=2) <= 60).sum())
 
 
-def test_erasing_with_no_colour_clears_whatever_is_in_the_box():
-    """The case a format with no placeholder_color set runs into.
+def test_clearing_removes_a_placeholder_that_overflows_its_box():
+    """The staging failure: text_box h=60, the mock-up ink h=79.
 
-    Printing an order without its text draws nothing over the box, so anything
-    baked in there is the finished label. It has to go regardless of whether
-    the format declared a colour.
+    `text_box` is where copy gets typeset, not a promise about where the
+    designer's mock-up ink falls. When the ink overruns it, clearing only the
+    box leaves the overflow behind *and* poisons the background sample that
+    `erase_placeholder` relies on.
     """
-    from app.services.renderer import erase_placeholder
+    from app.services.renderer import clear_ink_in_box
+
+    image = canvas()
+    ink = draw_glyph_run(image, 300, 200)
+    assert _red_pixels_in(image, ink) > 0
+
+    # A box 19px shorter than the ink, centred on it — staging's proportions.
+    short_box = (ink[0], ink[1] + 10, ink[2], ink[3] - 19)
+    assert short_box[3] < ink[3]
+
+    assert clear_ink_in_box(image, short_box) is True
+    assert _red_pixels_in(image, ink) == 0, "the overflow must go too, not just the boxed part"
+
+
+def test_clearing_a_box_needs_no_declared_colour():
+    from app.services.renderer import clear_ink_in_box
 
     image = canvas()
     box = draw_glyph_run(image, 300, 200)
-    assert _red_pixels_in(image, box) > 0
-
-    assert erase_placeholder(image, box, None) is True
+    assert clear_ink_in_box(image, box) is True
     assert _red_pixels_in(image, box) == 0
 
 
-def test_erasing_with_no_colour_still_refuses_a_busy_background():
-    """The guard that stops this destroying real artwork stays in force."""
-    from app.services.renderer import erase_placeholder
+def test_clearing_an_already_empty_box_is_a_no_op_that_succeeds():
+    from app.services.renderer import clear_ink_in_box
 
     image = canvas()
-    box = draw_glyph_run(image, 300, 200)
-    # Scribble around the box so the surrounding ring is no longer flat.
+    before = image.tobytes()
+    assert clear_ink_in_box(image, (300, 200, 400, 80)) is True
+    assert image.tobytes() == before
+
+
+def test_clearing_refuses_when_the_ink_runs_on_into_artwork():
+    """Ink continuing past the search window is design, not a placeholder."""
+    from app.services.renderer import clear_ink_in_box
+
+    image = canvas()
     d = ImageDraw.Draw(image)
-    for i in range(0, 1200, 20):
-        d.line([(i, 0), (i, 600)], fill=(0, 120, 200, 255), width=6)
+    # A band far wider than any search window around the box.
+    d.rectangle([0, 180, 1200, 320], fill=(20, 80, 160, 255))
 
     before = image.tobytes()
-    assert erase_placeholder(image, box, None) is False
+    assert clear_ink_in_box(image, (300, 200, 400, 80)) is False
     assert image.tobytes() == before, "artwork must be left alone, not painted over"
 
 
 def test_a_wrong_placeholder_colour_still_protects_the_artwork():
-    """Unchanged behaviour on the normal path: no confirmed placeholder, no paint."""
+    """Unchanged on the normal path: no confirmed placeholder, no paint."""
     from app.services.renderer import erase_placeholder
 
     image = canvas()

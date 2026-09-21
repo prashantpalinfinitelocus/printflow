@@ -195,7 +195,7 @@ def select_font_path(text: str, preferred: str | None = None) -> tuple[str | Non
 def erase_placeholder(
     image: Image.Image,
     box: tuple[int, int, int, int],
-    placeholder_color: str | None,
+    placeholder_color: str,
     pad: int = 4,
 ) -> bool:
     """Remove the placeholder artwork (e.g. the red XXXXXXXX) from `box`.
@@ -208,9 +208,8 @@ def erase_placeholder(
 
     `placeholder_color` is a safety check, not the mechanism: the box is only
     repainted once that colour is confirmed present, so a mis-configured format
-    cannot blank out real artwork. Pass None to skip the check and clear the box
-    whatever is in it — right when the caller knows the area must end up empty,
-    as when printing an order without its text.
+    cannot blank out real artwork. To clear a box whose ink colour is unknown,
+    use `clear_ink_in_box`.
 
     Returns False and leaves the image untouched when the surrounding area is
     not a single flat colour, because repainting would then destroy artwork.
@@ -248,17 +247,93 @@ def erase_placeholder(
         return False
 
     # Confirm the placeholder is actually here before painting over anything.
-    if placeholder_color is not None:
-        target = np.array(_hex_to_rgb(placeholder_color))
-        region = rgba[y0:y1, x0:x1, :3].astype(int)
-        if not (np.abs(region - target).max(axis=2) <= 60).any():
-            log.warning(
-                "No %s placeholder found in the text box — nothing erased", placeholder_color
-            )
-            return False
+    target = np.array(_hex_to_rgb(placeholder_color))
+    region = rgba[y0:y1, x0:x1, :3].astype(int)
+    if not (np.abs(region - target).max(axis=2) <= 60).any():
+        log.warning("No %s placeholder found in the text box — nothing erased", placeholder_color)
+        return False
 
     patch = Image.new("RGBA", (x1 - x0, y1 - y0), tuple(int(v) for v in dominant))
     image.paste(patch, (x0, y0))
+    return True
+
+
+def clear_ink_in_box(
+    image: Image.Image,
+    box: tuple[int, int, int, int],
+    margin: int | None = None,
+    pad: int = 3,
+) -> bool:
+    """Repaint whatever ink sits in and around `box` with the background colour.
+
+    For printing an order without its text: nothing will be drawn over the box,
+    so whatever is baked into it — a XXXXXXXX mock-up, usually — *is* the
+    finished label and has to go.
+
+    Unlike `erase_placeholder` this takes no colour to look for, because here
+    there is no wrong ink to protect: the area ends up empty either way. It
+    also does not trust the box's own dimensions. A `text_box` says where copy
+    should be typeset, which is not the same as where the designer's mock-up
+    ink actually falls — in practice the mock-up is often a little taller, and
+    a box that clips it leaves the overflow on the label while poisoning the
+    background sample with its own red.
+
+    So: search a window slightly larger than the box, take the bounding box of
+    everything that is not the background colour, and clear that. Refuse if the
+    ink runs to the window's edge — ink continuing past the search area is part
+    of the design, not a placeholder, and repainting it would destroy artwork.
+
+    Returns False and leaves the image untouched when the two cannot be told
+    apart.
+    """
+    import numpy as np
+
+    x, y, w, h = box
+    if w <= 0 or h <= 0:
+        return False
+    if margin is None:
+        # Enough to clear a mock-up that overruns its box, not enough to reach
+        # for neighbouring artwork.
+        margin = max(16, min(48, h // 2))
+
+    wx0, wy0 = max(0, x - margin), max(0, y - margin)
+    wx1, wy1 = min(image.width, x + w + margin), min(image.height, y + h + margin)
+    if wx1 <= wx0 or wy1 <= wy0:
+        return False
+
+    window = np.array(image.convert("RGBA"))[wy0:wy1, wx0:wx1]
+
+    colors, counts = np.unique(window.reshape(-1, 4), axis=0, return_counts=True)
+    background = colors[counts.argmax()]
+    share = counts.max() / counts.sum()
+    # Deliberately looser than `erase_placeholder`'s ring test: this window
+    # contains the placeholder itself, so a perfectly good white background
+    # still only accounts for ~75% of it.
+    if share < 0.6:
+        log.warning(
+            "Text area has no dominant background (%.0f%%) — leaving the artwork alone",
+            share * 100,
+        )
+        return False
+
+    ink = np.abs(window.astype(int) - background.astype(int)).max(axis=2) > 24
+    if not ink.any():
+        return True  # already clear, nothing to do
+
+    rows, cols = np.flatnonzero(ink.any(axis=1)), np.flatnonzero(ink.any(axis=0))
+    top, bottom, left, right = rows[0], rows[-1], cols[0], cols[-1]
+    if top == 0 or left == 0 or bottom == ink.shape[0] - 1 or right == ink.shape[1] - 1:
+        log.warning(
+            "Ink in the text area runs past the search window — it looks like artwork "
+            "rather than a placeholder, so nothing was cleared"
+        )
+        return False
+
+    # A few pixels beyond the ink so anti-aliased glyph edges go too.
+    px0, py0 = max(0, left - pad), max(0, top - pad)
+    px1, py1 = min(ink.shape[1], right + 1 + pad), min(ink.shape[0], bottom + 1 + pad)
+    patch = Image.new("RGBA", (px1 - px0, py1 - py0), tuple(int(v) for v in background))
+    image.paste(patch, (wx0 + px0, wy0 + py0))
     return True
 
 
@@ -727,11 +802,10 @@ def render_order(
     placeholder_erased = False
     if clear_text_area:
         # Nothing is going to be drawn over this box, so whatever is baked into
-        # it is the finished label. A format with no `placeholder_color` set
-        # would otherwise ship its XXXXXXXX straight to the press — the colour
-        # check exists to stop a mis-configured format destroying artwork, and
-        # here the caller has already decided the area must end up empty.
-        placeholder_erased = erase_placeholder(image, box, None)
+        # it is the finished label. Cleared by ink extent rather than by the
+        # box: `text_box` is where copy would be typeset, and the mock-up it
+        # stands in for is routinely taller than that.
+        placeholder_erased = clear_ink_in_box(image, box)
     elif placeholder_color:
         placeholder_erased = erase_placeholder(image, box, placeholder_color)
 

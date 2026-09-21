@@ -622,25 +622,26 @@ def test_a_blank_print_removes_a_placeholder_the_format_never_declared(
     from app.services.psd_writer import write_psd
     from app.services.renderer import render_order
 
-    box = (50, 150, 500, 100)
+    # Staging's proportions: the declared text box is shorter than the ink.
+    # POLAR_BEAR_FINAL had text_box h=60 against a detected placeholder of h=79.
+    box = (50, 160, 500, 60)
     art = Image.new("RGBA", (600, 400), (255, 255, 255, 255))
-    glyphs = Image.new("RGBA", (300, 60), (0, 0, 0, 0))
+    glyphs = Image.new("RGBA", (300, 79), (0, 0, 0, 0))
     from PIL import ImageDraw
 
     d = ImageDraw.Draw(glyphs)
     for i in range(8):
         left = i * 38
-        d.line([(left, 4), (left + 30, 54)], fill="#ED1C24", width=8)
-        d.line([(left + 30, 4), (left, 54)], fill="#ED1C24", width=8)
-    art.alpha_composite(glyphs, (150, 170))
+        d.line([(left, 4), (left + 30, 74)], fill="#ED1C24", width=8)
+        d.line([(left + 30, 4), (left, 74)], fill="#ED1C24", width=8)
+    art.alpha_composite(glyphs, (150, 150))
 
     psd = settings.psd_dir / "placeholder_never_declared.psd"
     write_psd(art.convert("RGB"), psd, 300)
 
-    def red_in_box(path) -> int:
-        region = np.array(Image.open(path).convert("RGB").crop(
-            (box[0], box[1], box[0] + box[2], box[1] + box[3])
-        )).astype(int)
+    def red_anywhere(path) -> int:
+        """Whole label, not just the box — the overflow is the point."""
+        region = np.array(Image.open(path).convert("RGB")).astype(int)
         return int((np.abs(region - np.array([237, 28, 36])).max(axis=2) <= 60).sum())
 
     # Before the fix this was the shipped output: no colour declared, so the
@@ -658,7 +659,7 @@ def test_a_blank_print_removes_a_placeholder_the_format_never_declared(
         placeholder_color=None,
         clear_text_area=False,
     )
-    assert red_in_box(with_text_area_kept.preview_path) > 0, "fixture should contain a placeholder"
+    assert red_anywhere(with_text_area_kept.preview_path) > 0, "fixture needs a placeholder"
 
     cleared = render_order(
         psd_path=psd,
@@ -674,7 +675,7 @@ def test_a_blank_print_removes_a_placeholder_the_format_never_declared(
         clear_text_area=True,
     )
     assert cleared.placeholder_erased is True
-    assert red_in_box(cleared.preview_path) == 0, "the XXXXXXXX must not reach the label"
+    assert red_anywhere(cleared.preview_path) == 0, "no XXXXXXXX may reach the label"
 
 
 def test_the_print_endpoint_clears_the_text_area_when_dropping_the_text(
