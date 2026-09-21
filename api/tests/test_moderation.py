@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.test_flow import _csv, _upload
+from tests.test_flow import _csv, _row, _upload
 
 # ---------------- unit: service ----------------
 
@@ -168,7 +168,7 @@ def test_extra_competitors_from_config_land_in_the_prompt(fake_gemini, monkeypat
 
 
 def _import_one(client, admin_headers, ref: str, text: str):
-    body = _upload(client, admin_headers, _csv(f"{ref},TST01,99.00,TEST_FMT,{text}"), name=f"{ref}.csv").json()
+    body = _upload(client, admin_headers, _csv(_row(ref, text=text)), name=f"{ref}.csv").json()
     order = client.get(f"/orders?q={ref}", headers=admin_headers).json()["items"][0]
     return body, order
 
@@ -303,7 +303,7 @@ def test_orders_can_be_filtered_by_moderation_status_and_stats_count_holds(clien
     _upload(
         client,
         admin_headers,
-        _csv("ORD-MOD-F1,TST01,1.00,TEST_FMT,Bad one", "ORD-MOD-F2,TST01,1.00,TEST_FMT,Good one"),
+        _csv(_row("ORD-MOD-F1", text="Bad one"), _row("ORD-MOD-F2", text="Good one")),
         name="filter.csv",
     )
 
