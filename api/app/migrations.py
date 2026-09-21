@@ -28,6 +28,13 @@ STATEMENTS: list[str] = [
     "ALTER TABLE print_formats ADD COLUMN IF NOT EXISTS page_size VARCHAR(16)",
     "ALTER TABLE print_formats ADD COLUMN IF NOT EXISTS print_passes INTEGER NOT NULL DEFAULT 1",
     "ALTER TABLE print_formats ADD COLUMN IF NOT EXISTS white_passes INTEGER NOT NULL DEFAULT 0",
+    # Order enrichment carried by the CSV. All nullable: rows imported before
+    # these existed have no value, and a NOT NULL column could only be added by
+    # backfilling invented data.
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS store_name VARCHAR(255)",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS city VARCHAR(128)",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS sku_code VARCHAR(64)",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS brand VARCHAR(128)",
     "ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS passes INTEGER NOT NULL DEFAULT 1",
     "ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS font_size_used INTEGER",
     # Widening a varchar is safe and repeatable: a multi-pass job records one

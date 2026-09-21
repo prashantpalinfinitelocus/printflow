@@ -3,7 +3,44 @@ import rules, rendering, printer dispatch, and reprint accounting."""
 
 from __future__ import annotations
 
-CSV_HEADER = "order_id,store_id,amount,print_format,text\n"
+import csv
+import io
+from decimal import Decimal
+
+#: The intake contract, in column order. `store_name` and `city` are snapshots
+#: of what the upstream system called the store; the Store master stays the
+#: authority for routing. `amount` is no longer part of the contract but is
+#: still honoured when a file happens to carry it.
+CSV_COLUMNS = (
+    "order_id",
+    "store_id",
+    "store_name",
+    "city",
+    "sku_code",
+    "brand",
+    "print_format",
+    "text",
+)
+CSV_HEADER = ",".join(CSV_COLUMNS) + "\n"
+
+
+def _row(
+    order_id: str,
+    store: str = "TST01",
+    *,
+    store_name: str = "Test Store",
+    city: str = "Testville",
+    sku: str = "SKU-001",
+    brand: str = "Acme",
+    fmt: str = "TEST_FMT",
+    text: str = "Print me",
+) -> str:
+    """One CSV line, quoted properly so commas inside a value survive."""
+    buf = io.StringIO()
+    csv.writer(buf, lineterminator="").writerow(
+        [order_id, store, store_name, city, sku, brand, fmt, text]
+    )
+    return buf.getvalue()
 
 
 def _csv(*rows: str) -> bytes:
@@ -44,22 +81,24 @@ def test_operator_cannot_reach_admin_endpoints(client, operator_headers):
 
 def test_import_accepts_good_rows_and_reports_bad_ones(client, admin_headers):
     payload = _csv(
-        "ORD-A1,TST01,100.00,TEST_FMT,Hello there",
-        "ORD-A2,NOPE,100.00,TEST_FMT,Unknown store",
-        "ORD-A3,TST01,100.00,MISSING_FMT,Unknown format",
-        "ORD-A4,TST01,not-a-number,TEST_FMT,Bad amount",
-        "ORD-A5,TST01,250.50,TEST_FMT,Second good row",
-        "ORD-A1,TST01,100.00,TEST_FMT,Duplicate in file",
+        _row("ORD-A1", text="Hello there"),
+        _row("ORD-A2", "NOPE", text="Unknown store"),
+        _row("ORD-A3", fmt="MISSING_FMT", text="Unknown format"),
+        _row("ORD-A4", sku="", text="Blank sku"),
+        _row("ORD-A5", brand="", text="Blank brand"),
+        _row("ORD-A6", text="Second good row"),
+        _row("ORD-A1", text="Duplicate in file"),
     )
     body = _upload(client, admin_headers, payload).json()
 
-    assert body["total_rows"] == 6
+    assert body["total_rows"] == 7
     assert body["imported"] == 2
-    assert body["skipped"] == 4
+    assert body["skipped"] == 5
     reasons = " ".join(e["reason"] for e in body["errors"])
     assert "unknown store" in reasons
     assert "unknown print format" in reasons
-    assert "not a number" in reasons
+    assert "sku_code is blank" in reasons
+    assert "brand is blank" in reasons
     assert "duplicate" in reasons
 
 
@@ -70,7 +109,7 @@ def test_import_rejects_a_csv_with_the_wrong_header(client, admin_headers):
 
 
 def test_reimporting_the_same_order_id_is_skipped(client, admin_headers):
-    payload = _csv("ORD-DUP,TST01,10.00,TEST_FMT,First")
+    payload = _csv(_row("ORD-DUP", text="First"))
     assert _upload(client, admin_headers, payload).json()["imported"] == 1
 
     second = _upload(client, admin_headers, payload).json()
@@ -80,10 +119,228 @@ def test_reimporting_the_same_order_id_is_skipped(client, admin_headers):
 
 def test_column_aliases_are_accepted(client, admin_headers):
     payload = (
-        b"Order ID,Store Code,Amount,Design,Message\n"
-        b"ORD-ALIAS,TST01,75.00,TEST_FMT,Aliased header\n"
+        b"Order ID,Store Code,Store Name,Town,SKU,Brand Name,Design,Message\n"
+        b"ORD-ALIAS,TST01,Aliased Store,Pune,SKU-ALIAS,Aliased Brand,TEST_FMT,Aliased header\n"
     )
     assert _upload(client, admin_headers, payload).json()["imported"] == 1
+
+
+# ---------------- CSV contract: order enrichment fields ----------------
+
+
+def _only(client, headers, ref: str) -> dict:
+    """The one order with this ref, straight from the API."""
+    items = client.get(f"/orders?q={ref}", headers=headers).json()["items"]
+    assert len(items) == 1, f"expected exactly one {ref}, got {len(items)}"
+    return items[0]
+
+
+def test_sku_code_and_brand_are_persisted_on_the_order(client, admin_headers):
+    _upload(
+        client,
+        admin_headers,
+        _csv(_row("ORD-SKU1", sku="SKU-99812", brand="Thums Up")),
+        name="sku.csv",
+    )
+    order = _only(client, admin_headers, "ORD-SKU1")
+    assert order["sku_code"] == "SKU-99812"
+    assert order["brand"] == "Thums Up"
+
+
+def test_store_name_and_city_snapshot_what_the_file_said(client, admin_headers):
+    """The order keeps the upstream spelling; the Store master is untouched."""
+    _upload(
+        client,
+        admin_headers,
+        _csv(_row("ORD-SNAP", store_name="Mumbai Flagship", city="Mumbai")),
+        name="snapshot.csv",
+    )
+    order = _only(client, admin_headers, "ORD-SNAP")
+
+    assert order["store_name"] == "Mumbai Flagship"
+    assert order["city"] == "Mumbai"
+    # Routing still went through the Store master, which kept its own values.
+    assert order["store"]["name"] == "Test Store"
+    assert order["store"]["city"] == "Testville"
+
+
+def test_a_csv_can_never_mutate_the_store_master(client, admin_headers, seeded):
+    before = client.get("/stores", headers=admin_headers).json()
+    _upload(
+        client,
+        admin_headers,
+        _csv(_row("ORD-NOMUT", store_name="Renamed By CSV", city="Nowhere")),
+        name="nomutate.csv",
+    )
+    after = client.get("/stores", headers=admin_headers).json()
+    assert {(s["code"], s["name"], s["city"]) for s in before} == {
+        (s["code"], s["name"], s["city"]) for s in after
+    }
+
+
+def test_store_name_and_city_are_optional_columns(client, admin_headers):
+    """A file carrying only the six required columns imports cleanly."""
+    payload = (
+        b"order_id,store_id,sku_code,brand,print_format,text\n"
+        b"ORD-MINIMAL,TST01,SKU-MIN,Minimal Brand,TEST_FMT,No store columns\n"
+    )
+    body = _upload(client, admin_headers, payload, name="minimal.csv").json()
+    assert body["imported"] == 1
+
+    order = _only(client, admin_headers, "ORD-MINIMAL")
+    assert order["sku_code"] == "SKU-MIN"
+    assert not order["store_name"]
+    assert not order["city"]
+
+
+def test_blank_store_name_and_city_still_import(client, admin_headers):
+    body = _upload(
+        client,
+        admin_headers,
+        _csv(_row("ORD-BLANKSTORE", store_name="", city="")),
+        name="blankstore.csv",
+    ).json()
+    assert body["imported"] == 1
+
+
+def test_row_with_a_blank_sku_code_is_skipped(client, admin_headers):
+    body = _upload(
+        client, admin_headers, _csv(_row("ORD-NOSKU", sku="")), name="nosku.csv"
+    ).json()
+    assert body["imported"] == 0
+    assert "sku_code is blank" in body["errors"][0]["reason"]
+
+
+def test_row_with_a_blank_brand_is_skipped(client, admin_headers):
+    body = _upload(
+        client, admin_headers, _csv(_row("ORD-NOBRAND", brand="")), name="nobrand.csv"
+    ).json()
+    assert body["imported"] == 0
+    assert "brand is blank" in body["errors"][0]["reason"]
+
+
+def test_import_rejects_a_header_missing_sku_code(client, admin_headers):
+    payload = (
+        b"order_id,store_id,brand,print_format,text\n"
+        b"ORD-X,TST01,Acme,TEST_FMT,No sku column\n"
+    )
+    res = _upload(client, admin_headers, payload, name="nosku-header.csv")
+    assert res.status_code == 422
+    assert "sku_code" in res.json()["detail"]
+
+
+def test_import_rejects_the_legacy_five_column_header(client, admin_headers):
+    """The pre-enrichment contract is deliberately no longer accepted."""
+    payload = (
+        b"order_id,store_id,amount,print_format,text\n"
+        b"ORD-LEGACY,TST01,499.00,TEST_FMT,Old shape\n"
+    )
+    res = _upload(client, admin_headers, payload, name="legacy.csv")
+    assert res.status_code == 422
+    detail = res.json()["detail"]
+    assert "sku_code" in detail and "brand" in detail
+
+
+def test_amount_is_optional_and_defaults_to_zero(client, admin_headers):
+    _upload(client, admin_headers, _csv(_row("ORD-NOAMT")), name="noamt.csv")
+    assert Decimal(_only(client, admin_headers, "ORD-NOAMT")["amount"]) == Decimal("0")
+
+
+def test_amount_is_still_honoured_when_the_column_is_present(client, admin_headers):
+    """Files mid-migration may still carry amount; don't silently drop the value."""
+    payload = (
+        CSV_HEADER.rstrip("\n").encode()
+        + b",amount\n"
+        + _row("ORD-WITHAMT").encode()
+        + b",1250.50\n"
+    )
+    body = _upload(client, admin_headers, payload, name="withamt.csv").json()
+    assert body["imported"] == 1
+    assert Decimal(_only(client, admin_headers, "ORD-WITHAMT")["amount"]) == Decimal("1250.50")
+
+
+def test_row_with_a_malformed_amount_is_still_skipped(client, admin_headers):
+    payload = (
+        CSV_HEADER.rstrip("\n").encode()
+        + b",amount\n"
+        + _row("ORD-BADAMT").encode()
+        + b",not-a-number\n"
+    )
+    body = _upload(client, admin_headers, payload, name="badamt.csv").json()
+    assert body["imported"] == 0
+    assert "not a number" in body["errors"][0]["reason"]
+
+
+def test_commas_and_unicode_survive_the_new_columns(client, admin_headers):
+    _upload(
+        client,
+        admin_headers,
+        _csv(
+            _row(
+                "ORD-UNI",
+                store_name="Koramangala, 5th Block",
+                city="बेंगलूरु",
+                brand="Coca-Cola, India",
+                sku="SKU-ÜNÏ-01",
+            )
+        ),
+        name="unicode.csv",
+    )
+    order = _only(client, admin_headers, "ORD-UNI")
+    assert order["store_name"] == "Koramangala, 5th Block"
+    assert order["city"] == "बेंगलूरु"
+    assert order["brand"] == "Coca-Cola, India"
+    assert order["sku_code"] == "SKU-ÜNÏ-01"
+
+
+def test_an_overlong_value_skips_its_row_without_aborting_the_batch(client, admin_headers):
+    """One oversized cell must not take the whole file down with it.
+
+    The batch commits once at the end, so a value too wide for its column would
+    otherwise raise at COMMIT and roll back rows that had already validated.
+    """
+    body = _upload(
+        client,
+        admin_headers,
+        _csv(
+            _row("ORD-LONG1", sku="S" * 200),
+            _row("ORD-LONG2", brand="B" * 300),
+            _row("ORD-LONG3", store_name="N" * 400),
+            _row("ORD-LONGOK", text="Survivor"),
+        ),
+        name="overlong.csv",
+    ).json()
+
+    assert body["imported"] == 1
+    assert body["skipped"] == 3
+    assert "too long" in " ".join(e["reason"] for e in body["errors"])
+    assert _only(client, admin_headers, "ORD-LONGOK")["order_ref"] == "ORD-LONGOK"
+
+
+def test_csv_template_matches_what_the_importer_accepts(client, admin_headers):
+    """The advertised template drifting from the parser is a real bug class."""
+    from app.services.csv_import import OPTIONAL_COLUMNS, REQUIRED_COLUMNS
+
+    template = client.get("/csv/template").json()
+    columns = template["columns"]
+
+    assert REQUIRED_COLUMNS <= set(columns)
+    assert set(columns) <= REQUIRED_COLUMNS | OPTIONAL_COLUMNS
+    # Every advertised column needs a value in the worked example.
+    assert set(template["example"]) == set(columns)
+
+    # The advertised header must survive the parser. The example's store and
+    # format are placeholders, so the row itself is expected to be skipped —
+    # what matters is that the header is not rejected outright.
+    row = ",".join(_quote(template["example"][c]) for c in columns)
+    payload = (",".join(columns) + "\n" + row + "\n").encode()
+    assert _upload(client, admin_headers, payload, name="template.csv").status_code == 201
+
+
+def _quote(value: str) -> str:
+    buf = io.StringIO()
+    csv.writer(buf, lineterminator="").writerow([value])
+    return buf.getvalue()
 
 
 # ---------------- store scoping ----------------
@@ -94,8 +351,8 @@ def test_operator_sees_only_their_own_store(client, admin_headers, operator_head
         client,
         admin_headers,
         _csv(
-            "ORD-MINE,TST01,10.00,TEST_FMT,Mine",
-            "ORD-THEIRS,TST02,10.00,TEST_FMT,Theirs",
+            _row("ORD-MINE", text="Mine"),
+            _row("ORD-THEIRS", "TST02", text="Theirs"),
         ),
         name="scoping.csv",
     )
@@ -134,7 +391,7 @@ def test_printer_discovery_parses_lpstat(client, operator_headers):
 
 
 def _make_order(client, admin_headers, ref: str, text: str = "Print me"):
-    _upload(client, admin_headers, _csv(f"{ref},TST01,99.00,TEST_FMT,{text}"), name=f"{ref}.csv")
+    _upload(client, admin_headers, _csv(_row(ref, text=text)), name=f"{ref}.csv")
     orders = client.get(f"/orders?q={ref}", headers=admin_headers).json()["items"]
     return orders[0]
 
@@ -400,7 +657,7 @@ def test_admin_cannot_deactivate_themselves(client, admin_headers):
 
 
 def test_store_with_orders_cannot_be_deleted(client, admin_headers, seeded):
-    _upload(client, admin_headers, _csv("ORD-KEEP,TST01,10.00,TEST_FMT,Keep"), name="keep.csv")
+    _upload(client, admin_headers, _csv(_row("ORD-KEEP", text="Keep")), name="keep.csv")
     res = client.delete(f"/stores/{seeded['store_id']}", headers=admin_headers)
     assert res.status_code == 409
     assert "deactivate" in res.json()["detail"]
@@ -409,7 +666,7 @@ def test_store_with_orders_cannot_be_deleted(client, admin_headers, seeded):
 def test_inactive_store_rejects_new_csv_rows(client, admin_headers, seeded):
     client.patch(f"/stores/{seeded['other_store_id']}", headers=admin_headers, json={"is_active": False})
     body = _upload(
-        client, admin_headers, _csv("ORD-INACTIVE,TST02,10.00,TEST_FMT,Nope"), name="inactive.csv"
+        client, admin_headers, _csv(_row("ORD-INACTIVE", "TST02", text="Nope")), name="inactive.csv"
     ).json()
     assert body["imported"] == 0
     assert "inactive" in body["errors"][0]["reason"]
@@ -618,7 +875,7 @@ def _render(client, admin_headers, operator_headers, ref: str, format_code: str)
     _upload(
         client,
         admin_headers,
-        _csv(f"{ref},TST01,99.00,{format_code},Print me"),
+        _csv(_row(ref, fmt=format_code)),
         name=f"{ref}.csv",
     )
     order = client.get(f"/orders?q={ref}", headers=admin_headers).json()["items"][0]
@@ -842,7 +1099,7 @@ def test_each_pass_is_submitted_to_cups(client, admin_headers, operator_headers,
     _upload(
         client,
         admin_headers,
-        _csv("ORD-PASS1,TST01,99.00,PASS_CUPS,Aditya"),
+        _csv(_row("ORD-PASS1", fmt="PASS_CUPS", text="Aditya")),
         name="ORD-PASS1.csv",
     )
     order = client.get("/orders?q=ORD-PASS1", headers=admin_headers).json()["items"][0]
@@ -872,7 +1129,7 @@ def test_passes_are_one_job_and_never_count_as_reprints(
     _upload(
         client,
         admin_headers,
-        _csv("ORD-PASS2,TST01,99.00,PASS_REPRINT,Sonali"),
+        _csv(_row("ORD-PASS2", fmt="PASS_REPRINT", text="Sonali")),
         name="ORD-PASS2.csv",
     )
     order = client.get("/orders?q=ORD-PASS2", headers=admin_headers).json()["items"][0]
@@ -910,7 +1167,7 @@ def test_a_failed_pass_records_how_many_actually_printed(
     _upload(
         client,
         admin_headers,
-        _csv("ORD-PASS3,TST01,99.00,PASS_FAIL,Aditya"),
+        _csv(_row("ORD-PASS3", fmt="PASS_FAIL", text="Aditya")),
         name="ORD-PASS3.csv",
     )
     order = client.get("/orders?q=ORD-PASS3", headers=admin_headers).json()["items"][0]
@@ -950,7 +1207,7 @@ def test_download_delivery_records_the_passes_the_operator_was_told_to_run(
     _upload(
         client,
         admin_headers,
-        _csv("ORD-PASS4,TST01,99.00,PASS_DL,Sonali"),
+        _csv(_row("ORD-PASS4", fmt="PASS_DL", text="Sonali")),
         name="ORD-PASS4.csv",
     )
     order = client.get("/orders?q=ORD-PASS4", headers=admin_headers).json()["items"][0]
