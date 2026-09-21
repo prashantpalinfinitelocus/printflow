@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
@@ -7,11 +7,12 @@ from sqlalchemy.orm import selectinload
 
 from ..config import settings
 from ..deps import AdminUser, CurrentUser, DbSession
-from ..models import CsvBatch, Order, OrderStatus, Role, Store, User
+from ..models import HOLD_STATUSES, CsvBatch, ModerationStatus, Order, OrderStatus, Role, Store, User
 from ..schemas import (
     CsvBatchOut,
     ImportFromPathRequest,
     InboxFile,
+    ModerationReviewRequest,
     OrderOut,
     OrderPage,
     OrderStats,
@@ -24,6 +25,7 @@ from ..services.csv_import import (
     CsvFormatError,
     import_csv,
 )
+from ..services.moderation import apply_verdict, moderate_texts
 
 router = APIRouter(tags=["orders"])
 
@@ -43,6 +45,8 @@ def list_orders(
     db: DbSession,
     user: CurrentUser,
     status_filter: OrderStatus | None = Query(default=None, alias="status"),
+    moderation: ModerationStatus | None = None,
+    on_hold: bool = False,
     store_id: int | None = None,
     q: str | None = None,
     page: int = Query(default=1, ge=1),
@@ -54,6 +58,12 @@ def list_orders(
     if status_filter is not None:
         stmt = stmt.where(Order.status == status_filter)
         count_stmt = count_stmt.where(Order.status == status_filter)
+    if moderation is not None:
+        stmt = stmt.where(Order.moderation_status == moderation.value)
+        count_stmt = count_stmt.where(Order.moderation_status == moderation.value)
+    if on_hold:
+        stmt = stmt.where(Order.moderation_status.in_(HOLD_STATUSES))
+        count_stmt = count_stmt.where(Order.moderation_status.in_(HOLD_STATUSES))
     if store_id is not None and user.role == Role.ADMIN:
         stmt = stmt.where(Order.store_id == store_id)
         count_stmt = count_stmt.where(Order.store_id == store_id)
@@ -69,6 +79,7 @@ def list_orders(
             selectinload(Order.store),
             selectinload(Order.print_format),
             selectinload(Order.printed_by),
+            selectinload(Order.reviewed_by),
         )
         .order_by(Order.status.desc(), Order.created_at.desc(), Order.id.desc())
         .offset((page - 1) * page_size)
@@ -97,11 +108,18 @@ def order_stats(db: DbSession, user: CurrentUser, store_id: int | None = None):
     if store_id is not None and user.role == Role.ADMIN:
         amount_stmt = amount_stmt.where(Order.store_id == store_id)
 
+    hold_stmt = _scoped(
+        select(func.count(Order.id)).where(Order.moderation_status.in_(HOLD_STATUSES)), user
+    )
+    if store_id is not None and user.role == Role.ADMIN:
+        hold_stmt = hold_stmt.where(Order.store_id == store_id)
+
     return OrderStats(
         pending=counts.get(OrderStatus.PENDING, 0),
         printing=counts.get(OrderStatus.PRINTING, 0),
         printed=counts.get(OrderStatus.PRINTED, 0),
         failed=counts.get(OrderStatus.FAILED, 0),
+        on_hold=db.scalar(hold_stmt) or 0,
         total=sum(counts.values()),
         amount_pending=db.scalar(amount_stmt) or 0,
     )
@@ -114,10 +132,73 @@ def get_order(order_id: int, db: DbSession, user: CurrentUser):
             selectinload(Order.store),
             selectinload(Order.print_format),
             selectinload(Order.printed_by),
+            selectinload(Order.reviewed_by),
         )
     )
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+    return order
+
+
+# ---------- moderation review (admin) ----------
+
+_REVIEWABLE = {
+    ModerationStatus.FLAGGED.value,
+    ModerationStatus.NEEDS_REVIEW.value,
+    ModerationStatus.APPROVED.value,
+    ModerationStatus.REJECTED.value,
+}
+
+
+def _load_for_admin(db, order_id: int) -> Order:
+    order = db.scalar(
+        select(Order)
+        .where(Order.id == order_id)
+        .options(
+            selectinload(Order.store),
+            selectinload(Order.print_format),
+            selectinload(Order.printed_by),
+            selectinload(Order.reviewed_by),
+        )
+    )
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+    return order
+
+
+@router.post("/orders/{order_id}/moderation/review", response_model=OrderOut)
+def review_moderation(order_id: int, payload: ModerationReviewRequest, db: DbSession, admin: AdminUser):
+    """Release or refuse an order the moderation gate held.
+
+    The model's own reason and categories are kept so the audit trail shows what
+    was flagged and who overrode it. A decision can be changed later by
+    reviewing again.
+    """
+    order = _load_for_admin(db, order_id)
+    if order.moderation_status not in _REVIEWABLE:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Order is not held by moderation (status {order.moderation_status})",
+        )
+    order.moderation_status = (
+        ModerationStatus.APPROVED.value if payload.decision == "APPROVE" else ModerationStatus.REJECTED.value
+    )
+    order.moderation_note = payload.note
+    order.reviewed_by_id = admin.id
+    order.moderated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.post("/orders/{order_id}/moderation/recheck", response_model=OrderOut)
+def recheck_moderation(order_id: int, db: DbSession, _: AdminUser):
+    """Run the model again on one order — after an outage, or a prompt change."""
+    order = _load_for_admin(db, order_id)
+    outcome = moderate_texts([order.print_text])
+    apply_verdict(order, outcome.verdicts[0])
+    db.commit()
+    db.refresh(order)
     return order
 
 

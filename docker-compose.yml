@@ -47,6 +47,12 @@ services:
       # says printing is unavailable. See SETUP.md → Printing from Docker.
       PRINTFLOW_PRINTING_ENABLED: ${PRINTFLOW_PRINTING_ENABLED:-false}
       CUPS_SERVER: ${CUPS_SERVER:-}
+      # Gemini brand-safety check on the CSV `text` column — see README → Text moderation.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      PRINTFLOW_MODERATION_ENABLED: ${PRINTFLOW_MODERATION_ENABLED:-true}
+      PRINTFLOW_MODERATION_MODEL: ${PRINTFLOW_MODERATION_MODEL:-gemini-3.5-flash}
+      PRINTFLOW_MODERATION_EXTRA_COMPETITORS: ${PRINTFLOW_MODERATION_EXTRA_COMPETITORS:-}
+      PRINTFLOW_MODERATION_CAMPAIGN_BRAND: ${PRINTFLOW_MODERATION_CAMPAIGN_BRAND:-Diet Coke}
     volumes:
       # The whole point: designs, fonts, inbox and output stay on the host.
       - ./data:/data

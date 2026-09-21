@@ -43,6 +43,18 @@ STATEMENTS: list[str] = [
     # job_status is a native Postgres enum type, so a new member needs ALTER TYPE
     # — create_all() will not add it to a database that already exists.
     "ALTER TYPE job_status ADD VALUE IF NOT EXISTS 'DOWNLOADED'",
+    # Text moderation (LLM brand-safety gate on the CSV `text` column).
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS moderation_status VARCHAR(16) NOT NULL DEFAULT 'UNCHECKED'",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS moderation_categories JSONB",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS moderation_reason TEXT",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS moderation_note TEXT",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMPTZ",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS reviewed_by_id INTEGER REFERENCES users(id)",
+    "CREATE INDEX IF NOT EXISTS ix_orders_moderation_status ON orders (moderation_status)",
+    "ALTER TABLE csv_batches ADD COLUMN IF NOT EXISTS flagged INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE csv_batches ADD COLUMN IF NOT EXISTS moderation_prompt_tokens INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE csv_batches ADD COLUMN IF NOT EXISTS moderation_output_tokens INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE csv_batches ADD COLUMN IF NOT EXISTS moderation_thought_tokens INTEGER NOT NULL DEFAULT 0",
 ]
 
 

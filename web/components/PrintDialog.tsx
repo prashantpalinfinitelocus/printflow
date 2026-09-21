@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { artifactUrl, get, post } from "@/lib/client";
-import type { Delivery, JobKind, Order, PrintJob, Printer, PrintResponse } from "@/lib/types";
+import { isHeld, type Delivery, type JobKind, type Order, type PrintJob, type Printer, type PrintResponse } from "@/lib/types";
 
 import { dateTime, money } from "@/lib/format";
 
-import { Banner, Modal, Spinner, StatusChip } from "./ui";
+import { Banner, ModerationChip, Modal, Spinner, StatusChip } from "./ui";
 
 /** Click a hidden link — the proxy sends the session cookie and Content-Disposition
  *  makes the browser save rather than navigate. */
@@ -24,17 +24,21 @@ export function PrintDialog({
   order,
   onClose,
   onPrinted,
+  canReview = false,
 }: {
   order: Order | null;
   onClose: () => void;
   onPrinted: (order: Order) => void;
+  /** Admins see Approve / Reject / Re-check for held text. */
+  canReview?: boolean;
 }) {
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [printerName, setPrinterName] = useState<string>("");
   const [kind, setKind] = useState<JobKind>("TIFF");
   const [copies, setCopies] = useState(1);
 
-  const [busy, setBusy] = useState<"proof" | "print" | null>(null);
+  const [busy, setBusy] = useState<"proof" | "print" | "review" | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -64,6 +68,7 @@ export function PrintDialog({
     setLastJob(null);
     setCopies(1);
     setKind("TIFF");
+    setReviewNote("");
     void loadHistory(orderId);
 
     get<Printer[]>("/printers")
@@ -140,8 +145,57 @@ export function PrintDialog({
     }
   }
 
+  // Held text must not even be proofed: the whole point is that it never lands
+  // on brand artwork until an admin has looked at it.
+  const held = isHeld(order.moderation_status);
+  const reviewable = held || order.moderation_status === "APPROVED";
+
+  async function review(decision: "APPROVE" | "REJECT") {
+    if (!order) return;
+    setBusy("review");
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await post<Order>(`/orders/${order.id}/moderation/review`, {
+        decision,
+        note: reviewNote.trim() || null,
+      });
+      onPrinted(updated);
+      setNotice(
+        decision === "APPROVE"
+          ? "Text approved. The order can now be printed."
+          : "Text rejected. The order stays blocked from printing.",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Review failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function recheck() {
+    if (!order) return;
+    setBusy("review");
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await post<Order>(`/orders/${order.id}/moderation/recheck`);
+      onPrinted(updated);
+      setNotice(
+        isHeld(updated.moderation_status)
+          ? `Re-checked: still held (${updated.moderation_status}).`
+          : "Re-checked: the text is clear.",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Re-check failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const previewJobId = lastJob?.id ?? history.find((j) => j.status !== "FAILED")?.id;
   const noPrinters = printers.length === 0;
+  const printLocked = busy !== null || held;
 
   return (
     <Modal
@@ -166,6 +220,12 @@ export function PrintDialog({
               <dt className="label">Status</dt>
               <dd>
                 <StatusChip status={order.status} />
+              </dd>
+            </div>
+            <div>
+              <dt className="label">Text check</dt>
+              <dd>
+                <ModerationChip status={order.moderation_status} reason={order.moderation_reason} always />
               </dd>
             </div>
             <div>
@@ -276,6 +336,72 @@ export function PrintDialog({
           {error && <Banner kind="error">{error}</Banner>}
           {notice && <Banner kind="success">{notice}</Banner>}
           {warning && <Banner kind="warning">{warning}</Banner>}
+          {(held || order.moderation_status === "APPROVED") && (
+            <Banner kind={held ? (order.moderation_status === "REJECTED" ? "error" : "warning") : "info"}>
+              <p className="font-bold">
+                {order.moderation_status === "FLAGGED" && "Text flagged by the brand-safety check"}
+                {order.moderation_status === "NEEDS_REVIEW" && "Text could not be checked"}
+                {order.moderation_status === "REJECTED" && "Text rejected by an admin"}
+                {order.moderation_status === "APPROVED" && "Text approved by an admin"}
+              </p>
+              {order.moderation_categories && order.moderation_categories.length > 0 && (
+                <p className="mt-1 flex flex-wrap gap-1">
+                  {order.moderation_categories.map((category) => (
+                    <span key={category} className="chip bg-white/70 text-[10px]">
+                      {category.replaceAll("_", " ")}
+                    </span>
+                  ))}
+                </p>
+              )}
+              {order.moderation_reason && <p className="mt-1">{order.moderation_reason}</p>}
+              {order.moderation_note && (
+                <p className="mt-1 text-xs opacity-80">
+                  Note: {order.moderation_note}
+                  {order.reviewed_by ? ` — ${order.reviewed_by.email}` : ""}
+                </p>
+              )}
+              {held && !canReview && (
+                <p className="mt-2 text-xs">
+                  Printing is blocked until an administrator reviews this order.
+                </p>
+              )}
+              {canReview && reviewable && (
+                <div className="mt-3 space-y-2">
+                  <input
+                    className="input text-sm"
+                    placeholder="Review note (optional)"
+                    value={reviewNote}
+                    onChange={(e) => setReviewNote(e.target.value)}
+                    aria-label="Review note"
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    {held && (
+                      <button
+                        onClick={() => void review("APPROVE")}
+                        disabled={busy !== null}
+                        className="btn-primary btn-sm"
+                      >
+                        {busy === "review" && <Spinner />}
+                        Approve
+                      </button>
+                    )}
+                    {order.moderation_status !== "REJECTED" && (
+                      <button
+                        onClick={() => void review("REJECT")}
+                        disabled={busy !== null}
+                        className="btn-secondary btn-sm"
+                      >
+                        Reject
+                      </button>
+                    )}
+                    <button onClick={() => void recheck()} disabled={busy !== null} className="btn-secondary btn-sm">
+                      Re-check
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Banner>
+          )}
           {passes > 1 && (
             <Banner kind="warning">
               This design needs <strong>{passes} passes</strong> on the{" "}
@@ -373,7 +499,7 @@ export function PrintDialog({
             {noPrinters ? (
               <button
                 onClick={() => run("DOWNLOAD", kind)}
-                disabled={busy !== null}
+                disabled={printLocked}
                 className="btn-primary w-full py-3"
               >
                 {busy === "print" && <Spinner />}
@@ -382,7 +508,7 @@ export function PrintDialog({
             ) : (
               <button
                 onClick={() => run("PRINTER", kind)}
-                disabled={busy !== null}
+                disabled={printLocked}
                 className="btn-primary w-full py-3"
               >
                 {busy === "print" && <Spinner />}
@@ -393,7 +519,7 @@ export function PrintDialog({
               {!noPrinters && (
                 <button
                   onClick={() => run("DOWNLOAD", kind)}
-                  disabled={busy !== null}
+                  disabled={printLocked}
                   className="btn-secondary"
                 >
                   Download {kind}
@@ -401,7 +527,7 @@ export function PrintDialog({
               )}
               <button
                 onClick={() => run("PROOF", "PDF")}
-                disabled={busy !== null}
+                disabled={printLocked}
                 className={`btn-secondary ${noPrinters ? "col-span-2" : ""}`}
               >
                 {busy === "proof" && <Spinner />}

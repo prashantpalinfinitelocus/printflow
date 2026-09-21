@@ -6,9 +6,9 @@ composes the named PSD template with the order's text, writes a **CMYK TIFF** fo
 the printer and a **PDF proof** for cross-checking, and hands the file to CUPS.
 
 ```
-CSV ─▶ import ─▶ orders (per store) ─▶ operator ─▶ render ─┬─▶ TIFF ─┬─▶ CUPS
-                                                           │         └─▶ download
-                                                           └─▶ PDF proof
+CSV ─▶ import ─▶ text check ─▶ orders (per store) ─▶ operator ─▶ render ─┬─▶ TIFF ─┬─▶ CUPS
+                     │                                                    │         └─▶ download
+                     └─▶ flagged ─▶ admin review ─▶ approve / reject       └─▶ PDF proof
 ```
 
 Setup lives in **[SETUP.md](SETUP.md)** — Docker is the supported path.
@@ -22,6 +22,7 @@ Setup lives in **[SETUP.md](SETUP.md)** — Docker is the supported path.
 | Database | PostgreSQL |
 | Imaging | psd-tools + Pillow |
 | Printing | CUPS via `lp` / `lpstat` |
+| Text moderation | Google Gemini (`google-genai`), `gemini-3.5-flash` |
 
 ## Setup
 
@@ -98,10 +99,47 @@ skipped and reported with its line number; the rest of the file still imports.
 Two intake routes exist: browser upload, and importing a file dropped into
 `data/inbox/` on the API host (**CSV Intake → Server inbox**).
 
+## Text moderation
+
+The `text` column ends up on Coca-Cola artwork, so every imported row is checked
+by Gemini before an operator can render it. The check looks for politics, abuse
+and profanity (including Hindi/Hinglish slang and leetspeak), hate, sexual or
+violent content, **competitor brands** (Pepsi, Campa, Paper Boat, Red Bull, … —
+Coca-Cola's own Thums Up, Sprite, Limca, Maaza etc. are not competitors),
+disparagement of the brand, alcohol/drugs/tobacco, personal data, and anything
+else a brand manager would refuse to print.
+
+```
+text ──▶ CLEAR ──────────────────────────────▶ printable
+     └─▶ FLAGGED / NEEDS_REVIEW ─▶ admin ─┬─▶ APPROVED ─▶ printable
+                                          └─▶ REJECTED ─▶ never prints
+```
+
+- **Held rows still import.** They show as *On hold* in the queue with the
+  model's reason; the Print, Download and even PDF-proof buttons are refused by
+  the API (`409`) until an admin acts. Held text never touches the artwork.
+- **Admins review** under *All orders → On hold*: Approve, Reject, or Re-check.
+  The model's reason and categories stay on the order beside the admin's note
+  and identity, so the audit trail shows what was flagged and who overrode it.
+- **Fail-closed.** If Gemini is unreachable, or skips a row, that row is held as
+  `NEEDS_REVIEW` rather than printed unchecked. Re-check runs the model again.
+- **Cost.** Texts go 25 to a call, output is a terse per-row verdict, and
+  thinking is set to minimal — roughly **$2 per 10,000 rows** on
+  `gemini-3.5-flash`. Each import records its prompt / output / thinking token
+  counts, shown on the CSV Intake page. Per-row calls would cost 3–5x more;
+  Gemini's implicit prompt cache does not apply because it only caches prefixes
+  of 4,096+ tokens and the moderation prompt is far shorter.
+- **Configuration** (`api/.env.example`): `GEMINI_API_KEY`,
+  `PRINTFLOW_MODERATION_ENABLED`, `_MODEL`, `_BATCH_SIZE`, `_CONCURRENCY`,
+  `_THINKING_LEVEL`, `_EXTRA_COMPETITORS` for brands specific to a campaign,
+  `_CAMPAIGN_BRAND` (default `Diet Coke`) for the artwork the text is printed beside.
+  With moderation disabled, rows import as `UNCHECKED` and print normally.
+
 ## Roles
 
 **Admin** — store master, users (create / assign to store / deactivate /
-delete), print formats, CSV intake, and every store's orders.
+delete), print formats, CSV intake, every store's orders, and moderation
+review (approve / reject / re-check held text).
 
 **Operator** — exactly one store, and only that store's orders. Scoping is
 enforced in the API on every read and every print, not just in the UI: an
@@ -303,12 +341,16 @@ printing it again clears it.
 cd api && .venv/bin/python -m pytest tests -q
 ```
 
-43 tests over auth, RBAC, store scoping, CSV rules, rendering, TIFF colourspace,
-placeholder detection, format configuration, printer dispatch and reprint
-accounting. They run against a throwaway
-`printflow_test` database and replace `lp`/`lpstat` with a recording stub, so the
-dispatch path is exercised for real — argv, exit code, job-id parsing — without
-printing anything.
+92 tests over auth, RBAC, store scoping, CSV rules, text moderation, rendering,
+TIFF colourspace, placeholder detection, format configuration, printer dispatch
+and reprint accounting. They run against a throwaway `printflow_test` database,
+replace `lp`/`lpstat` with a recording stub so the dispatch path is exercised for
+real — argv, exit code, job-id parsing — without printing anything, and swap the
+Gemini client for a scriptable fake so no test ever calls the network.
+
+The database defaults to a local Postgres; point `PRINTFLOW_TEST_DATABASE_URL`
+(plus libpq's `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD` for `createdb`) at another
+server, e.g. a `postgres:16-alpine` container.
 
 ## Security notes
 

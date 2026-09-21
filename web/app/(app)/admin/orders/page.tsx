@@ -11,9 +11,9 @@ export default async function AdminOrdersPage() {
       <PageHeader
         eyebrow="Administration"
         title="All orders"
-        description="Every store's queue in one place. Admins can print or reprint on an operator's behalf."
+        description="Every store's queue in one place. Admins can print or reprint on an operator's behalf, and release or refuse text the moderation gate held."
       />
-      <OrderWorkspace showStore stores={stores} />
+      <OrderWorkspace showStore stores={stores} canReview />
     </>
   );
 }

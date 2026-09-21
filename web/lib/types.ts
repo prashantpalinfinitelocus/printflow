@@ -2,6 +2,17 @@ export type Role = "ADMIN" | "OPERATOR";
 export type OrderStatus = "PENDING" | "PRINTING" | "PRINTED" | "FAILED";
 export type JobKind = "TIFF" | "PDF";
 export type JobStatus = "QUEUED" | "RENDERED" | "SENT_TO_PRINTER" | "DOWNLOADED" | "FAILED";
+/** Where the order's text stands with the LLM brand-safety gate — see the API's ModerationStatus. */
+export type ModerationStatus =
+  | "UNCHECKED"
+  | "CLEAR"
+  | "FLAGGED"
+  | "NEEDS_REVIEW"
+  | "APPROVED"
+  | "REJECTED";
+/** Statuses in which the API refuses to render or print. */
+export const HELD_STATUSES: ReadonlySet<ModerationStatus> = new Set(["FLAGGED", "NEEDS_REVIEW", "REJECTED"]);
+export const isHeld = (status: ModerationStatus) => HELD_STATUSES.has(status);
 /** How the rendered file reaches paper — see the API's Delivery enum. */
 export type Delivery = "PRINTER" | "DOWNLOAD" | "PROOF";
 
@@ -88,9 +99,17 @@ export interface Order {
   created_at: string;
   printed_at: string | null;
   last_error: string | null;
+  moderation_status: ModerationStatus;
+  moderation_categories: string[] | null;
+  /** The model's one-line reason when flagged, or the error when it was unavailable. */
+  moderation_reason: string | null;
+  /** Free text the reviewing admin left. */
+  moderation_note: string | null;
+  moderated_at: string | null;
   store: Store | null;
   print_format: PrintFormat | null;
   printed_by: User | null;
+  reviewed_by: User | null;
 }
 
 export interface OrderPage {
@@ -105,6 +124,8 @@ export interface OrderStats {
   printing: number;
   printed: number;
   failed: number;
+  /** Held by moderation. Overlaps with `pending`. */
+  on_hold: number;
   total: number;
   amount_pending: string;
 }
@@ -148,7 +169,12 @@ export interface CsvBatch {
   total_rows: number;
   imported: number;
   skipped: number;
+  /** Imported but held by moderation. */
+  flagged: number;
   errors: { row: number; order_ref: string | null; reason: string }[];
+  moderation_prompt_tokens: number;
+  moderation_output_tokens: number;
+  moderation_thought_tokens: number;
   created_at: string;
   uploaded_by: User | null;
 }

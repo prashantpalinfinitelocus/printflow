@@ -1,10 +1,10 @@
 "use client";
 
-import type { Order } from "@/lib/types";
+import { isHeld, type Order } from "@/lib/types";
 
 import { dateTime, money } from "@/lib/format";
 
-import { EmptyState, StatusChip } from "./ui";
+import { EmptyState, ModerationChip, StatusChip } from "./ui";
 
 export function OrderTable({
   orders,
@@ -72,7 +72,18 @@ export function OrderTable({
                 </td>
                 <td className="td text-right font-bold whitespace-nowrap">{money(order.amount)}</td>
                 <td className="td">
-                  <StatusChip status={order.status} />
+                  <div className="flex flex-wrap gap-1">
+                    <StatusChip status={order.status} />
+                    <ModerationChip status={order.moderation_status} reason={order.moderation_reason} />
+                  </div>
+                  {isHeld(order.moderation_status) && order.moderation_reason && (
+                    <span
+                      className="mt-1 block max-w-[220px] truncate text-[11px] text-amber-700"
+                      title={order.moderation_reason}
+                    >
+                      {order.moderation_reason}
+                    </span>
+                  )}
                   {order.status === "FAILED" && order.last_error && (
                     <span className="mt-1 block max-w-[220px] truncate text-[11px] text-rose-600" title={order.last_error}>
                       {order.last_error}
@@ -86,9 +97,13 @@ export function OrderTable({
                       e.stopPropagation();
                       onSelect(order);
                     }}
-                    className={order.status === "PRINTED" ? "btn-secondary btn-sm" : "btn-primary btn-sm"}
+                    className={
+                      isHeld(order.moderation_status) || order.status === "PRINTED"
+                        ? "btn-secondary btn-sm"
+                        : "btn-primary btn-sm"
+                    }
                   >
-                    {order.status === "PRINTED" ? "Reprint" : "Print"}
+                    {isHeld(order.moderation_status) ? "On hold" : order.status === "PRINTED" ? "Reprint" : "Print"}
                   </button>
                 </td>
               </tr>

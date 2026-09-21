@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from ..config import settings
 from ..deps import CurrentUser, DbSession
-from ..models import JobKind, JobStatus, Order, OrderStatus, PrintJob, Role
+from ..models import HOLD_STATUSES, JobKind, JobStatus, Order, OrderStatus, PrintJob, Role
 from ..schemas import (
     Delivery,
     OrderOut,
@@ -72,6 +72,13 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
     PRINTED, count as a reprint.
     """
     order = _load_order(db, user, order_id)
+    if order.moderation_status in HOLD_STATUSES:
+        # Applies to proofs too: held text must never be composited onto the artwork.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Order is on hold for text moderation ({order.moderation_status}): "
+            f"{order.moderation_reason or 'no reason recorded'}",
+        )
     fmt = order.print_format
     if fmt is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Order has no print format")

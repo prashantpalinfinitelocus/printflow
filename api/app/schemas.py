@@ -4,11 +4,11 @@ import re
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from .models import JobKind, JobStatus, OrderStatus, Role
+from .models import JobKind, JobStatus, ModerationStatus, OrderStatus, Role
 
 # Deliberately permissive: internal deployments use reserved TLDs such as
 # `.local` and `.internal`, which strict RFC validators reject.
@@ -291,9 +291,20 @@ class OrderOut(ORMModel):
     created_at: datetime
     printed_at: datetime | None
     last_error: str | None
+    moderation_status: ModerationStatus = ModerationStatus.UNCHECKED
+    moderation_categories: list[str] | None = None
+    moderation_reason: str | None = None
+    moderation_note: str | None = None
+    moderated_at: datetime | None = None
     store: StoreOut | None = None
     print_format: PrintFormatOut | None = None
     printed_by: UserOut | None = None
+    reviewed_by: UserOut | None = None
+
+
+class ModerationReviewRequest(BaseModel):
+    decision: Literal["APPROVE", "REJECT"]
+    note: str | None = Field(default=None, max_length=1000)
 
 
 class OrderPage(BaseModel):
@@ -308,6 +319,9 @@ class OrderStats(BaseModel):
     printing: int = 0
     printed: int = 0
     failed: int = 0
+    #: Orders held by moderation (FLAGGED, NEEDS_REVIEW or REJECTED). Overlaps
+    #: with `pending` — a held order is still PENDING in the print pipeline.
+    on_hold: int = 0
     total: int = 0
     amount_pending: Decimal = Decimal("0")
 
@@ -328,7 +342,11 @@ class CsvBatchOut(ORMModel):
     total_rows: int
     imported: int
     skipped: int
+    flagged: int = 0
     errors: list
+    moderation_prompt_tokens: int = 0
+    moderation_output_tokens: int = 0
+    moderation_thought_tokens: int = 0
     created_at: datetime
     uploaded_by: UserOut | None = None
 

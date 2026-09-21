@@ -63,6 +63,12 @@ PRINTFLOW_JWT_SECRET=<paste output of: openssl rand -hex 32>
 Compose refuses to start without it — the default would let anyone holding this
 repo forge a session token.
 
+Also set `GEMINI_API_KEY` (free key from <https://aistudio.google.com/apikey>).
+It powers the text check that runs on every CSV import — see README → Text
+moderation. Without a key the app still starts, but every imported row is held
+for admin review because the check cannot run. To skip the check entirely set
+`PRINTFLOW_MODERATION_ENABLED=false`.
+
 If a host port collides with another stack (check `docker ps`), change
 `WEB_PORT`, `API_PORT` or `DB_PORT` in the same file.
 

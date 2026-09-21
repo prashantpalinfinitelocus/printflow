@@ -50,6 +50,33 @@ class JobStatus(str, enum.Enum):
     FAILED = "FAILED"
 
 
+class ModerationStatus(str, enum.Enum):
+    """Where an order's text stands with the LLM brand-safety gate.
+
+    Stored as a plain varchar rather than a Postgres enum so that adding a
+    member is an additive migration, not an ALTER TYPE.
+    """
+
+    #: Moderation was disabled when the row was imported. Printable, but shown.
+    UNCHECKED = "UNCHECKED"
+    #: The model saw nothing wrong.
+    CLEAR = "CLEAR"
+    #: The model flagged the text. Held until an admin decides.
+    FLAGGED = "FLAGGED"
+    #: The model could not be reached or gave no verdict. Held, fail-closed.
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    #: An admin looked at a held order and released it.
+    APPROVED = "APPROVED"
+    #: An admin looked at a held order and refused it. Never prints.
+    REJECTED = "REJECTED"
+
+
+#: Statuses in which an order must not be rendered or printed.
+HOLD_STATUSES: frozenset[str] = frozenset(
+    {ModerationStatus.FLAGGED.value, ModerationStatus.NEEDS_REVIEW.value, ModerationStatus.REJECTED.value}
+)
+
+
 class Store(Base):
     __tablename__ = "stores"
 
@@ -152,6 +179,12 @@ class CsvBatch(Base):
     imported: Mapped[int] = mapped_column(Integer, default=0)
     skipped: Mapped[int] = mapped_column(Integer, default=0)
     errors: Mapped[list] = mapped_column(JSONB, default=list)
+    #: Rows imported but held by moderation (FLAGGED or NEEDS_REVIEW).
+    flagged: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Gemini spend for this file, so the cost of moderating is auditable per import.
+    moderation_prompt_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    moderation_output_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    moderation_thought_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     uploaded_by: Mapped[User | None] = relationship()
@@ -193,9 +226,22 @@ class Order(Base):
     printed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Brand-safety moderation of `print_text`. See services/moderation.py.
+    moderation_status: Mapped[str] = mapped_column(
+        String(16), default=ModerationStatus.UNCHECKED.value, server_default="UNCHECKED", index=True
+    )
+    moderation_categories: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    #: The model's one-line reason when flagged, or the error when unavailable.
+    moderation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: Free text an admin left when approving or rejecting.
+    moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+
     store: Mapped[Store] = relationship(back_populates="orders")
     print_format: Mapped[PrintFormat] = relationship()
     printed_by: Mapped[User | None] = relationship(foreign_keys=[printed_by_id])
+    reviewed_by: Mapped[User | None] = relationship(foreign_keys=[reviewed_by_id])
     jobs: Mapped[list[PrintJob]] = relationship(back_populates="order", cascade="all, delete-orphan")
 
 
