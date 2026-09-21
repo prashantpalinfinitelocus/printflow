@@ -277,6 +277,12 @@ class OrderOut(ORMModel):
     id: int
     order_ref: str
     store_id: int
+    #: Snapshots of what the CSV called the store. `store` below carries the
+    #: store master's own values, which these never overwrite.
+    store_name: str | None
+    city: str | None
+    sku_code: str | None
+    brand: str | None
     amount: Decimal
     print_format_id: int
     print_text: str

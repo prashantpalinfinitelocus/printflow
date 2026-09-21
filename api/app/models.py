@@ -164,6 +164,22 @@ class Order(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     order_ref: Mapped[str] = mapped_column(String(128), index=True)
     store_id: Mapped[int] = mapped_column(ForeignKey("stores.id"), index=True)
+
+    #: What the upstream system called this order's store, as it arrived in the
+    #: CSV. A snapshot, not a source of truth: `store_id` above resolves the
+    #: Store row that actually owns the order, and an import never writes back
+    #: to the store master. Keeping both makes a disagreement visible instead of
+    #: letting one side quietly win.
+    store_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    #: Product identity for the order. Required in the CSV, nullable here —
+    #: orders imported before this column existed have no value and never will,
+    #: and NOT NULL would mean backfilling them with something invented.
+    sku_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    brand: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    #: No longer part of the CSV contract; still stored when a file carries it.
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     print_format_id: Mapped[int] = mapped_column(ForeignKey("print_formats.id"))
     print_text: Mapped[str] = mapped_column(Text, default="")

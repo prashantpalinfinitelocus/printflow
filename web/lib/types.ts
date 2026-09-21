@@ -75,6 +75,11 @@ export interface Order {
   id: number;
   order_ref: string;
   store_id: number;
+  /** Snapshots of what the CSV called the store; `store` holds the master's own values. */
+  store_name: string | null;
+  city: string | null;
+  sku_code: string | null;
+  brand: string | null;
   amount: string;
   print_format_id: number;
   print_text: string;

@@ -71,17 +71,25 @@ Change these before exposing the app anywhere.
 ## CSV format
 
 ```csv
-order_id,store_id,amount,print_format,text
+order_id,store_id,store_name,city,sku_code,brand,print_format,text
 ORD-1001,MUM01,499.00,GIFT_TAG,"Happy Birthday, Riya!"
 ```
 
 | Column | Meaning |
 |---|---|
-| `order_id` | Unique across the system. Duplicates are skipped, never overwritten. |
-| `store_id` | Must match a `Store.code`. Decides whose queue the row lands in. |
-| `amount` | Decimal, shown in the queue. Not printed. |
-| `print_format` | Must match a `PrintFormat.code` — the PSD template. |
-| `text` | The text stamped into the template's text box. |
+| `order_id` | Required. Unique across the system. Duplicates are skipped, never overwritten. |
+| `store_id` | Required. Must match a `Store.code`. Decides whose queue the row lands in. |
+| `store_name` | Optional. What the upstream system calls the store, recorded on the order. Never overwrites the store master. |
+| `city` | Optional. Same — a snapshot, not a source of truth. |
+| `sku_code` | Required. Product identity for the order. |
+| `brand` | Required. |
+| `print_format` | Required. Must match a `PrintFormat.code` — the PSD template. |
+| `text` | Required. The text stamped into the template's text box. |
+| `amount` | Optional, and no longer part of the contract. Still stored when a file carries it; defaults to `0`. |
+
+A file missing any required column is rejected whole, before a single row
+imports. A row missing a required *value* is skipped on its own and reported in
+the batch's error list — the rest of the file still lands.
 
 Header matching is case-, space- and underscore-insensitive, and common aliases
 (`Order ID`, `Store Code`, `Design`, `Message`) are accepted. A bad row is

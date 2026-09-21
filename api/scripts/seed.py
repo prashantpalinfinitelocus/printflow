@@ -33,15 +33,18 @@ OPERATORS = [
 ]
 OPERATOR_PASSWORD = "operator123"
 
-SAMPLE_CSV = """order_id,store_id,amount,print_format,text
-ORD-1001,MUM01,499.00,GIFT_TAG,"Happy Birthday, Riya!"
-ORD-1002,MUM01,1250.50,THANK_YOU,"Thank you for shopping with us"
-ORD-1003,DEL01,899.00,BOTTLE_LABEL,"Share with Arjun"
-ORD-1004,DEL01,349.75,GIFT_TAG,"With love, from the Sharma family"
-ORD-1005,BLR01,2100.00,THANK_YOU,"Congratulations on the new home!"
-ORD-1006,BLR01,650.00,BOTTLE_LABEL,"Cheers, Team Indiranagar"
-ORD-1007,MUM01,180.00,GIFT_TAG,"Get well soon"
-ORD-1008,BLR01,4999.00,THANK_YOU,"A very long dedication that has to wrap across several lines so the auto-fit logic has something real to chew on"
+#: Deliberately disagrees with STORES above on store_name: the CSV carries what
+#: the upstream system calls the outlet, the store master carries ours. The
+#: order records both, and neither overwrites the other.
+SAMPLE_CSV = """order_id,store_id,store_name,city,sku_code,brand,print_format,text
+ORD-1001,MUM01,Mumbai Flagship,Mumbai,SKU-99812,Thums Up,GIFT_TAG,"Happy Birthday, Riya!"
+ORD-1002,MUM01,Mumbai Flagship,Mumbai,SKU-99813,Sprite,THANK_YOU,"Thank you for shopping with us"
+ORD-1003,DEL01,Delhi Connaught Place,New Delhi,SKU-44120,Coca-Cola,BOTTLE_LABEL,"Share with Arjun"
+ORD-1004,DEL01,Delhi Connaught Place,New Delhi,SKU-99812,Thums Up,GIFT_TAG,"With love, from the Sharma family"
+ORD-1005,BLR01,Bengaluru Indiranagar,Bengaluru,SKU-44121,Limca,THANK_YOU,"Congratulations on the new home!"
+ORD-1006,BLR01,Bengaluru Indiranagar,Bengaluru,SKU-44120,Coca-Cola,BOTTLE_LABEL,"Cheers, Team Indiranagar"
+ORD-1007,MUM01,Mumbai Flagship,Mumbai,SKU-44122,Maaza,GIFT_TAG,"Get well soon"
+ORD-1008,BLR01,Bengaluru Indiranagar,Bengaluru,SKU-99813,Sprite,THANK_YOU,"A very long dedication that has to wrap across several lines so the auto-fit logic has something real to chew on"
 """
 
 

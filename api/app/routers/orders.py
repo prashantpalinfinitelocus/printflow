@@ -17,7 +17,13 @@ from ..schemas import (
     OrderStats,
     PrintJobOut,
 )
-from ..services.csv_import import CsvFormatError, import_csv
+from ..services.csv_import import (
+    COLUMN_ORDER,
+    OPTIONAL_COLUMNS,
+    REQUIRED_COLUMNS,
+    CsvFormatError,
+    import_csv,
+)
 
 router = APIRouter(tags=["orders"])
 
@@ -190,14 +196,22 @@ def list_batches(db: DbSession, _: AdminUser, limit: int = Query(default=20, ge=
 
 @router.get("/csv/template")
 def csv_template():
-    """The exact header the importer expects, plus one illustrative row."""
-    sample_store = "STORE CODE FROM YOUR STORE MASTER"
+    """The exact header the importer expects, plus one illustrative row.
+
+    Driven off `COLUMN_ORDER` rather than a second hand-written list, so the
+    advertised template cannot drift away from what the parser accepts.
+    """
     return {
-        "columns": ["order_id", "store_id", "amount", "print_format", "text"],
+        "columns": list(COLUMN_ORDER),
+        "required": sorted(REQUIRED_COLUMNS),
+        "optional": sorted(OPTIONAL_COLUMNS),
         "example": {
             "order_id": "ORD-1001",
-            "store_id": sample_store,
-            "amount": "499.00",
+            "store_id": "STORE CODE FROM YOUR STORE MASTER",
+            "store_name": "Mumbai Flagship",
+            "city": "Mumbai",
+            "sku_code": "SKU-99812",
+            "brand": "Thums Up",
             "print_format": "PSD FORMAT CODE",
             "text": "Happy Birthday, Riya!",
         },

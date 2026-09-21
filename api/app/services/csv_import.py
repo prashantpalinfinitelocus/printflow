@@ -1,11 +1,19 @@
 """Parse and import the order CSV.
 
-Expected header (case/space/underscore insensitive):
-    order_id, store_id, amount, print_format, text
+Required header (case/space/underscore insensitive):
+    order_id, store_id, sku_code, brand, print_format, text
+
+Optional, honoured when present:
+    store_name, city, amount
 
 `store_id` matches Store.code; `print_format` matches PrintFormat.code.
-Rows referencing an unknown store/format, a duplicate order id, or a bad
-amount are skipped and reported — the batch always imports what it can.
+`store_name` and `city` are snapshots of what the upstream system called the
+store — they are recorded on the order and never written back to the store
+master, which stays the authority for routing.
+
+Rows referencing an unknown store/format, a duplicate order id, a missing
+required value, an over-long value or a bad amount are skipped and reported —
+the batch always imports what it can.
 """
 
 from __future__ import annotations
@@ -20,7 +28,49 @@ from sqlalchemy.orm import Session
 
 from ..models import CsvBatch, Order, PrintFormat, Store
 
-REQUIRED_COLUMNS = {"order_id", "store_id", "amount", "print_format", "text"}
+REQUIRED_COLUMNS = {"order_id", "store_id", "sku_code", "brand", "print_format", "text"}
+
+#: Accepted but not demanded. `amount` is no longer part of the contract; it is
+#: still read so that files produced mid-migration do not silently lose the
+#: value they carry.
+OPTIONAL_COLUMNS = {"store_name", "city", "amount"}
+
+ALL_COLUMNS = REQUIRED_COLUMNS | OPTIONAL_COLUMNS
+
+#: Column order for anything that has to present the contract to a human —
+#: the template endpoint, the sample file, the docs.
+COLUMN_ORDER = (
+    "order_id",
+    "store_id",
+    "store_name",
+    "city",
+    "sku_code",
+    "brand",
+    "print_format",
+    "text",
+)
+
+#: CSV column -> the `orders` column its value lands in.
+_LENGTH_SOURCES = {
+    "order_id": "order_ref",
+    "store_name": "store_name",
+    "city": "city",
+    "sku_code": "sku_code",
+    "brand": "brand",
+}
+
+#: A value wider than its column raises at COMMIT, and the batch commits once —
+#: so one oversized cell would roll back every row that had already validated.
+#: Checked per row instead, which costs a `len()` and turns a lost batch into
+#: one skipped row.
+#:
+#: Read off the model rather than restated here: a hand-kept copy drifts the
+#: moment someone widens a column, and it would drift silently, since a limit
+#: that is merely too strict fails no test.
+MAX_LENGTHS = {
+    column: Order.__table__.c[attribute].type.length
+    for column, attribute in _LENGTH_SOURCES.items()
+}
 
 # Accepted aliases -> canonical column name.
 ALIASES = {
@@ -30,6 +80,22 @@ ALIASES = {
     "storeid": "store_id",
     "store": "store_id",
     "storecode": "store_id",
+    "storename": "store_name",
+    "outlet": "store_name",
+    "outletname": "store_name",
+    "town": "city",
+    "storecity": "city",
+    "location": "city",
+    "sku": "sku_code",
+    "skucode": "sku_code",
+    "skuid": "sku_code",
+    "itemcode": "sku_code",
+    "materialcode": "sku_code",
+    "brand": "brand",
+    "brandname": "brand",
+    # Deliberately NOT `label`: in a label-printing system that word reads as
+    # the thing being printed at least as readily as the brand, and a wrong
+    # guess here lands the printed text in `brand` without erroring.
     "printformat": "print_format",
     "format": "print_format",
     "psd": "print_format",
@@ -87,10 +153,21 @@ def parse_rows(raw: bytes) -> list[dict[str, str]]:
     for raw_row in reader:
         row = {}
         for original, canonical in mapping.items():
-            if canonical in REQUIRED_COLUMNS:
+            if canonical in ALL_COLUMNS:
                 row[canonical] = (raw_row.get(original) or "").strip()
         rows.append(row)
     return rows
+
+
+def _too_long(row: dict[str, str]) -> str | None:
+    """The first over-long value in the row, as a reportable reason."""
+    for column, limit in MAX_LENGTHS.items():
+        if limit is None:
+            continue  # unbounded column (TEXT) — nothing to check against
+        value = row.get(column) or ""
+        if len(value) > limit:
+            return f"{column} is too long ({len(value)} > {limit} characters)"
+    return None
 
 
 def import_csv(
@@ -142,6 +219,21 @@ def import_csv(
             result.error(index, order_ref, f"print format '{fmt.code}' is inactive")
             continue
 
+        sku_code = row.get("sku_code", "")
+        if not sku_code:
+            result.error(index, order_ref, "sku_code is blank")
+            continue
+
+        brand = row.get("brand", "")
+        if not brand:
+            result.error(index, order_ref, "brand is blank")
+            continue
+
+        oversized = _too_long(row)
+        if oversized is not None:
+            result.error(index, order_ref, oversized)
+            continue
+
         try:
             amount = Decimal(row.get("amount") or "0")
         except (InvalidOperation, ValueError):
@@ -157,6 +249,12 @@ def import_csv(
             Order(
                 order_ref=order_ref,
                 store_id=store.id,
+                # What the file called the store, kept alongside the resolved
+                # Store row rather than overwriting it.
+                store_name=row.get("store_name") or None,
+                city=row.get("city") or None,
+                sku_code=sku_code,
+                brand=brand,
                 amount=amount,
                 print_format_id=fmt.id,
                 print_text=row.get("text", ""),
