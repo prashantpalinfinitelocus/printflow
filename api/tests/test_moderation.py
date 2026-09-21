@@ -404,3 +404,203 @@ def test_campaign_brand_is_configurable(fake_gemini, monkeypatch):
     system = fake_gemini.calls[0]["config"].system_instruction
     assert "beside the Thums Up logo" in system
     assert "aspartame" not in system  # Diet Coke-only phrases stay out
+
+
+# ---------------- printing a held order without its text ----------------
+#
+# The escape hatch: a held order's artwork is fine, only its text is not. These
+# tests pin the hole in the gate — above all that the held text never reaches
+# the renderer, which is the whole basis for allowing this at all.
+
+
+def _flagged_order(client, admin_headers, fake_gemini, ref: str, text: str):
+    fake_gemini.flag[text] = (["ABUSE_PROFANITY"], "Contains Hindi abusive slang")
+    _, order = _import_one(client, admin_headers, ref, text)
+    assert order["moderation_status"] == "FLAGGED"
+    return order
+
+
+def _spy_on_render(monkeypatch):
+    """Capture the kwargs every render_order call receives."""
+    from app.routers import printing as printing_router
+
+    seen: list[dict] = []
+    original = printing_router.render_order
+
+    def spy(**kwargs):
+        seen.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(printing_router, "render_order", spy)
+    return seen
+
+
+def test_printing_without_text_never_sends_the_text_to_the_renderer(
+    client, admin_headers, operator_headers, fake_gemini, monkeypatch
+):
+    """The invariant the whole feature rests on."""
+    order = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-1", "chiraand")
+    seen = _spy_on_render(monkeypatch)
+
+    res = client.post(
+        f"/orders/{order['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True},
+    )
+    assert res.status_code == 200, res.text
+
+    assert len(seen) == 1
+    assert seen[0]["text"] == ""
+    assert "chiraand" not in str(seen[0])
+
+
+def test_a_held_order_still_cannot_be_printed_with_its_text(
+    client, admin_headers, operator_headers, fake_gemini
+):
+    """Regression guard: the escape hatch must not open the normal path."""
+    order = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-2", "chiraand two")
+
+    for body in (
+        {"kind": "TIFF", "delivery": "DOWNLOAD"},
+        {"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": False},
+        {"kind": "TIFF", "delivery": "PROOF"},
+    ):
+        res = client.post(f"/orders/{order['id']}/print", headers=operator_headers, json=body)
+        assert res.status_code == 409, f"{body} should stay blocked"
+
+
+def test_printing_without_text_leaves_the_moderation_hold_in_place(
+    client, admin_headers, operator_headers, fake_gemini
+):
+    """The text was avoided, not cleared — an admin can still review it."""
+    order = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-3", "chiraand three")
+
+    res = client.post(
+        f"/orders/{order['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True},
+    )
+    assert res.status_code == 200, res.text
+
+    after = res.json()["order"]
+    assert after["status"] == "PRINTED"
+    assert after["moderation_status"] == "FLAGGED"
+    assert after["moderation_reason"] == "Contains Hindi abusive slang"
+
+
+def test_the_job_records_that_it_went_out_blank(
+    client, admin_headers, operator_headers, fake_gemini
+):
+    """Audit trail: you must be able to tell later which labels printed blank."""
+    held = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-4", "chiraand four")
+    blank = client.post(
+        f"/orders/{held['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True},
+    ).json()
+    assert blank["job"]["without_text"] is True
+    # Nothing was typeset, so no type size is claimed for it.
+    assert blank["job"]["font_size_used"] is None
+
+    _, clear = _import_one(client, admin_headers, "ORD-BLANK-5", "Happy Birthday")
+    normal = client.post(
+        f"/orders/{clear['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "DOWNLOAD"},
+    ).json()
+    assert normal["job"]["without_text"] is False
+
+
+def test_printing_without_text_twice_counts_as_a_reprint(
+    client, admin_headers, operator_headers, fake_gemini
+):
+    order = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-6", "chiraand six")
+    body = {"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True}
+
+    first = client.post(f"/orders/{order['id']}/print", headers=operator_headers, json=body).json()
+    assert first["job"]["is_reprint"] is False
+    assert first["order"]["reprint_count"] == 0
+
+    second = client.post(f"/orders/{order['id']}/print", headers=operator_headers, json=body).json()
+    assert second["job"]["is_reprint"] is True
+    assert second["order"]["reprint_count"] == 1
+
+
+def test_a_rejected_order_can_still_be_printed_without_text(
+    client, admin_headers, operator_headers, fake_gemini
+):
+    """An admin refused the text. A blank label contains none of it."""
+    order = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-7", "chiraand seven")
+    review = client.post(
+        f"/orders/{order['id']}/moderation/review",
+        headers=admin_headers,
+        json={"decision": "REJECT", "note": "no"},
+    )
+    assert review.status_code == 200, review.text
+    assert review.json()["moderation_status"] == "REJECTED"
+
+    assert (
+        client.post(
+            f"/orders/{order['id']}/print",
+            headers=operator_headers,
+            json={"kind": "TIFF", "delivery": "DOWNLOAD"},
+        ).status_code
+        == 409
+    )
+    res = client.post(
+        f"/orders/{order['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["order"]["moderation_status"] == "REJECTED"
+
+
+def test_blank_printing_needs_no_admin_but_still_respects_store_scoping(
+    client, admin_headers, operator_headers, fake_gemini
+):
+    """An operator can unblock their own store, and only their own store."""
+    mine = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-8", "chiraand eight")
+    assert (
+        client.post(
+            f"/orders/{mine['id']}/print",
+            headers=operator_headers,
+            json={"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True},
+        ).status_code
+        == 200
+    )
+
+    fake_gemini.flag["chiraand nine"] = (["ABUSE_PROFANITY"], "Contains Hindi abusive slang")
+    _upload(
+        client,
+        admin_headers,
+        _csv(_row("ORD-BLANK-9", "TST02", text="chiraand nine")),
+        name="ORD-BLANK-9.csv",
+    )
+    theirs = client.get("/orders?q=ORD-BLANK-9", headers=admin_headers).json()["items"][0]
+    assert (
+        client.post(
+            f"/orders/{theirs['id']}/print",
+            headers=operator_headers,
+            json={"kind": "TIFF", "delivery": "DOWNLOAD", "without_text": True},
+        ).status_code
+        == 404
+    ), "blank printing must not become a way around store scoping"
+
+
+def test_a_held_order_can_be_proofed_without_its_text(
+    client, admin_headers, operator_headers, fake_gemini, monkeypatch
+):
+    """Proofing blank is safe for the same reason printing blank is."""
+    order = _flagged_order(client, admin_headers, fake_gemini, "ORD-BLANK-10", "chiraand ten")
+    seen = _spy_on_render(monkeypatch)
+
+    res = client.post(
+        f"/orders/{order['id']}/print",
+        headers=operator_headers,
+        json={"kind": "TIFF", "delivery": "PROOF", "without_text": True},
+    )
+    assert res.status_code == 200, res.text
+    assert seen[0]["text"] == ""
+    # PROOF leaves the queue alone.
+    assert res.json()["order"]["status"] == "PENDING"

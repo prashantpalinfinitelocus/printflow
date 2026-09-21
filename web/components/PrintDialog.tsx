@@ -37,7 +37,7 @@ export function PrintDialog({
   const [kind, setKind] = useState<JobKind>("TIFF");
   const [copies, setCopies] = useState(1);
 
-  const [busy, setBusy] = useState<"proof" | "print" | "review" | null>(null);
+  const [busy, setBusy] = useState<"proof" | "print" | "review" | "blank" | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -97,9 +97,9 @@ export function PrintDialog({
     history.find((j) => j.font_size_used !== null)?.font_size_used ??
     null;
 
-  async function run(delivery: Delivery, jobKind: JobKind) {
+  async function run(delivery: Delivery, jobKind: JobKind, withoutText = false) {
     if (!order) return;
-    setBusy(delivery === "PROOF" ? "proof" : "print");
+    setBusy(withoutText ? "blank" : delivery === "PROOF" ? "proof" : "print");
     setError(null);
     setNotice(null);
     setWarning(null);
@@ -109,6 +109,7 @@ export function PrintDialog({
         printer_name: delivery === "PRINTER" ? printerName || null : null,
         delivery,
         copies,
+        without_text: withoutText,
       });
       setLastJob(result.job);
       setWarning(result.warning);
@@ -122,7 +123,11 @@ export function PrintDialog({
       }
 
       setNotice(
-        delivery === "PRINTER"
+        withoutText
+          ? `Artwork ${delivery === "PRINTER" ? "sent to the printer" : "downloaded"} with no text ` +
+            `on it. The flagged text is untouched and the order stays held, so an administrator ` +
+            `can still review it.`
+          : delivery === "PRINTER"
           ? `Sent ${jobKind} to ${result.job.printer_name ?? "the default printer"}` +
             (result.job.passes > 1 ? ` as ${result.job.passes} passes` : "") +
             (result.job.cups_job_id ? ` — job ${result.job.cups_job_id}` : "") +
@@ -360,10 +365,24 @@ export function PrintDialog({
                   {order.reviewed_by ? ` — ${order.reviewed_by.email}` : ""}
                 </p>
               )}
-              {held && !canReview && (
-                <p className="mt-2 text-xs">
-                  Printing is blocked until an administrator reviews this order.
-                </p>
+              {held && (
+                <div className="mt-3 space-y-2 border-t border-current/15 pt-3">
+                  <p className="text-xs">
+                    Printing with this text is blocked until an administrator reviews it. You can
+                    still print the <strong>artwork on its own</strong> — the flagged text is left
+                    off entirely, and the order stays held for review.
+                  </p>
+                  <button
+                    onClick={() => void run(noPrinters ? "DOWNLOAD" : "PRINTER", kind, true)}
+                    disabled={busy !== null}
+                    className="btn-secondary btn-sm w-full"
+                  >
+                    {busy === "blank" && <Spinner />}
+                    {noPrinters
+                      ? `Download ${kind} without the text`
+                      : `Print ${kind} without the text`}
+                  </button>
+                </div>
               )}
               {canReview && reviewable && (
                 <div className="mt-3 space-y-2">
@@ -548,6 +567,9 @@ export function PrintDialog({
                     <span className="font-bold">
                       #{job.id} {job.kind}
                       {job.is_reprint && <span className="ml-1 text-brand-500">reprint</span>}
+                      {job.without_text && (
+                        <span className="ml-1 font-normal text-ink-400">no text</span>
+                      )}
                     </span>
                     <span className="text-ink-400">
                       {job.status === "SENT_TO_PRINTER" ? job.printer_name : job.status}

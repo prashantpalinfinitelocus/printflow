@@ -141,6 +141,8 @@ export interface PrintJob {
   order_id: number;
   kind: JobKind;
   is_reprint: boolean;
+  /** This job printed the artwork blank — the only route past a moderation hold. */
+  without_text: boolean;
   printer_name: string | null;
   status: JobStatus;
   passes: number;
