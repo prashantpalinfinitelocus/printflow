@@ -266,6 +266,11 @@ class PrintJob(Base):
     #: that records what went on the object — and the only way to notice that a
     #: box is capping the type far below what was asked for.
     font_size_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: This job printed the artwork with no text on it. The only way a held
+    #: order reaches paper, so it has to be visible afterwards: an order can be
+    #: PRINTED while its text is still FLAGGED, and the job is the only record
+    #: of which of the two actually went out.
+    without_text: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     #: CUPS job id per pass, comma-separated when there is more than one.
     cups_job_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

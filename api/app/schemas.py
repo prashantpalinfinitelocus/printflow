@@ -391,6 +391,14 @@ class PrintRequest(BaseModel):
     #: kept so existing callers keep working. When unset, the boolean decides.
     delivery: Delivery | None = None
     send_to_printer: bool = True
+    #: Print the artwork with no text on it.
+    #:
+    #: This is the one route through a moderation hold. It is safe precisely
+    #: because the held text is what gets omitted — nothing an admin has not
+    #: seen reaches the artwork. Accepted on any order, not just held ones;
+    #: a blank label is never the unsafe outcome, so refusing it elsewhere
+    #: would be noise.
+    without_text: bool = False
 
     @property
     def mode(self) -> Delivery:
@@ -404,6 +412,7 @@ class PrintJobOut(ORMModel):
     order_id: int
     kind: JobKind
     is_reprint: bool
+    without_text: bool
     printer_name: str | None
     status: JobStatus
     passes: int

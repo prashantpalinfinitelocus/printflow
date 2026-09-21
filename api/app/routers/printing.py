@@ -72,12 +72,16 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
     PRINTED, count as a reprint.
     """
     order = _load_order(db, user, order_id)
-    if order.moderation_status in HOLD_STATUSES:
+    # `without_text` is the one way past a hold, and it is not an override: the
+    # held text is exactly what gets dropped, so nothing an admin has not seen
+    # reaches the artwork. The hold itself survives the print — see below.
+    if order.moderation_status in HOLD_STATUSES and not payload.without_text:
         # Applies to proofs too: held text must never be composited onto the artwork.
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Order is on hold for text moderation ({order.moderation_status}): "
-            f"{order.moderation_reason or 'no reason recorded'}",
+            f"{order.moderation_reason or 'no reason recorded'}. "
+            f"Print it without the text to produce the artwork alone.",
         )
     fmt = order.print_format
     if fmt is None:
@@ -99,6 +103,7 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
         printer_name=payload.printer_name,
         status=JobStatus.QUEUED,
         passes=passes,
+        without_text=payload.without_text,
     )
     db.add(job)
 
@@ -111,7 +116,10 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
     try:
         result = render_order(
             psd_path=fmt.psd_path,
-            text=order.print_text,
+            # The single point where a held order's text is dropped. Everything
+            # downstream — TIFF, PDF, preview, CUPS — is built from this render,
+            # so there is no second path the text could leak through.
+            text="" if payload.without_text else order.print_text,
             text_box=fmt.text_box,
             text_layer_name=fmt.text_layer_name,
             font_size=fmt.font_size,
@@ -136,7 +144,10 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
 
     job.tiff_path = str(result.tiff_path)
     job.pdf_path = str(result.pdf_path)
-    job.font_size_used = result.font_size_used
+    # Nothing was typeset, so there is no size to report. `fit_text` returns the
+    # starting size unchanged for empty text, which would otherwise put a
+    # confident "118px" against a label that has no type on it.
+    job.font_size_used = None if payload.without_text else result.font_size_used
     job.status = JobStatus.RENDERED
     db.commit()
 

@@ -37,6 +37,7 @@ STATEMENTS: list[str] = [
     "ALTER TABLE orders ADD COLUMN IF NOT EXISTS brand VARCHAR(128)",
     "ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS passes INTEGER NOT NULL DEFAULT 1",
     "ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS font_size_used INTEGER",
+    "ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS without_text BOOLEAN NOT NULL DEFAULT false",
     # Widening a varchar is safe and repeatable: a multi-pass job records one
     # CUPS id per pass, which no longer fits the original 64 characters.
     "ALTER TABLE print_jobs ALTER COLUMN cups_job_id TYPE VARCHAR(255)",
