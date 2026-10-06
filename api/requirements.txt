@@ -10,7 +10,7 @@ bcrypt==4.2.1
 # 1.10.x asserts `1 <= version <= 7` on Smart Object linked-layer records and
 # dies with "Invalid version 8" on PSDs saved by current Photoshop.
 psd-tools==1.18.0
-Pillow==11.1.0
+Pillow==12.3.0
 numpy==2.2.1
 pytest==8.3.4
 httpx==0.28.1
