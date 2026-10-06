@@ -1,0 +1,100 @@
+# PrintFlow web (Next.js 15 standalone) -> Cloud Run, TEST project.
+# No NEXT_PUBLIC_* values exist, so there are no build args: one image, configured at runtime.
+# API_BASE_URL is resolved from the deployed API service so nobody has to paste a run.app URL.
+substitutions:
+  _REGION: asia-south1
+  _PROJECT_ID: REPLACE-printflow-test
+  _REPO_NAME: tccc-pf-test-cloud-build-repo
+  _WEB_SERVICE: tccc-pf-test-cloudrun-web
+  _API_SERVICE: tccc-pf-test-cloudrun-api
+  _SA_NAME: tccc-pf-test-cloudrun-sa
+  _NETWORK: REPLACE-printflow-test-vpc
+  _SUBNET: REPLACE-printflow-test-run-subnet
+
+steps:
+  # Step 1: Pull existing image for cache (ignore errors if it doesn't exist)
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest || exit 0']
+    id: 'pull-cache'
+
+  # Step 2: Build Docker image (build context is ./web)
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'web'
+    args:
+      [
+        'build',
+        '-f',
+        'Dockerfile',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest',
+        '--cache-from',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest',
+        '.'
+      ]
+    id: 'build-image'
+    waitFor: ['pull-cache']
+
+  # Step 3: Push SHA-tagged image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA']
+    id: 'push-sha'
+    waitFor: ['build-image']
+
+  # Step 4: Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest']
+    id: 'push-latest'
+    waitFor: ['build-image']
+
+  # Step 5: Look up the internal URL of the API service (the API must be deployed first)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'gcloud run services describe ${_API_SERVICE} --region=${_REGION} --project=${_PROJECT_ID} --format="value(status.url)" > /workspace/api_url'
+    id: 'resolve-api-url'
+    waitFor: ['pull-cache']
+
+  # Step 6: Deploy to Cloud Run
+  #  - ingress=internal-and-cloud-load-balancing: reachable only through the HTTPS load balancer.
+  #  - vpc-egress=all-traffic: server-side fetches to the internal API go through the VPC.
+  #  - port=3000: Next.js standalone listens on 3000, Cloud Run defaults to 8080.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run deploy ${_WEB_SERVICE} \
+          --image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA \
+          --region=${_REGION} \
+          --platform=managed \
+          --execution-environment=gen2 \
+          --port=3000 \
+          --network=${_NETWORK} \
+          --subnet=${_SUBNET} \
+          --vpc-egress=all-traffic \
+          --ingress=internal-and-cloud-load-balancing \
+          --allow-unauthenticated \
+          --min-instances=1 \
+          --max-instances=3 \
+          --timeout=600 \
+          --cpu=1 \
+          --memory=1536Mi \
+          --service-account=${_SA_NAME}@${_PROJECT_ID}.iam.gserviceaccount.com \
+          --set-env-vars=API_BASE_URL=$$(cat /workspace/api_url)
+    id: 'deploy-cloudrun'
+    waitFor: ['push-sha', 'push-latest', 'resolve-api-url']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest'
+
+timeout: 1800s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+  env:
+    - 'DOCKER_BUILDKIT=0'

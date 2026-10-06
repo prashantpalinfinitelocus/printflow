@@ -1,0 +1,91 @@
+# PrintFlow web (Next.js 15 standalone) -> Cloud Run, PROD project.
+# Differences from cloudbuild-web.yaml: prod names and the private worker pool.
+substitutions:
+  _REGION: asia-south1
+  _PROJECT_ID: REPLACE-printflow-prod
+  _REPO_NAME: tccc-pf-prod-cloud-build-repo
+  _WEB_SERVICE: tccc-pf-prod-cloudrun-web
+  _API_SERVICE: tccc-pf-prod-cloudrun-api
+  _SA_NAME: tccc-pf-prod-cloudrun-sa
+  _NETWORK: REPLACE-printflow-prod-vpc
+  _SUBNET: REPLACE-printflow-prod-run-subnet
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest || exit 0']
+    id: 'pull-cache'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'web'
+    args:
+      [
+        'build',
+        '-f',
+        'Dockerfile',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest',
+        '--cache-from',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest',
+        '.'
+      ]
+    id: 'build-image'
+    waitFor: ['pull-cache']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA']
+    id: 'push-sha'
+    waitFor: ['build-image']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest']
+    id: 'push-latest'
+    waitFor: ['build-image']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'gcloud run services describe ${_API_SERVICE} --region=${_REGION} --project=${_PROJECT_ID} --format="value(status.url)" > /workspace/api_url'
+    id: 'resolve-api-url'
+    waitFor: ['pull-cache']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run deploy ${_WEB_SERVICE} \
+          --image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA \
+          --region=${_REGION} \
+          --platform=managed \
+          --execution-environment=gen2 \
+          --port=3000 \
+          --network=${_NETWORK} \
+          --subnet=${_SUBNET} \
+          --vpc-egress=all-traffic \
+          --ingress=internal-and-cloud-load-balancing \
+          --allow-unauthenticated \
+          --min-instances=1 \
+          --max-instances=5 \
+          --timeout=600 \
+          --cpu=1 \
+          --memory=1536Mi \
+          --service-account=${_SA_NAME}@${_PROJECT_ID}.iam.gserviceaccount.com \
+          --set-env-vars=API_BASE_URL=$$(cat /workspace/api_url)
+    id: 'deploy-cloudrun'
+    waitFor: ['push-sha', 'push-latest', 'resolve-api-url']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest'
+
+timeout: 1800s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  # workerPool cannot take substitutions; the cloud team replaces the project id here.
+  workerPool: projects/REPLACE-printflow-prod/locations/asia-south1/workerPools/tccc-pf-prod-private-workerpool
+  env:
+    - 'DOCKER_BUILDKIT=0'

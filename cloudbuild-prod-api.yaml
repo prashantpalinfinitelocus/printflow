@@ -1,0 +1,95 @@
+# PrintFlow API (FastAPI) -> Cloud Run, PROD project.
+# Differences from cloudbuild-api.yaml: prod names, private worker pool, max-instances=10.
+# Capacity assumption: up to 1 lakh users. Confirm peak concurrent renders with a load test, then tune.
+# Each instance holds its own DB connection pool; keep 10 x pool size under Cloud SQL max_connections.
+# Every value marked REPLACE is supplied by the cloud team when the project is provisioned.
+substitutions:
+  _REGION: asia-south1
+  _PROJECT_ID: REPLACE-printflow-prod
+  _REPO_NAME: tccc-pf-prod-cloud-build-repo
+  _API_SERVICE: tccc-pf-prod-cloudrun-api
+  _SA_NAME: tccc-pf-prod-cloudrun-sa
+  _NETWORK: REPLACE-printflow-prod-vpc
+  _SUBNET: REPLACE-printflow-prod-run-subnet
+  # Cloud Storage bucket mounted at /data (prefixes psd/, fonts/, inbox/, output/)
+  _DATA_BUCKET: REPLACE-printflow-prod-data
+  _APP_URL: https://REPLACE-printflow.example.com
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest || exit 0']
+    id: 'pull-cache'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'api'
+    args:
+      [
+        'build',
+        '-f',
+        'Dockerfile',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest',
+        '--cache-from',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest',
+        '.'
+      ]
+    id: 'build-image'
+    waitFor: ['pull-cache']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA']
+    id: 'push-sha'
+    waitFor: ['build-image']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest']
+    id: 'push-latest'
+    waitFor: ['build-image']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      [
+        'run',
+        'deploy',
+        '${_API_SERVICE}',
+        '--image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA',
+        '--region=${_REGION}',
+        '--platform=managed',
+        '--execution-environment=gen2',
+        '--port=8000',
+        '--network=${_NETWORK}',
+        '--subnet=${_SUBNET}',
+        '--vpc-egress=all-traffic',
+        '--ingress=internal',
+        '--allow-unauthenticated',
+        '--min-instances=1',
+        '--max-instances=10',
+        '--concurrency=4',
+        '--timeout=600',
+        '--cpu=4',
+        '--memory=8Gi',
+        '--cpu-boost',
+        '--service-account=${_SA_NAME}@${_PROJECT_ID}.iam.gserviceaccount.com',
+        '--add-volume=name=printflow-data,type=cloud-storage,bucket=${_DATA_BUCKET},mount-options=implicit-dirs;metadata-cache-ttl-secs=10',
+        '--add-volume-mount=volume=printflow-data,mount-path=/data',
+        '--set-env-vars=PRINTFLOW_PRINTING_ENABLED=false,PRINTFLOW_TIFF_COLORSPACE=CMYK,PRINTFLOW_MODERATION_ENABLED=true,PRINTFLOW_CORS_ORIGINS=${_APP_URL}',
+        '--set-secrets=PRINTFLOW_JWT_SECRET=PRINTFLOW_JWT_SECRET:latest,PRINTFLOW_DATABASE_URL=PRINTFLOW_DATABASE_URL:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest'
+      ]
+    id: 'deploy-cloudrun'
+    waitFor: ['push-sha', 'push-latest']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest'
+
+timeout: 1800s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  # workerPool cannot take substitutions; the cloud team replaces the project id here.
+  workerPool: projects/REPLACE-printflow-prod/locations/asia-south1/workerPools/tccc-pf-prod-private-workerpool
+  env:
+    - 'DOCKER_BUILDKIT=0'
