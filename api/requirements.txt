@@ -17,4 +17,4 @@ httpx==0.28.1
 fonttools==4.63.0
 tifffile==2026.8.16
 # Gemini — LLM moderation of the CSV `text` column (services/moderation.py).
-google-genai==2.8.0
+google-genai==2.28.0
