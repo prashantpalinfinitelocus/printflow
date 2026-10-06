@@ -2,7 +2,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
@@ -49,6 +49,15 @@ def health() -> dict:
         "printers": [p.name for p in list_printers()],
         "tiff_colorspace": settings.tiff_colorspace,
     }
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Tell browsers not to guess a response's type. Artifact downloads (TIFF, PDF,
+    PNG) are served from here, so a sniffed type could turn a file into a page."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    return response
 
 
 app.include_router(auth.router)

@@ -17,6 +17,7 @@ Pipeline
 from __future__ import annotations
 
 import logging
+import os
 import struct
 from dataclasses import dataclass
 from functools import lru_cache
@@ -148,6 +149,31 @@ def _available(paths: list[str]) -> list[str]:
     return [p for p in paths if Path(p).exists()]
 
 
+def _inside(base: Path, candidate: Path) -> Path | None:
+    """Return `candidate` fully resolved if it lies inside `base`, otherwise None.
+
+    Print formats and requests name files by string. Without this check an
+    absolute path or `..` would let that string point anywhere on the disk.
+    `realpath` also resolves symlinks, so a link inside the folder cannot lead out.
+    """
+    root = os.path.realpath(base)
+    full = os.path.realpath(candidate)
+    if full == root or full.startswith(root + os.sep):
+        return Path(full)
+    return None
+
+
+def resolve_psd_path(psd_path: str | Path) -> Path:
+    """Turn a format's PSD name into a real path inside the PSD folder."""
+    path = Path(psd_path)
+    if not path.is_absolute():
+        path = settings.psd_dir / path
+    safe = _inside(settings.psd_dir, path)
+    if safe is None:
+        raise RenderError("PSD template must be inside the PSD folder")
+    return safe
+
+
 def resolve_font_file(name: str | None) -> str | None:
     """Turn a configured font name into an absolute path.
 
@@ -159,7 +185,9 @@ def resolve_font_file(name: str | None) -> str | None:
     candidate = Path(name)
     if not candidate.is_absolute():
         candidate = settings.fonts_dir / name
-    return str(candidate) if candidate.exists() else None
+    # A font name arrives from the request, so it must stay inside the fonts folder.
+    safe = _inside(settings.fonts_dir, candidate)
+    return str(safe) if safe is not None and safe.exists() else None
 
 
 def select_font_path(text: str, preferred: str | None = None) -> tuple[str | None, str]:
@@ -603,9 +631,7 @@ def _composite_psd(psd_path: Path, skip_layer: str | None) -> tuple[Image.Image,
 
 def composite_psd(psd_path: str | Path) -> Image.Image:
     """Composite a design to RGBA, resolving bare filenames inside the PSD dir."""
-    psd_path = Path(psd_path)
-    if not psd_path.is_absolute():
-        psd_path = settings.psd_dir / psd_path
+    psd_path = resolve_psd_path(psd_path)
     image, _ = _composite_psd(psd_path, None)
     return image
 
@@ -782,9 +808,7 @@ def render_order(
     white_passes: int = 0,
     clear_text_area: bool = False,
 ) -> RenderResult:
-    psd_path = Path(psd_path)
-    if not psd_path.is_absolute():
-        psd_path = settings.psd_dir / psd_path
+    psd_path = resolve_psd_path(psd_path)
 
     image, placeholder_bbox = _composite_psd(psd_path, text_layer_name)
 
@@ -911,8 +935,6 @@ def render_order(
 
 
 def psd_dimensions(psd_path: str | Path) -> tuple[int, int]:
-    p = Path(psd_path)
-    if not p.is_absolute():
-        p = settings.psd_dir / p
+    p = resolve_psd_path(psd_path)
     psd = PSDImage.open(p)
     return psd.width, psd.height
