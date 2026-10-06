@@ -1,0 +1,106 @@
+# PrintFlow API (FastAPI) -> Cloud Run, TEST project.
+# Same 5-step shape as thums-up-be / jiab-be: pull-cache, build, push SHA, push latest, deploy.
+# Every value marked REPLACE is supplied by the cloud team when the project is provisioned.
+substitutions:
+  _REGION: asia-south1
+  _PROJECT_ID: REPLACE-printflow-test
+  _REPO_NAME: tccc-pf-test-cloud-build-repo
+  _API_SERVICE: tccc-pf-test-cloudrun-api
+  _SA_NAME: tccc-pf-test-cloudrun-sa
+  # Direct VPC egress (Cloud SQL private IP, Cloud NAT)
+  _NETWORK: REPLACE-printflow-test-vpc
+  _SUBNET: REPLACE-printflow-test-run-subnet
+  # Cloud Storage bucket mounted at /data (prefixes psd/, fonts/, inbox/, output/)
+  _DATA_BUCKET: REPLACE-printflow-test-data
+  # Public URL of the web app (used for CORS only; browsers reach the API through the web proxy)
+  _APP_URL: https://REPLACE-printflow-staging.example.com
+
+steps:
+  # Step 1: Pull existing image for cache (ignore errors if it doesn't exist)
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest || exit 0']
+    id: 'pull-cache'
+
+  # Step 2: Build Docker image (build context is ./api)
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'api'
+    args:
+      [
+        'build',
+        '-f',
+        'Dockerfile',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest',
+        '--cache-from',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest',
+        '.'
+      ]
+    id: 'build-image'
+    waitFor: ['pull-cache']
+
+  # Step 3: Push SHA-tagged image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA']
+    id: 'push-sha'
+    waitFor: ['build-image']
+
+  # Step 4: Push latest tag (cache source for the next build)
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest']
+    id: 'push-latest'
+    waitFor: ['build-image']
+
+  # Step 5: Deploy to Cloud Run
+  #  - ingress=internal: only the web service (via VPC) can reach the API. JWT still guards every route.
+  #  - Cloud Storage volume at /data (GCS FUSE): containers lose local files on restart, so all files live in the bucket.
+  #    DB rows store absolute paths under /data/output, so the mount point must stay /data.
+  #    Writes are staged in instance memory until the file closes, so keep memory headroom for large TIFFs.
+  #  - concurrency=4, 4 vCPU / 8 GiB: each render holds large numpy/PIL arrays. Tune after a load test.
+  #  - timeout=600: render runs synchronously inside POST /orders/{id}/print; CSV moderation is also in-request.
+  #  - PRINTFLOW_PRINTING_ENABLED=false: Cloud Run has no CUPS. Operators use DOWNLOAD / PROOF delivery.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      [
+        'run',
+        'deploy',
+        '${_API_SERVICE}',
+        '--image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA',
+        '--region=${_REGION}',
+        '--platform=managed',
+        '--execution-environment=gen2',
+        '--port=8000',
+        '--network=${_NETWORK}',
+        '--subnet=${_SUBNET}',
+        '--vpc-egress=all-traffic',
+        '--ingress=internal',
+        '--allow-unauthenticated',
+        '--min-instances=1',
+        '--max-instances=3',
+        '--concurrency=4',
+        '--timeout=600',
+        '--cpu=4',
+        '--memory=8Gi',
+        '--cpu-boost',
+        '--service-account=${_SA_NAME}@${_PROJECT_ID}.iam.gserviceaccount.com',
+        '--add-volume=name=printflow-data,type=cloud-storage,bucket=${_DATA_BUCKET},mount-options=implicit-dirs;metadata-cache-ttl-secs=10',
+        '--add-volume-mount=volume=printflow-data,mount-path=/data',
+        '--set-env-vars=PRINTFLOW_PRINTING_ENABLED=false,PRINTFLOW_TIFF_COLORSPACE=CMYK,PRINTFLOW_MODERATION_ENABLED=true,PRINTFLOW_CORS_ORIGINS=${_APP_URL}',
+        '--set-secrets=PRINTFLOW_JWT_SECRET=PRINTFLOW_JWT_SECRET:latest,PRINTFLOW_DATABASE_URL=PRINTFLOW_DATABASE_URL:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest'
+      ]
+    id: 'deploy-cloudrun'
+    waitFor: ['push-sha', 'push-latest']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest'
+
+timeout: 1800s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+  env:
+    - 'DOCKER_BUILDKIT=0'
