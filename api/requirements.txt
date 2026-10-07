@@ -6,7 +6,7 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 python-multipart==0.0.32
 PyJWT==2.15.1
-bcrypt==4.2.1
+bcrypt==5.0.0
 # 1.10.x asserts `1 <= version <= 7` on Smart Object linked-layer records and
 # dies with "Invalid version 8" on PSDs saved by current Photoshop.
 psd-tools==1.18.0
