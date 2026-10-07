@@ -21,8 +21,9 @@ BACKEND="${BACKEND:-}"      # web backend service name; required for the first r
 PROJECT="${PROJECT:-$(gcloud config get-value project)}"
 
 # Paths as seen by the load balancer. The browser only calls /api/proxy/<api path>.
-LOGIN_PATH='/api/auth/login'
-UPLOAD_RE='^/api/proxy/(print-formats/upload-psd|print-formats/upload-font|csv/upload)$'
+# Web app routes (browser -> web) and API routes (direct, under the load balancer's /backend prefix).
+LOGIN_RE='^(/api/auth/login|/backend/auth/login)$'
+UPLOAD_RE='^(/api/proxy|/backend)/(print-formats/upload-psd|print-formats/upload-font|csv/upload)$'
 
 WAF_SETS=(sqli-v33-stable xss-v33-stable lfi-v33-stable rfi-v33-stable rce-v33-stable
           protocolattack-v33-stable scannerdetection-v33-stable)
@@ -43,7 +44,7 @@ gcloud compute security-policies create "$POLICY" --project "$PROJECT" \
 # 1000: login brute force. 10 POSTs per minute per IP, then 429.
 gcloud compute security-policies rules create 1000 --security-policy "$POLICY" --project "$PROJECT" \
   --description "Throttle login" \
-  --expression "request.method == 'POST' && request.path == '${LOGIN_PATH}'" \
+  --expression "request.method == 'POST' && request.path.matches('${LOGIN_RE}')" \
   --action throttle --rate-limit-threshold-count 10 --rate-limit-threshold-interval-sec 60 \
   --conform-action allow --exceed-action deny-429 --enforce-on-key IP
 

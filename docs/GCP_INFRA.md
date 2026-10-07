@@ -22,11 +22,12 @@ Printing: the app can call CUPS (`lp`) but **Cloud Run has no CUPS and cannot re
 
 ## 2. Architecture and request flow
 
-Internet to Cloud DNS, to Global external HTTPS Load Balancer with Cloud Armor, to a serverless NEG, to **Cloud Run web**. Web calls **Cloud Run api** over Direct VPC egress (API ingress is `internal`). API reaches **Cloud SQL** on private IP, a **Cloud Storage** bucket mounted at `/data`, and the Gemini API through **Cloud NAT**.
+Internet to Cloud DNS, to Global external HTTPS Load Balancer with Cloud Armor. The load balancer routes by path on one domain: `/backend/*` goes to **Cloud Run api** and everything else to **Cloud Run web** (both through serverless NEGs). Web also calls **Cloud Run api** over Direct VPC egress. The API reaches **Cloud SQL** on private IP, a **Cloud Storage** bucket mounted at `/data`, and the Gemini API through **Cloud NAT**.
 
 1. Browser to the HTTPS LB. Cloud Armor evaluates rules. TLS ends at the LB.
-2. LB to Cloud Run web through the serverless NEG.
+2. LB to Cloud Run web through the serverless NEG (default route). Requests for `<app domain>/backend/*` go to Cloud Run api instead (see step 3a).
 3. Web (`/api/proxy/[...path]` or a server component) calls the API with `Authorization: Bearer <JWT>` over the VPC.
+3a. Direct API access (for API testing and tools): `https://<app domain>/backend/<api path>`, for example `/backend/health`. The load balancer does not need to strip the prefix, because the API answers both with and without `/backend` (setting `PRINTFLOW_ROOT_PATH=/backend`).
 4. API reads and writes PostgreSQL over the private IP.
 5. API reads PSD and font templates and writes `output/<ORDER>/<ORDER>-v<n>.{tif,pdf,png}` on the Cloud Storage mount. Artifact downloads are streamed back through the same proxy.
 6. On CSV upload only: API calls the Gemini API in batches of 25, 4 in parallel, through Cloud NAT.
@@ -38,12 +39,12 @@ Region for everything: `asia-south1`. Two separate GCP projects, test and prod, 
 | # | Service | Resource (proposed name) | Configuration |
 |---|---|---|---|
 | 1 | Cloud Run (web) | `tccc-pf-<env>-cloudrun-web` | gen2, port 3000, 1 vCPU, 1536 MiB, min 1, max 3 (prod 5), timeout 600s, ingress `internal-and-cloud-load-balancing`, Direct VPC egress all-traffic. |
-| 2 | Cloud Run (api) | `tccc-pf-<env>-cloudrun-api` | gen2, port 8000, 4 vCPU, 8 GiB, CPU boost, min 1, max 3 (prod 10), **concurrency 4**, timeout 600s, ingress `internal`, Direct VPC egress all-traffic, Cloud Storage bucket mounted at `/data`. |
+| 2 | Cloud Run (api) | `tccc-pf-<env>-cloudrun-api` | gen2, port 8000, 4 vCPU, 8 GiB, CPU boost, min 1, max 3 (prod 10), **concurrency 4**, timeout 600s, ingress `internal-and-cloud-load-balancing`, Direct VPC egress all-traffic, Cloud Storage bucket mounted at `/data`. |
 | 3 | Cloud SQL for PostgreSQL 16 | `tccc-pf-<env>-pg` | Private IP only (Private Services Access). Test: 1 vCPU / 3.75 GB. Prod: 2 vCPU / 7.5 GB, HA, automated backups, PITR. Database `printflow`, user `printflow`. |
 | 4 | Cloud Storage (data bucket) | `tccc-pf-<env>-printflow-data` | One bucket, regional in `asia-south1`, uniform access, mounted at `/data` through GCS FUSE. Prefixes `psd/`, `fonts/`, `inbox/`, `output/`. Mount options `implicit-dirs` and a short metadata cache. See section 5. |
 | 5 | VPC, subnet, Cloud Router, Cloud NAT | `tccc-pf-<env>-vpc`, `...-run-subnet` | Subnet sized for Direct VPC egress (/26 or larger). Private Google Access on. Cloud NAT so all-traffic egress can reach the Gemini API. |
 | 6 | Global external HTTPS Load Balancer | `tccc-pf-<env>-lb` | Serverless NEG to the web service only. Google-managed certificate. **Backend service timeout 600s** (default 30s is too short for renders and CSV import). HTTP to HTTPS redirect. |
-| 7 | Cloud Armor | `tccc-pf-<env>-waf-ruleset` | Attach to the web backend service. Rules are in `infra/cloud-armor.sh` and described in section 4a. Uploads of PSD, font and CSV are exempt from managed WAF rules. |
+| 7 | Cloud Armor | `tccc-pf-<env>-waf-ruleset` | Attach to both backend services (web and api). Rules are in `infra/cloud-armor.sh` and described in section 4a. Uploads of PSD, font and CSV are exempt from managed WAF rules. |
 | 8 | Cloud DNS | record for the app domain | A record to the LB IP. Domain to be confirmed. |
 | 9 | Artifact Registry | `tccc-pf-<env>-cloud-build-repo` | Docker repo. Holds `<service>:<SHORT_SHA>` and `:latest`. |
 | 10 | Cloud Build | 2 triggers per env (api, web) | See section 7. Prod uses a private worker pool `tccc-pf-prod-private-workerpool`. |
@@ -66,20 +67,20 @@ Not needed: Pub/Sub, Memorystore, Cloud Scheduler, Strapi, GKE, Vertex AI. The a
 
 ## 4. Networking
 
-- Only the web service is exposed, and only through the load balancer. The API has ingress `internal`.
-- The API can stay `--allow-unauthenticated` at the Cloud Run IAM layer because ingress is internal and every route except `/health` and `/auth/login` requires a valid JWT. The web proxy does not send Google ID tokens, so IAM-authenticated service-to-service would need a code change.
+- Only the load balancer has a public address. It exposes two services on one domain: the web app (default) and the API under `/backend/*`. Both Cloud Run services accept traffic only from the load balancer (and the web service from the VPC).
+- The API is `--allow-unauthenticated` at the Cloud Run IAM layer, with ingress `internal-and-cloud-load-balancing`. It protects itself: every route except `/health`, `/health/ready` and `/auth/login` requires a valid JWT. `/health` returns only `{"status":"ok"}`; `/health/ready` also checks the database. Cloud Armor covers the API paths too (section 4a). The web proxy does not send Google ID tokens, so IAM-authenticated service-to-service would need a code change.
 - Web to API requires `--vpc-egress=all-traffic` on the web service, so its server-side calls enter the VPC and count as internal traffic.
 - API egress is all-traffic, so the API needs Cloud NAT to call the Gemini API.
 - Web to API URL: the pipeline resolves the API service URL and injects it as `API_BASE_URL`.
 
 ## 4a. Cloud Armor rules
 
-The script `infra/cloud-armor.sh` creates the policy and attaches it to the web backend service. The browser only calls `/api/proxy/<api path>`, so the rules match those paths.
+The script `infra/cloud-armor.sh` creates the policy and attaches it to the load balancer's backend services (web and api). Browsers call `/api/proxy/<api path>` on the web app; API clients call `/backend/<api path>` directly, so the rules match both.
 
 | Priority | Match | Action | Why |
 |---|---|---|---|
-| 1000 | `POST /api/auth/login` | Throttle 10 per minute per IP, then 429 | Brute-force protection |
-| 1100 | `POST /api/proxy/print-formats/upload-psd`, `/print-formats/upload-font`, `/csv/upload` | Throttle 30 per minute per IP, then 429. Allowed without managed WAF inspection. | PSD and font files are binary and CSVs contain quotes and symbols, which trigger managed WAF false positives |
+| 1000 | `POST /api/auth/login` and `POST /backend/auth/login` | Throttle 10 per minute per IP, then 429 | Brute-force protection |
+| 1100 | `POST` to `/api/proxy/` or `/backend/` followed by `print-formats/upload-psd`, `print-formats/upload-font` or `csv/upload` | Throttle 30 per minute per IP, then 429. Allowed without managed WAF inspection. | PSD and font files are binary and CSVs contain quotes and symbols, which trigger managed WAF false positives |
 | 3000 to 3060 | everything else | OWASP managed sets (sqli, xss, lfi, rfi, rce, protocol attack, scanner detection) at sensitivity 1, deny 403 | Standard attack protection |
 | default | any | Allow | |
 
@@ -120,6 +121,7 @@ Plain env vars set by the pipeline:
 | `PRINTFLOW_TIFF_COLORSPACE` | `CMYK` | api |
 | `PRINTFLOW_MODERATION_ENABLED` | `true` | api |
 | `PRINTFLOW_CORS_ORIGINS` | public web URL | api |
+| `PRINTFLOW_ROOT_PATH` | `/backend` | api |
 | `API_BASE_URL` | resolved API service URL | web |
 
 Already set in the api image: `PRINTFLOW_DATA_DIR=/data` and the `INBOX`, `PSD`, `OUTPUT`, `FONTS` directories under it. The web image has no `NEXT_PUBLIC_*` variables, so it is built once and configured at runtime.
@@ -189,8 +191,8 @@ Cloud Build service account:
 - [ ] Secrets created (section 6)
 - [ ] Prod private worker pool
 - [ ] Cloud Build triggers for api and web, test and prod
-- [ ] Global HTTPS LB, serverless NEG to web, managed certificate, backend timeout 600s
-- [ ] Cloud Armor policy attached
+- [ ] Global HTTPS LB: serverless NEG to web (default) and to api for `/backend/*`, managed certificate, backend timeout 600s
+- [ ] Cloud Armor policy attached to both the web and the api backend services
 - [ ] Cloud DNS record
 - [ ] Uptime check and 5xx alert
 - [ ] Handover of: data bucket name, network and subnet names, project ids, domain

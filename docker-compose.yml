@@ -42,6 +42,8 @@ services:
       # Generate one with: openssl rand -hex 32
       PRINTFLOW_JWT_SECRET: ${PRINTFLOW_JWT_SECRET:?set PRINTFLOW_JWT_SECRET in .env — see SETUP.md}
       PRINTFLOW_CORS_ORIGINS: ${PRINTFLOW_CORS_ORIGINS:-http://localhost:3000}
+      # Set to /backend to serve the API under a load balancer's path prefix (it also answers without it).
+      PRINTFLOW_ROOT_PATH: ${PRINTFLOW_ROOT_PATH:-}
       # Off by default: a container cannot reach the host's CUPS without extra
       # setup, and a print button that fails silently is worse than one that
       # says printing is unavailable. See SETUP.md → Printing from Docker.

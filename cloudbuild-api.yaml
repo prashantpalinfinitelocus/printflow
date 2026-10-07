@@ -54,7 +54,9 @@ steps:
     waitFor: ['build-image']
 
   # Step 5: Deploy to Cloud Run
-  #  - ingress=internal: only the web service (via VPC) can reach the API. JWT still guards every route.
+  #  - ingress=internal-and-cloud-load-balancing: the web service (via VPC) and the load balancer can reach the API;
+  #    the LB sends <app-domain>/backend/* here. JWT guards every route except /health, /health/ready and /auth/login.
+  #  - PRINTFLOW_ROOT_PATH=/backend: the API answers under the LB's /backend prefix (and without it, for the web service).
   #  - Cloud Storage volume at /data (GCS FUSE): containers lose local files on restart, so all files live in the bucket.
   #    DB rows store absolute paths under /data/output, so the mount point must stay /data.
   #    Writes are staged in instance memory until the file closes, so keep memory headroom for large TIFFs.
@@ -76,7 +78,7 @@ steps:
         '--network=${_NETWORK}',
         '--subnet=${_SUBNET}',
         '--vpc-egress=all-traffic',
-        '--ingress=internal',
+        '--ingress=internal-and-cloud-load-balancing',
         '--allow-unauthenticated',
         '--min-instances=1',
         '--max-instances=3',
@@ -88,7 +90,7 @@ steps:
         '--service-account=${_SA_NAME}@${_PROJECT_ID}.iam.gserviceaccount.com',
         '--add-volume=name=printflow-data,type=cloud-storage,bucket=${_DATA_BUCKET},mount-options=implicit-dirs;metadata-cache-ttl-secs=10',
         '--add-volume-mount=volume=printflow-data,mount-path=/data',
-        '--set-env-vars=PRINTFLOW_PRINTING_ENABLED=false,PRINTFLOW_TIFF_COLORSPACE=CMYK,PRINTFLOW_MODERATION_ENABLED=true,PRINTFLOW_CORS_ORIGINS=${_APP_URL}',
+        '--set-env-vars=PRINTFLOW_PRINTING_ENABLED=false,PRINTFLOW_TIFF_COLORSPACE=CMYK,PRINTFLOW_MODERATION_ENABLED=true,PRINTFLOW_CORS_ORIGINS=${_APP_URL},PRINTFLOW_ROOT_PATH=/backend',
         '--set-secrets=PRINTFLOW_JWT_SECRET=PRINTFLOW_JWT_SECRET:latest,PRINTFLOW_DATABASE_URL=PRINTFLOW_DATABASE_URL:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest'
       ]
     id: 'deploy-cloudrun'

@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from .config import settings
 from .db import Base, engine
@@ -28,6 +30,7 @@ app = FastAPI(
     version="1.0.0",
     description="Store-scoped print order queue: CSV intake, PSD composition, TIFF/PDF output, CUPS dispatch.",
     lifespan=lifespan,
+    root_path=settings.root_path,
 )
 
 app.add_middleware(
@@ -41,14 +44,20 @@ app.add_middleware(
 
 @app.get("/health", tags=["meta"])
 def health() -> dict:
-    from .services.printing import list_printers, printing_available
+    """Liveness: the process is up. Public, so it says nothing about the system."""
+    return {"status": "ok"}
 
-    return {
-        "status": "ok",
-        "printing_available": printing_available(),
-        "printers": [p.name for p in list_printers()],
-        "tiff_colorspace": settings.tiff_colorspace,
-    }
+
+@app.get("/health/ready", tags=["meta"])
+def ready():
+    """Readiness: the process is up and can reach its database. Public and minimal."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception:
+        log.exception("readiness check failed")
+        return JSONResponse({"status": "unavailable", "database": "down"}, status_code=503)
+    return {"status": "ok", "database": "ok"}
 
 
 @app.middleware("http")
