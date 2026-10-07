@@ -23,5 +23,10 @@
   },
   "allowScripts": {
     "@tailwindcss/oxide@4.1.13": true
+  },
+  "overrides": {
+    "postcss": "8.5.23",
+    "sharp": "0.35.4",
+    "source-map-js": "1.2.2"
   }
 }

@@ -10,6 +10,10 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from .models import JobKind, JobStatus, ModerationStatus, OrderStatus, Role
 
+#: A database row id. Postgres ids are 32-bit; anything larger would reach the
+#: database as an out-of-range integer and come back as an unhandled 500.
+RowId = Annotated[int, Field(ge=1, le=2_147_483_647)]
+
 # Deliberately permissive: internal deployments use reserved TLDs such as
 # `.local` and `.internal`, which strict RFC validators reject.
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$")
@@ -104,14 +108,14 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=6, max_length=128)
     full_name: str | None = None
     role: Role = Role.OPERATOR
-    store_id: int | None = None
+    store_id: RowId | None = None
 
 
 class UserUpdate(BaseModel):
     full_name: str | None = None
     password: str | None = Field(default=None, min_length=6, max_length=128)
     role: Role | None = None
-    store_id: int | None = None
+    store_id: RowId | None = None
     is_active: bool | None = None
 
 

@@ -128,10 +128,11 @@ def main() -> None:
     sample_path = settings.inbox_dir / "sample_orders.csv"
     sample_path.write_text(SAMPLE_CSV, encoding="utf-8")
     print(f"\nSample CSV written to {sample_path}")
-    print("\nLogins:")
-    print(f"  ADMIN     {settings.bootstrap_admin_email} / {settings.bootstrap_admin_password}")
+    # Passwords are deliberately not printed: console output ends up in logs.
+    print("\nLogins (passwords are not shown):")
+    print(f"  ADMIN     {settings.bootstrap_admin_email}   password: PRINTFLOW_BOOTSTRAP_ADMIN_PASSWORD")
     for row in OPERATORS:
-        print(f"  OPERATOR  {row['email']} / {OPERATOR_PASSWORD}  ({row['store']})")
+        print(f"  OPERATOR  {row['email']}  ({row['store']})   password: OPERATOR_PASSWORD in scripts/seed.py")
 
 
 if __name__ == "__main__":
