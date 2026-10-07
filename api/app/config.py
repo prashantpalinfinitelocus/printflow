@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str = "admin@printflow.local"
     bootstrap_admin_password: str = "admin123"
 
+    #: URL prefix the load balancer puts in front of the API (for example "/backend").
+    #: Routes answer both with and without it, and the API docs show it. Empty = no prefix.
+    root_path: str = ""
+
     cors_origins: str = "http://localhost:3000"
 
     @property

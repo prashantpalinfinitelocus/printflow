@@ -99,3 +99,44 @@ def test_creating_a_format_with_an_escaping_psd_path_is_a_422(client, admin_head
         },
     )
     assert res.status_code in (422, 400), res.text
+
+
+# --- Health endpoints, and serving under the load balancer's /backend prefix --------
+
+def test_health_is_public_and_says_nothing_about_the_system(client):
+    for path in ("/health", "/backend/health"):
+        res = client.get(path)
+        assert res.status_code == 200, path
+        assert res.json() == {"status": "ok"}, path
+
+
+def test_readiness_checks_the_database(client):
+    for path in ("/health/ready", "/backend/health/ready"):
+        res = client.get(path)
+        assert res.status_code == 200, path
+        assert res.json() == {"status": "ok", "database": "ok"}, path
+
+
+def test_readiness_reports_503_when_the_database_is_down(client, monkeypatch):
+    import app.main as main
+
+    class Broken:
+        def connect(self):
+            raise RuntimeError("database is down")
+
+    monkeypatch.setattr(main, "engine", Broken())
+    res = client.get("/backend/health/ready")
+    assert res.status_code == 503
+    assert res.json() == {"status": "unavailable", "database": "down"}
+
+
+def test_routes_work_with_and_without_the_backend_prefix(client, admin_headers):
+    for prefix in ("", "/backend"):
+        assert client.get(f"{prefix}/auth/me", headers=admin_headers).status_code == 200, prefix
+        assert client.get(f"{prefix}/orders/2147483647", headers=admin_headers).status_code == 404, prefix
+        assert client.get(f"{prefix}/orders").status_code == 401, prefix  # still needs a login
+
+
+def test_the_api_description_names_the_prefix(client):
+    spec = client.get("/backend/openapi.json").json()
+    assert spec["servers"] == [{"url": "/backend"}]
