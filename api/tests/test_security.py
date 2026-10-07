@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from app.config import settings
-from app.services.renderer import RenderError, resolve_font_file, resolve_psd_path
+# The app modules are imported inside each test, not here. The test environment
+# (data folders, settings) is set up by a fixture after collection; importing the
+# app at the top of this file would load it with the wrong settings first.
 
 
 # --- StackHawk: an id too large for the database used to crash with a 500 -----------
@@ -46,27 +47,35 @@ def test_responses_carry_nosniff(client, admin_headers):
 # --- CodeQL: a file name from a request must stay inside its folder ----------------
 
 def test_psd_name_inside_the_psd_folder_resolves():
+    from app.config import settings
+    from app.services.renderer import resolve_psd_path
     resolved = resolve_psd_path("test.psd")
-    assert resolved.parent == settings.psd_dir.resolve()
+    assert resolved.parent.resolve() == settings.psd_dir.resolve()
 
 
 def test_absolute_psd_path_inside_the_folder_is_allowed():
+    from app.config import settings
+    from app.services.renderer import resolve_psd_path
     inside = settings.psd_dir / "test.psd"
-    assert resolve_psd_path(inside) == inside.resolve()
+    assert resolve_psd_path(inside).resolve() == inside.resolve()
 
 
-@pytest.mark.parametrize("name", ["../secret.psd", "../../etc/passwd", "/etc/passwd", "sub/../../x.psd"])
+@pytest.mark.parametrize("name", ["../secret.psd", "../../etc/passwd", "/etc/passwd", "sub/../../x.psd", "sub/test.psd", "missing.psd", ".."])
 def test_psd_path_that_escapes_the_folder_is_refused(name):
+    from app.services.renderer import RenderError, resolve_psd_path
     with pytest.raises(RenderError):
         resolve_psd_path(name)
 
 
-@pytest.mark.parametrize("name", ["../x.ttf", "../../etc/passwd", "/etc/passwd"])
+@pytest.mark.parametrize("name", ["../x.ttf", "../../etc/passwd", "/etc/passwd", "sub/x.ttf", "missing.ttf", ".."])
 def test_font_name_that_escapes_the_folder_is_ignored(name):
+    from app.services.renderer import resolve_font_file
     assert resolve_font_file(name) is None
 
 
 def test_symlink_inside_the_folder_cannot_lead_out(tmp_path):
+    from app.config import settings
+    from app.services.renderer import RenderError, resolve_psd_path
     outside = tmp_path / "outside.psd"
     outside.write_bytes(b"x")
     link = settings.psd_dir / "link-out.psd"
