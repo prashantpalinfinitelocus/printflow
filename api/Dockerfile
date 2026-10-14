@@ -7,7 +7,7 @@
 #   ICC profiles — needed to separate to CMYK; without one the renderer falls
 #                  back to RGB rather than writing an untagged CMYK TIFF
 #   cups-client  — the `lp` / `lpstat` binaries used to dispatch jobs
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
