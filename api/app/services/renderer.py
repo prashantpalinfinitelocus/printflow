@@ -192,6 +192,42 @@ def select_font_path(text: str, preferred: str | None = None) -> tuple[str | Non
     return best_path, "".join(sorted(chr(c) for c in best_missing))
 
 
+def _grow_to_placeholder(
+    image: Image.Image,
+    box: tuple[int, int, int, int],
+    placeholder_color: str,
+) -> tuple[int, int, int, int]:
+    """Extend `box` to cover every placeholder-coloured glyph it touches.
+
+    A `text_box` saved shorter than the mock-up (h=60 over 79px of XXXXXXXX on
+    staging) clips the glyphs, and the clipped red then lands in the ring that
+    `erase_placeholder` samples for the background — so it refuses and nothing
+    is erased. Only blobs that overlap the box itself are pulled in, and only
+    from a window a little larger than it, so nearby red artwork stays put.
+    """
+    from .placeholder import _label_runs, color_mask
+
+    x, y, w, h = box
+    if w <= 0 or h <= 0:
+        return box
+    margin = max(16, min(48, h // 2))
+    wx0, wy0 = max(0, x - margin), max(0, y - margin)
+    wx1, wy1 = min(image.width, x + w + margin), min(image.height, y + h + margin)
+    if wx1 <= wx0 or wy1 <= wy0:
+        return box
+
+    mask = color_mask(image.crop((wx0, wy0, wx1, wy1)), placeholder_color)
+    bx0, by0, bx1, by1 = x - wx0, y - wy0, x - wx0 + w - 1, y - wy0 + h - 1
+    gx0, gy0, gx1, gy1 = bx0, by0, bx1, by1
+    for b0, c0, b1, c1, _ in _label_runs(mask):
+        if b0 <= bx1 and bx0 <= b1 and c0 <= by1 and by0 <= c1:
+            # A blob reaching the window's edge continues beyond it: artwork.
+            if b0 == 0 or c0 == 0 or b1 == mask.shape[1] - 1 or c1 == mask.shape[0] - 1:
+                continue
+            gx0, gy0, gx1, gy1 = min(gx0, b0), min(gy0, c0), max(gx1, b1), max(gy1, c1)
+    return wx0 + gx0, wy0 + gy0, gx1 - gx0 + 1, gy1 - gy0 + 1
+
+
 def erase_placeholder(
     image: Image.Image,
     box: tuple[int, int, int, int],
@@ -216,7 +252,7 @@ def erase_placeholder(
     """
     import numpy as np
 
-    x, y, w, h = box
+    x, y, w, h = _grow_to_placeholder(image, box, placeholder_color)
     x0, y0 = max(0, x - pad), max(0, y - pad)
     x1, y1 = min(image.width, x + w + pad), min(image.height, y + h + pad)
     if x1 <= x0 or y1 <= y0:

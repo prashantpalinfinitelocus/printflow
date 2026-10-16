@@ -185,3 +185,36 @@ def test_a_wrong_placeholder_colour_still_protects_the_artwork():
     before = image.tobytes()
     assert erase_placeholder(image, box, "#00FF00") is False
     assert image.tobytes() == before
+
+
+def test_erasing_removes_a_placeholder_taller_than_its_box():
+    """Staging, printing *with* text: box h=60 over 79px of XXXXXXXX.
+
+    The clipped glyphs used to land in the background-sample ring, so the erase
+    refused and the order text printed on top of the red.
+    """
+    from app.services.renderer import erase_placeholder
+
+    image = canvas()
+    ink = draw_glyph_run(image, 300, 200)
+    short_box = (ink[0], ink[1], ink[2], ink[3] - 19)
+
+    assert erase_placeholder(image, short_box, RED) is True
+    assert _red_pixels_in(image, ink) == 0
+
+
+def test_erasing_a_short_box_leaves_unrelated_red_artwork_alone():
+    """Growing the box only follows glyphs the box touches."""
+    import numpy as np
+    from app.services.renderer import erase_placeholder
+
+    image = canvas()
+    ink = draw_glyph_run(image, 300, 200)
+    # A red disc nearby but not touching the box — inside the search window.
+    d = ImageDraw.Draw(image)
+    disc = (ink[0] + ink[2] + 30, ink[1], ink[0] + ink[2] + 60, ink[1] + 30)
+    d.ellipse(disc, fill=RED)
+
+    erase_placeholder(image, (ink[0], ink[1], ink[2], ink[3] - 19), RED)
+    region = np.array(image.convert("RGB").crop(disc)).astype(int)
+    assert (np.abs(region - np.array([237, 28, 36])).max(axis=2) <= 60).any()
