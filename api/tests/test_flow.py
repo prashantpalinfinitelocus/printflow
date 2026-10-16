@@ -765,6 +765,31 @@ def test_detect_placeholder_reports_a_missing_colour(client, admin_headers, seed
     assert "No pixels matching" in res.json()["detail"]
 
 
+def test_redetect_ignores_a_wrong_saved_box_size(client, admin_headers, seeded, monkeypatch):
+    """Re-detecting to fix a 616x60 box must not be rejected for not being 616x60."""
+    from app.routers import formats as formats_router
+    from app.services.placeholder import PlaceholderBox, PlaceholderError
+
+    calls = []
+
+    def fake_detect(_path, _color, *, tolerance, expected_size):
+        calls.append(expected_size)
+        if expected_size == (616, 60):
+            raise PlaceholderError("Closest blob is 616x79, more than 8% off")
+        return PlaceholderBox(x=817, y=1228, w=616, h=79, fill=0.43)
+
+    monkeypatch.setattr(formats_router, "detect_in_psd", fake_detect)
+    fmt = client.get("/print-formats", headers=admin_headers).json()[0]
+    res = client.post(
+        "/print-formats/detect-placeholder",
+        headers=admin_headers,
+        json={"psd_path": fmt["psd_path"], "color": "#ED1C24", "expected_w": 616, "expected_h": 60},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["text_box"] == {"x": 817, "y": 1228, "w": 616, "h": 79}
+    assert calls == [(616, 60), formats_router.DEFAULT_EXPECTED_SIZE]
+
+
 def test_per_format_config_round_trips(client, admin_headers):
     """The renderer reads these four columns on every print — they must persist."""
     fmt = client.get("/print-formats", headers=admin_headers).json()[0]

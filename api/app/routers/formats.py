@@ -19,7 +19,7 @@ from ..schemas import (
     PrintFormatUpdate,
     TextBox,
 )
-from ..services.placeholder import PlaceholderError, detect_in_psd
+from ..services.placeholder import DEFAULT_EXPECTED_SIZE, PlaceholderError, detect_in_psd
 from ..services.renderer import PAGE_SIZES_IN, RenderError, psd_dimensions
 
 router = APIRouter(prefix="/print-formats", tags=["print-formats"])
@@ -124,12 +124,25 @@ def detect_placeholder_box(payload: DetectPlaceholderRequest, _: AdminUser):
         else None
     )
     try:
-        box = detect_in_psd(
-            payload.psd_path,
-            payload.color,
-            tolerance=payload.tolerance,
-            expected_size=expected,
-        )
+        try:
+            box = detect_in_psd(
+                payload.psd_path,
+                payload.color,
+                tolerance=payload.tolerance,
+                expected_size=expected,
+            )
+        except PlaceholderError:
+            # The expected size is the box already on the format, which is
+            # exactly what is wrong when an admin re-detects to fix it (616x60
+            # saved over a 616x79 placeholder). Fall back to the family size.
+            if expected is None or expected == DEFAULT_EXPECTED_SIZE:
+                raise
+            box = detect_in_psd(
+                payload.psd_path,
+                payload.color,
+                tolerance=payload.tolerance,
+                expected_size=DEFAULT_EXPECTED_SIZE,
+            )
     except PlaceholderError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     except (RenderError, OSError) as exc:
