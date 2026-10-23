@@ -18,3 +18,5 @@ fonttools==4.63.0
 tifffile==2026.8.16
 # Gemini — LLM moderation of the CSV `text` column (services/moderation.py).
 google-genai==2.8.0
+# Signed URLs so the browser can upload a CSV straight to the bucket (services/signed_upload.py).
+google-cloud-storage==3.17.1

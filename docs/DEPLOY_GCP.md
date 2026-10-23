@@ -48,3 +48,15 @@ Only the default `postgres` database and user exist on the Cloud SQL instances, 
 - The bucket mounted at `/data` is the `bucket-mount-*` one, not `bucket-data`. Change `_DATA_BUCKET` if the cloud team intended the other.
 - Moderation location `global` and model `gemini-3.5-flash`.
 - The web app reaches the backend over its `run.app` URL through the VPC, which needs Private Google Access (it is on).
+
+## CSV upload and the load balancer's WAF
+
+The Cloud Armor policy (rule 110, SQL injection at sensitivity 2) returns 403 for multipart CSV bodies, so the normal upload cannot work through the load balancer. Until the cloud team exempts the upload paths, CSV Intake uploads straight to the bucket instead:
+
+1. The page asks `POST /csv/upload-url` for a signed form (V4 POST policy, 10 minutes, content type and size capped).
+2. The browser posts the file to `storage.googleapis.com` directly. A form POST needs no CORS setup on the bucket.
+3. The page imports the file from the inbox (`/csv/import-from-inbox`), retrying for a few seconds while the Cloud Storage mount catches up.
+
+This needs `PRINTFLOW_UPLOAD_BUCKET` (set by the pipelines to the mounted bucket), the IAM Credentials API, and `roles/iam.serviceAccountTokenCreator` on the runtime service account, which are all in place. Without the bucket variable the page falls back to the plain upload (local dev).
+
+`infra/load-csv.sh test|prod file.csv` copies a CSV into an inbox by hand if the page is unavailable. PSD and font uploads still go through the load balancer and are still blocked by the same rule.

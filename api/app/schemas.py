@@ -368,6 +368,21 @@ class ImportFromPathRequest(BaseModel):
     filename: str
 
 
+class UploadUrlRequest(BaseModel):
+    filename: str
+
+
+class UploadUrlOut(BaseModel):
+    """Where and how the browser may POST a CSV form directly into the bucket."""
+
+    url: str
+    #: Form fields to send before the file.
+    fields: dict[str, str]
+    #: Name the file will have in the inbox; pass it to /csv/import-from-inbox afterwards.
+    filename: str
+    expires_in: int
+
+
 # ---------- printing ----------
 
 

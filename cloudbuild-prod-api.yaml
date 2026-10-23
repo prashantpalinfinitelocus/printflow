@@ -71,6 +71,8 @@ steps:
   #  - PRINTFLOW_ROOT_PATH=/backend: the API answers under a /backend prefix and without it.
   #  - PRINTFLOW_PRINTING_ENABLED=false: Cloud Run has no CUPS. Operators use DOWNLOAD / PROOF delivery.
   #  - PRINTFLOW_MODERATION_USE_VERTEX=true: Gemini through Vertex AI using the service account (ADC).
+  #  - PRINTFLOW_UPLOAD_BUCKET: CSVs are PUT straight to this bucket's inbox/ with a signed URL, because the
+  #    load balancer's Cloud Armor policy rejects multipart CSV bodies. The bucket needs CORS for the app URL.
   #  - --set-env-vars / --set-secrets replace the whole set, so this file is the source of truth for both.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
@@ -94,7 +96,7 @@ steps:
         '--memory=8Gi',
         '--add-volume=name=printflow-data,type=cloud-storage,bucket=${_DATA_BUCKET},mount-options=implicit-dirs;metadata-cache-ttl-secs=10',
         '--add-volume-mount=volume=printflow-data,mount-path=/data',
-        '--set-env-vars=PRINTFLOW_PRINTING_ENABLED=false,PRINTFLOW_TIFF_COLORSPACE=CMYK,PRINTFLOW_MODERATION_ENABLED=true,PRINTFLOW_MODERATION_USE_VERTEX=true,PRINTFLOW_MODERATION_VERTEX_PROJECT=${_PROJECT_ID},PRINTFLOW_MODERATION_VERTEX_LOCATION=${_VERTEX_LOCATION},PRINTFLOW_MODERATION_MODEL=${_MODERATION_MODEL},PRINTFLOW_CORS_ORIGINS=${_APP_URL},PRINTFLOW_ROOT_PATH=/backend',
+        '--set-env-vars=PRINTFLOW_PRINTING_ENABLED=false,PRINTFLOW_TIFF_COLORSPACE=CMYK,PRINTFLOW_MODERATION_ENABLED=true,PRINTFLOW_MODERATION_USE_VERTEX=true,PRINTFLOW_MODERATION_VERTEX_PROJECT=${_PROJECT_ID},PRINTFLOW_MODERATION_VERTEX_LOCATION=${_VERTEX_LOCATION},PRINTFLOW_MODERATION_MODEL=${_MODERATION_MODEL},PRINTFLOW_UPLOAD_BUCKET=${_DATA_BUCKET},PRINTFLOW_CORS_ORIGINS=${_APP_URL},PRINTFLOW_ROOT_PATH=/backend',
         '--set-secrets=PRINTFLOW_JWT_SECRET=PRINTFLOW_JWT_SECRET:latest,PRINTFLOW_DATABASE_URL=PRINTFLOW_DATABASE_URL:latest'
       ]
     id: 'deploy-cloudrun'

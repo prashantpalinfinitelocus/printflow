@@ -4,7 +4,7 @@ import { useRef, useState, type DragEvent } from "react";
 
 import { Banner, EmptyState, Spinner } from "@/components/ui";
 import { dateTime } from "@/lib/format";
-import { get, post, upload } from "@/lib/client";
+import { ApiError, get, post, postToBucket, requestUploadTarget, upload } from "@/lib/client";
 import type { CsvBatch, InboxFile, PrintFormat, Store } from "@/lib/types";
 
 export function CsvIntake({
@@ -44,7 +44,17 @@ export function CsvIntake({
     setError(null);
     setResult(null);
     try {
-      const batch = await upload<CsvBatch>("/csv/upload", file);
+      const target = await requestUploadTarget(file.name);
+      let batch: CsvBatch;
+      if (target) {
+        // Straight to the bucket, then import from the inbox. The response from storage is opaque, so the
+        // file showing up in the inbox is the proof. The inbox is a Cloud Storage mount and can lag by a
+        // few seconds; retry while the API still says it is not found.
+        await postToBucket(target, file);
+        batch = await importWhenVisible(target.filename);
+      } else {
+        batch = await upload<CsvBatch>("/csv/upload", file);
+      }
       setResult(batch);
       await refresh();
     } catch (err) {
@@ -52,6 +62,19 @@ export function CsvIntake({
     } finally {
       setBusy(null);
       if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  async function importWhenVisible(filename: string): Promise<CsvBatch> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await post<CsvBatch>("/csv/import-from-inbox", { filename });
+      } catch (err) {
+        const notThereYet = err instanceof ApiError && err.status === 404;
+        if (!notThereYet) throw err;
+        if (attempt >= 9) throw new Error("The file did not reach storage. Check your connection and try again.");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
     }
   }
 
@@ -177,7 +200,7 @@ export function CsvIntake({
             <div>
               <h2 className="font-black tracking-tight">Server inbox</h2>
               <p className="text-xs text-ink-400">
-                Files dropped into <code className="font-mono">data/inbox/</code> on the API host
+                Files in the server inbox folder (<code className="font-mono">inbox/</code> in the data bucket)
               </p>
             </div>
             <button onClick={() => void refresh()} className="btn-secondary btn-sm">
@@ -185,7 +208,7 @@ export function CsvIntake({
             </button>
           </header>
           {inbox.length === 0 ? (
-            <EmptyState title="Inbox is empty" hint="Copy a CSV into data/inbox/ to see it here." icon="📥" />
+            <EmptyState title="Inbox is empty" hint="Uploaded CSVs are imported straight away. Copy a CSV into the inbox folder to see it here." icon="📥" />
           ) : (
             <ul className="divide-y divide-cream-200">
               {inbox.map((file) => (

@@ -64,6 +64,43 @@ export async function upload<T>(path: string, file: File): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** A short-lived signed form the browser may POST a CSV to, straight into the inbox bucket. */
+export interface UploadTarget {
+  url: string;
+  /** Form fields to send before the file (key, policy, signature and so on). */
+  fields: Record<string, string>;
+  /** Name the file gets in the inbox; pass it to /csv/import-from-inbox afterwards. */
+  filename: string;
+  expires_in: number;
+}
+
+/**
+ * Asks the API for a signed bucket form. Resolves to null when the server has no bucket configured
+ * (local dev), so the caller can use the normal multipart upload instead.
+ */
+export async function requestUploadTarget(filename: string): Promise<UploadTarget | null> {
+  try {
+    return await post<UploadTarget>("/csv/upload-url", { filename });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 503) return null;
+    throw err;
+  }
+}
+
+/**
+ * Sends the file to Google Cloud Storage, not through our load balancer.
+ *
+ * A multipart form POST is a "simple" cross-origin request, so it needs no CORS preflight and the
+ * bucket needs no CORS setup. The trade-off is that the response is opaque: success cannot be read
+ * here, so the caller confirms the upload by waiting for the file to appear in the inbox.
+ */
+export async function postToBucket(target: UploadTarget, file: File): Promise<void> {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(target.fields)) form.append(key, value);
+  form.append("file", file); // the file field must come last
+  await fetch(target.url, { method: "POST", body: form, mode: "no-cors" });
+}
+
 /** Artifact URLs are served through the same authenticated proxy. */
 export const artifactUrl = (orderId: number, kind: "tiff" | "pdf" | "preview", jobId?: number) =>
   proxyUrl(`/orders/${orderId}/artifact/${kind}${jobId ? `?job_id=${jobId}` : ""}`);

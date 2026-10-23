@@ -18,6 +18,8 @@ from ..schemas import (
     OrderPage,
     OrderStats,
     PrintJobOut,
+    UploadUrlOut,
+    UploadUrlRequest,
 )
 from ..services.csv_import import (
     COLUMN_ORDER,
@@ -27,6 +29,7 @@ from ..services.csv_import import (
     import_csv,
 )
 from ..services.moderation import apply_verdict, moderate_texts
+from ..services.signed_upload import UploadNotConfigured, create_inbox_upload_url
 
 router = APIRouter(tags=["orders"])
 
@@ -233,6 +236,23 @@ async def upload_csv(db: DbSession, admin: AdminUser, file: UploadFile = File(..
     except CsvFormatError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     return batch
+
+
+@router.post("/csv/upload-url", response_model=UploadUrlOut)
+def csv_upload_url(payload: UploadUrlRequest, _: AdminUser):
+    """A short-lived signed form for posting a CSV straight into the inbox bucket.
+
+    503 when no bucket is configured, which tells the page to use the multipart upload instead.
+    """
+    try:
+        signed = create_inbox_upload_url(payload.filename)
+    except UploadNotConfigured as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    return UploadUrlOut(
+        url=signed.url, fields=signed.fields, filename=signed.filename, expires_in=signed.expires_in
+    )
 
 
 @router.get("/csv/inbox", response_model=list[InboxFile])

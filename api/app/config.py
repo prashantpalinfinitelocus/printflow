@@ -49,6 +49,14 @@ class Settings(BaseSettings):
 
     # Text moderation — every imported `text` is checked by Gemini before it can
     # print. The SDK reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the environment.
+    # Direct-to-bucket CSV upload. The load balancer's WAF rejects multipart CSV bodies, so the
+    # browser PUTs the file straight to this bucket's inbox/ folder with a short-lived signed URL,
+    # then imports it from the inbox. Blank = not configured; the page falls back to the normal
+    # multipart upload (local dev and docker compose).
+    upload_bucket: str = ""
+    upload_url_ttl_seconds: int = 600
+    upload_max_bytes: int = 20 * 1024 * 1024
+
     moderation_enabled: bool = True
     moderation_model: str = "gemini-3.5-flash"
     # Deployed environments call Gemini through Vertex AI with the Cloud Run service
