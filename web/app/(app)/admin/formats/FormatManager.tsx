@@ -34,6 +34,7 @@ type Draft = {
   page_size: string;
   print_passes: number;
   white_passes: number;
+  operator_note: string;
   is_active: boolean;
 };
 
@@ -59,6 +60,7 @@ const EMPTY: Draft = {
   page_size: "",
   print_passes: 1,
   white_passes: 0,
+  operator_note: "",
   is_active: true,
 };
 
@@ -184,6 +186,7 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
       page_size: format.page_size ?? "",
       print_passes: format.print_passes ?? 1,
       white_passes: format.white_passes ?? 0,
+      operator_note: format.operator_note ?? "",
       is_active: format.is_active,
     });
     setError(null);
@@ -279,6 +282,7 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
           page_size: draft.page_size || null,
           print_passes: draft.print_passes,
           white_passes: draft.white_passes,
+          operator_note: draft.operator_note.trim() || null,
           is_active: draft.is_active,
         });
       } else {
@@ -299,6 +303,7 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
           page_size: draft.page_size || null,
           print_passes: draft.print_passes,
           white_passes: draft.white_passes,
+          operator_note: draft.operator_note.trim() || null,
           is_active: draft.is_active,
         });
       }
@@ -418,6 +423,12 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
                       {format.white_passes > 0 && ` · ${format.white_passes}× white`}
                     </dd>
                   </div>
+                  {format.operator_note && (
+                    <div>
+                      <dt className="text-ink-400">Operator reminder</dt>
+                      <dd className="font-bold text-amber-700">{format.operator_note}</dd>
+                    </div>
+                  )}
                   {format.font_path && (
                     <div>
                       <dt className="text-ink-400">Font</dt>
@@ -899,6 +910,25 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
             <p className="mt-1 text-xs text-ink-400">
               If your PSD has a layer with this name, it is hidden during composition and its bounds
               are used when no box is set above.
+            </p>
+          </div>
+
+          <div>
+            <label className="label" htmlFor="fmt-operator-note">
+              Operator reminder (optional)
+            </label>
+            <textarea
+              id="fmt-operator-note"
+              className="input"
+              rows={2}
+              maxLength={500}
+              placeholder="e.g. Load the 330ml jig and apply the gloss sticker after printing"
+              value={draft.operator_note}
+              onChange={(e) => setDraft({ ...draft, operator_note: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-ink-400">
+              A manual step this design needs. Shown next to every order using it in the print
+              queue, and again in the print dialog. Leave blank for none.
             </p>
           </div>
 

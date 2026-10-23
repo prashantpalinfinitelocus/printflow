@@ -154,6 +154,7 @@ class PrintFormatCreate(BaseModel):
     page_size: PageSize = None
     print_passes: int = Field(default=1, ge=1, le=10)
     white_passes: int = Field(default=0, ge=0, le=6)
+    operator_note: str | None = Field(default=None, max_length=500)
     is_active: bool = True
 
 
@@ -173,6 +174,7 @@ class PrintFormatUpdate(BaseModel):
     page_size: PageSize = None
     print_passes: int | None = Field(default=None, ge=1, le=10)
     white_passes: int | None = Field(default=None, ge=0, le=6)
+    operator_note: str | None = Field(default=None, max_length=500)
     is_active: bool | None = None
 
 
@@ -196,6 +198,7 @@ class PrintFormatOut(ORMModel):
     page_size: str | None
     print_passes: int
     white_passes: int
+    operator_note: str | None
     is_active: bool
 
 

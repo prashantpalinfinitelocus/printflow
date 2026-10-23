@@ -24,21 +24,17 @@ export function PrintDialog({
   order,
   onClose,
   onPrinted,
-  canReview = false,
 }: {
   order: Order | null;
   onClose: () => void;
   onPrinted: (order: Order) => void;
-  /** Admins see Approve / Reject / Re-check for held text. */
-  canReview?: boolean;
 }) {
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [printerName, setPrinterName] = useState<string>("");
   const [kind, setKind] = useState<JobKind>("TIFF");
   const [copies, setCopies] = useState(1);
 
-  const [busy, setBusy] = useState<"proof" | "print" | "review" | "blank" | null>(null);
-  const [reviewNote, setReviewNote] = useState("");
+  const [busy, setBusy] = useState<"proof" | "print" | "blank" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -68,7 +64,6 @@ export function PrintDialog({
     setLastJob(null);
     setCopies(1);
     setKind("TIFF");
-    setReviewNote("");
     void loadHistory(orderId);
 
     get<Printer[]>("/printers")
@@ -153,51 +148,6 @@ export function PrintDialog({
   // Held text must not even be proofed: the whole point is that it never lands
   // on brand artwork until an admin has looked at it.
   const held = isHeld(order.moderation_status);
-  const reviewable = held || order.moderation_status === "APPROVED";
-
-  async function review(decision: "APPROVE" | "REJECT") {
-    if (!order) return;
-    setBusy("review");
-    setError(null);
-    setNotice(null);
-    try {
-      const updated = await post<Order>(`/orders/${order.id}/moderation/review`, {
-        decision,
-        note: reviewNote.trim() || null,
-      });
-      onPrinted(updated);
-      setNotice(
-        decision === "APPROVE"
-          ? "Text approved. The order can now be printed."
-          : "Text rejected. The order stays blocked from printing.",
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Review failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function recheck() {
-    if (!order) return;
-    setBusy("review");
-    setError(null);
-    setNotice(null);
-    try {
-      const updated = await post<Order>(`/orders/${order.id}/moderation/recheck`);
-      onPrinted(updated);
-      setNotice(
-        isHeld(updated.moderation_status)
-          ? `Re-checked: still held (${updated.moderation_status}).`
-          : "Re-checked: the text is clear.",
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Re-check failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   const previewJobId = lastJob?.id ?? history.find((j) => j.status !== "FAILED")?.id;
   const noPrinters = printers.length === 0;
   const printLocked = busy !== null || held;
@@ -341,6 +291,12 @@ export function PrintDialog({
           {error && <Banner kind="error">{error}</Banner>}
           {notice && <Banner kind="success">{notice}</Banner>}
           {warning && <Banner kind="warning">{warning}</Banner>}
+          {order.print_format?.operator_note && (
+            <Banner kind="info">
+              <p className="font-bold">Reminder for this template</p>
+              <p className="mt-1 whitespace-pre-line">{order.print_format.operator_note}</p>
+            </Banner>
+          )}
           {(held || order.moderation_status === "APPROVED") && (
             <Banner kind={held ? (order.moderation_status === "REJECTED" ? "error" : "warning") : "info"}>
               <p className="font-bold">
@@ -382,41 +338,6 @@ export function PrintDialog({
                       ? `Download ${kind} without the text`
                       : `Print ${kind} without the text`}
                   </button>
-                </div>
-              )}
-              {canReview && reviewable && (
-                <div className="mt-3 space-y-2">
-                  <input
-                    className="input text-sm"
-                    placeholder="Review note (optional)"
-                    value={reviewNote}
-                    onChange={(e) => setReviewNote(e.target.value)}
-                    aria-label="Review note"
-                  />
-                  <div className="grid grid-cols-3 gap-2">
-                    {held && (
-                      <button
-                        onClick={() => void review("APPROVE")}
-                        disabled={busy !== null}
-                        className="btn-primary btn-sm"
-                      >
-                        {busy === "review" && <Spinner />}
-                        Approve
-                      </button>
-                    )}
-                    {order.moderation_status !== "REJECTED" && (
-                      <button
-                        onClick={() => void review("REJECT")}
-                        disabled={busy !== null}
-                        className="btn-secondary btn-sm"
-                      >
-                        Reject
-                      </button>
-                    )}
-                    <button onClick={() => void recheck()} disabled={busy !== null} className="btn-secondary btn-sm">
-                      Re-check
-                    </button>
-                  </div>
                 </div>
               )}
             </Banner>

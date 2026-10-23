@@ -65,6 +65,7 @@ def create_format(payload: PrintFormatCreate, db: DbSession, _: AdminUser):
         page_size=payload.page_size,
         print_passes=payload.print_passes,
         white_passes=payload.white_passes,
+        operator_note=(payload.operator_note or "").strip() or None,
         is_active=payload.is_active,
     )
     db.add(fmt)
@@ -89,6 +90,8 @@ def update_format(format_id: int, payload: PrintFormatUpdate, db: DbSession, _: 
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY, f"Cannot read PSD: {exc}"
             ) from exc
+    if "operator_note" in data:
+        data["operator_note"] = (data["operator_note"] or "").strip() or None
     for field, value in data.items():
         setattr(fmt, field, value)
 

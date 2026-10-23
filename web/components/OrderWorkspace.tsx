@@ -26,12 +26,9 @@ const PAGE_SIZE = 25;
 export function OrderWorkspace({
   showStore = false,
   stores = [],
-  canReview = false,
 }: {
   showStore?: boolean;
   stores?: Store[];
-  /** Admins can release or refuse orders the moderation gate held. */
-  canReview?: boolean;
 }) {
   const [status, setStatus] = useState<Filter>("PENDING");
   const [storeId, setStoreId] = useState<string>("");
@@ -205,7 +202,6 @@ export function OrderWorkspace({
           void load();
         }}
         onPrinted={applyOrderUpdate}
-        canReview={canReview}
       />
     </div>
   );

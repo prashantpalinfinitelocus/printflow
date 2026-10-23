@@ -69,6 +69,14 @@ export function OrderTable({
                 </td>
                 <td className="td">
                   <span className="chip bg-cream-200 text-ink-600">{order.print_format?.code}</span>
+                  {order.print_format?.operator_note && (
+                    <span
+                      className="mt-1 block max-w-[220px] truncate text-[11px] font-bold text-sky-700"
+                      title={order.print_format.operator_note}
+                    >
+                      ⚑ {order.print_format.operator_note}
+                    </span>
+                  )}
                 </td>
                 <td className="td text-right font-bold whitespace-nowrap">{money(order.amount)}</td>
                 <td className="td">
