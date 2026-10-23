@@ -219,16 +219,19 @@ export function CsvIntake({
           </header>
           <div className="px-5 py-4">
             <pre className="scroll-slim overflow-x-auto rounded-xl bg-ink px-4 py-3 text-xs leading-relaxed text-cream">
-{`order_id,store_id,amount,print_format,text
-ORD-1001,${stores[0]?.code ?? "MUM01"},499.00,${formats[0]?.code ?? "GIFT_TAG"},"Happy Birthday, Riya!"`}
+{`order_id,store_id,store_name,city,sku_code,brand,print_format,text
+ORD-1001,${stores[0]?.code ?? "MUM01"},Mumbai Flagship,Mumbai,SKU-99812,Thums Up,${formats[0]?.code ?? "GIFT_TAG"},"Happy Birthday, Riya!"`}
             </pre>
             <dl className="mt-4 space-y-2.5 text-sm">
               {[
                 ["order_id", "Unique across the system. Duplicates are skipped."],
                 ["store_id", "Must match a store code exactly."],
-                ["amount", "Decimal. Shown in the queue, not printed."],
+                ["store_name", "Optional. The store's name as the upstream system knows it — recorded, not used for routing."],
+                ["city", "Optional. Recorded on the order."],
+                ["sku_code", "The product SKU."],
+                ["brand", "The product brand."],
                 ["print_format", "Must match a print format code (the PSD template)."],
-                ["text", "The text stamped into the template's text box. Checked by Gemini for politics, abuse, competitor brands and similar; held rows import but cannot print until an admin approves them."],
+                ["text", "The text stamped into the template's text box. Checked by Gemini for politics, abuse, competitor brands and similar; held rows import but cannot be printed with their text."],
               ].map(([field, meaning]) => (
                 <div key={field} className="flex gap-3">
                   <dt className="w-28 shrink-0 font-mono text-xs font-bold text-brand-600">
