@@ -217,7 +217,7 @@ cd ..
 WEB_API_BASE_URL=http://host.docker.internal:8000 docker compose up -d --no-deps web
 ```
 
-`curl localhost:8000/health` should now list your printers.
+`curl localhost:8000/health` returns `{"status":"ok"}`. To see the printers, log in as an admin and call `GET /printers` (the web app shows them in the printer drop-down).
 
 On **Linux**, add `network_mode: host` to the `api` service or mount
 `/var/run/cups/cups.sock`, and server printing works in the container.
@@ -290,8 +290,9 @@ steps 3–5.
 curl -s http://localhost:8000/health
 ```
 
-`"printers":[]` and `"printing_available":false` are expected in Docker — see
-[Printing](#printing).
+It answers `{"status":"ok"}`. `curl -s http://localhost:8000/health/ready` also checks the
+database. Printers are not listed there; with no CUPS in Docker the web app simply shows no
+printer drop-down and uses download mode — see [Printing](#printing).
 
 **c. Tests pass** — `./docker-test.sh` → **43 passed**.
 

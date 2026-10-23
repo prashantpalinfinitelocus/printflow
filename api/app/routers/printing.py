@@ -10,6 +10,7 @@ from ..config import settings
 from ..deps import CurrentUser, DbSession
 from ..models import HOLD_STATUSES, JobKind, JobStatus, Order, OrderStatus, PrintJob, Role
 from ..schemas import (
+    RowId,
     Delivery,
     OrderOut,
     PrinterOut,
@@ -30,7 +31,7 @@ ARTIFACT_MEDIA = {
 }
 
 
-def _load_order(db, user, order_id: int) -> Order:
+def _load_order(db, user, order_id: RowId) -> Order:
     stmt = select(Order).where(Order.id == order_id)
     if user.role != Role.ADMIN:
         stmt = stmt.where(Order.store_id == (user.store_id or -1))
@@ -60,7 +61,7 @@ def list_printers(_: CurrentUser):
 
 
 @router.post("/orders/{order_id}/print", response_model=PrintResponse)
-def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: CurrentUser):
+def print_order(order_id: RowId, payload: PrintRequest, db: DbSession, user: CurrentUser):
     """Render the PSD + text, then deliver it according to `delivery`.
 
     PRINTER dispatches to CUPS from the server. DOWNLOAD marks the order printed
@@ -250,7 +251,7 @@ def print_order(order_id: int, payload: PrintRequest, db: DbSession, user: Curre
 
 
 @router.get("/orders/{order_id}/artifact/{kind}")
-def get_artifact(order_id: int, kind: str, db: DbSession, user: CurrentUser, job_id: int | None = None):
+def get_artifact(order_id: RowId, kind: str, db: DbSession, user: CurrentUser, job_id: RowId | None = None):
     if kind not in ARTIFACT_SUFFIX:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown artifact type")
     order = _load_order(db, user, order_id)

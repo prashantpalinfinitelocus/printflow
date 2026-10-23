@@ -1,0 +1,113 @@
+# Diet Coke PrintFlow API (FastAPI) -> Cloud Run backend, TEST.
+# Infra: GCP project ai0017287-dca-diet-coke-test (REQNEW00737, app id AI0017287, code dca), region asia-northeast1.
+# Built on the private worker pool; the Cloud Build service account may only get/update EXISTING Cloud Run
+# services (custom role: run.services.get + run.services.update), so this uses `gcloud run services update`,
+# never `deploy`. Ingress, VPC egress, Cloud SQL, runtime service account and the public invoker binding are
+# already set by the cloud team's Terraform and are left untouched here.
+#
+# Prerequisites (one time, see infra/bootstrap-secrets.sh): Secret Manager secrets PRINTFLOW_JWT_SECRET and
+# PRINTFLOW_DATABASE_URL must exist in this project before the first run, or the update fails.
+substitutions:
+  _REGION: asia-northeast1
+  _PROJECT_ID: ai0017287-dca-diet-coke-test
+  _REPO_NAME: tccc-dca-test-cloud-build-repo
+  _API_SERVICE: tccc-dca-test-cloudrun-backend
+  # Bucket mounted at /data through GCS FUSE (prefixes psd/, fonts/, inbox/, output/).
+  _DATA_BUCKET: tccc-dca-test-bucket-mount-500ced56
+  # Public URL of the web app (CORS only; browsers reach the API through the web proxy).
+  _APP_URL: https://diet-coke-test.coke2home.com
+  _MAX_INSTANCES: '3'
+  # Moderation runs on Vertex AI with the Cloud Run service account (no API key).
+  _MODERATION_MODEL: gemini-3.5-flash
+  _VERTEX_LOCATION: global
+
+steps:
+  # Step 1: Pull existing image for cache (ignore errors if it doesn't exist)
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest || exit 0']
+    id: 'pull-cache'
+
+  # Step 2: Build the image (build context is ./api)
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'api'
+    args:
+      [
+        'build',
+        '-f',
+        'Dockerfile',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest',
+        '--cache-from',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest',
+        '.'
+      ]
+    id: 'build-image'
+    waitFor: ['pull-cache']
+
+  # Step 3: Push the SHA-tagged image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA']
+    id: 'push-sha'
+    waitFor: ['build-image']
+
+  # Step 4: Push latest (cache source for the next build)
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest']
+    id: 'push-latest'
+    waitFor: ['build-image']
+
+  # Step 5: Update the existing Cloud Run service
+  #  - port=8000 and an explicit startup probe: the provisioned service probes TCP 8080 (hello image).
+  #    /health only returns {"status":"ok"}; failureThreshold x period gives the app 4 minutes to start.
+  #  - gen2 + Cloud Storage volume at /data (GCS FUSE): container disks are lost on restart. The database
+  #    stores absolute paths under /data/output, so the mount point must stay /data. Writes are staged in
+  #    instance memory until the file closes, so keep memory headroom for large TIFFs.
+  #  - concurrency=4, 4 vCPU / 8 GiB: each render holds large numpy/PIL arrays. Tune after a load test.
+  #  - timeout=600: render runs synchronously inside POST /orders/{id}/print; CSV moderation is in-request.
+  #    Keep the load balancer backend timeout at 600s too.
+  #  - PRINTFLOW_ROOT_PATH=/backend: the API answers under a /backend prefix and without it.
+  #  - PRINTFLOW_PRINTING_ENABLED=false: Cloud Run has no CUPS. Operators use DOWNLOAD / PROOF delivery.
+  #  - PRINTFLOW_MODERATION_USE_VERTEX=true: Gemini through Vertex AI using the service account (ADC).
+  #  - --set-env-vars / --set-secrets replace the whole set, so this file is the source of truth for both.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      [
+        'run',
+        'services',
+        'update',
+        '${_API_SERVICE}',
+        '--project=${_PROJECT_ID}',
+        '--region=${_REGION}',
+        '--image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA',
+        '--execution-environment=gen2',
+        '--port=8000',
+        '--startup-probe=httpGet.path=/health,httpGet.port=8000,initialDelaySeconds=0,periodSeconds=10,timeoutSeconds=5,failureThreshold=24',
+        '--min-instances=1',
+        '--max-instances=${_MAX_INSTANCES}',
+        '--concurrency=4',
+        '--timeout=600',
+        '--cpu=4',
+        '--memory=8Gi',
+        '--add-volume=name=printflow-data,type=cloud-storage,bucket=${_DATA_BUCKET},mount-options=implicit-dirs;metadata-cache-ttl-secs=10',
+        '--add-volume-mount=volume=printflow-data,mount-path=/data',
+        '--set-env-vars=PRINTFLOW_PRINTING_ENABLED=false,PRINTFLOW_TIFF_COLORSPACE=CMYK,PRINTFLOW_MODERATION_ENABLED=true,PRINTFLOW_MODERATION_USE_VERTEX=true,PRINTFLOW_MODERATION_VERTEX_PROJECT=${_PROJECT_ID},PRINTFLOW_MODERATION_VERTEX_LOCATION=${_VERTEX_LOCATION},PRINTFLOW_MODERATION_MODEL=${_MODERATION_MODEL},PRINTFLOW_CORS_ORIGINS=${_APP_URL},PRINTFLOW_ROOT_PATH=/backend',
+        '--set-secrets=PRINTFLOW_JWT_SECRET=PRINTFLOW_JWT_SECRET:latest,PRINTFLOW_DATABASE_URL=PRINTFLOW_DATABASE_URL:latest'
+      ]
+    id: 'deploy-cloudrun'
+    waitFor: ['push-sha', 'push-latest']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:$SHORT_SHA'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_API_SERVICE}:latest'
+
+timeout: 1800s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  # workerPool cannot take substitutions, so it is written out per environment.
+  workerPool: projects/ai0017287-dca-diet-coke-test/locations/asia-northeast1/workerPools/tccc-dca-test-private-workerpool
+  env:
+    - 'DOCKER_BUILDKIT=0'

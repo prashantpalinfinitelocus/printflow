@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 
 from ..deps import AdminUser, DbSession
 from ..models import CsvBatch, Order, PrintJob, Role, Store, User
-from ..schemas import UserCreate, UserOut, UserUpdate
+from ..schemas import RowId, UserCreate, UserOut, UserUpdate
 from ..security import hash_password
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -21,7 +21,7 @@ def _validate_store_assignment(db, role: Role, store_id: int | None) -> None:
 
 
 @router.get("", response_model=list[UserOut])
-def list_users(db: DbSession, _: AdminUser, store_id: int | None = None, q: str | None = None):
+def list_users(db: DbSession, _: AdminUser, store_id: RowId | None = None, q: str | None = None):
     stmt = select(User).order_by(User.id)
     if store_id is not None:
         stmt = stmt.where(User.store_id == store_id)
@@ -52,7 +52,7 @@ def create_user(payload: UserCreate, db: DbSession, _: AdminUser):
 
 
 @router.patch("/{user_id}", response_model=UserOut)
-def update_user(user_id: int, payload: UserUpdate, db: DbSession, admin: AdminUser):
+def update_user(user_id: RowId, payload: UserUpdate, db: DbSession, admin: AdminUser):
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
@@ -80,7 +80,7 @@ def update_user(user_id: int, payload: UserUpdate, db: DbSession, admin: AdminUs
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: DbSession, admin: AdminUser):
+def delete_user(user_id: RowId, db: DbSession, admin: AdminUser):
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")

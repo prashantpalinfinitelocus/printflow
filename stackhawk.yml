@@ -1,0 +1,48 @@
+# StackHawk DAST configuration for Diet Coke (PrintFlow) API.
+# The browser never talks to the API directly (it goes through the Next.js proxy),
+# so the API is the high-value target. Scan it with a seeded test user.
+#
+# Before scanning, refresh the spec copy (adds the `servers` entry HawkScan needs):
+#   python3 -c "import json,urllib.request as u;d=json.load(u.urlopen('http://localhost:8000/openapi.json'));d['servers']=[{'url':'http://localhost:8000'}];json.dump(d,open('stackhawk-openapi.json','w'))"
+# Local run (app started with `docker compose up -d`, then `python -m scripts.seed`):
+#   SCAN_USERNAME=admin@printflow.local SCAN_PASSWORD=<seeded password> hawk scan
+# Never put real credentials in this file. Use a throwaway test user in a test environment.
+app:
+  applicationId: ${APP_ID:7773c38a-765e-436e-9399-a1cccf82cc5c}
+  env: ${APP_ENV:Development}
+  host: ${APP_HOST:http://localhost:8000}
+  openApiConf:
+    # Patched copy of /openapi.json with a `servers` entry (FastAPI omits it and HawkScan fails on that).
+    # Regenerate before a scan: see the comment at the top of this file.
+    filePath: stackhawk-openapi.json
+  authentication:
+    usernamePassword:
+      type: JSON
+      loginPath: /auth/login
+      usernameField: email
+      passwordField: password
+      scanUsername: ${SCAN_USERNAME}
+      scanPassword: ${SCAN_PASSWORD}
+    tokenExtraction:
+      type: TOKEN_PATH
+      value: "$.access_token"
+    tokenAuthorization:
+      type: HEADER
+      value: Authorization
+      tokenType: Bearer
+    testPath:
+      path: /auth/me
+      success: ".*200.*"
+
+hawk:
+  failureThreshold: high
+
+tags:
+  - name: _STACKHAWK_AGENT
+    value: ${HAWK_AGENT:none}
+  - name: _STACKHAWK_GIT_COMMIT_SHA
+    value: ${COMMIT_SHA:none}
+  - name: _STACKHAWK_GIT_BRANCH
+    value: ${BRANCH_NAME:none}
+  - name: git_origin
+    value: infinite-locus-product/cokeprintflow

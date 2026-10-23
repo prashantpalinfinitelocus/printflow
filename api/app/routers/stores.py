@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 
 from ..deps import AdminUser, CurrentUser, DbSession
 from ..models import Order, OrderStatus, Role, Store, User
-from ..schemas import StoreCreate, StoreOut, StoreUpdate, StoreWithStats
+from ..schemas import RowId, StoreCreate, StoreOut, StoreUpdate, StoreWithStats
 
 router = APIRouter(prefix="/stores", tags=["stores"])
 
@@ -52,7 +52,7 @@ def create_store(payload: StoreCreate, db: DbSession, _: AdminUser):
 
 
 @router.patch("/{store_id}", response_model=StoreOut)
-def update_store(store_id: int, payload: StoreUpdate, db: DbSession, _: AdminUser):
+def update_store(store_id: RowId, payload: StoreUpdate, db: DbSession, _: AdminUser):
     store = db.get(Store, store_id)
     if store is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Store not found")
@@ -64,7 +64,7 @@ def update_store(store_id: int, payload: StoreUpdate, db: DbSession, _: AdminUse
 
 
 @router.delete("/{store_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_store(store_id: int, db: DbSession, _: AdminUser):
+def delete_store(store_id: RowId, db: DbSession, _: AdminUser):
     store = db.get(Store, store_id)
     if store is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Store not found")

@@ -1,0 +1,105 @@
+# Diet Coke PrintFlow web (Next.js 15 standalone) -> Cloud Run frontend, TEST.
+# Infra: GCP project ai0017287-dca-diet-coke-test (REQNEW00737, app id AI0017287, code dca), region asia-northeast1.
+# Built on the private worker pool; the Cloud Build service account may only get/update EXISTING Cloud Run
+# services (custom role: run.services.get + run.services.update), so this uses `gcloud run services update`,
+# never `deploy`. Ingress, VPC egress, Cloud SQL, runtime service account and the public invoker binding are
+# already set by the cloud team's Terraform and are left untouched here.
+#
+# No NEXT_PUBLIC_* values exist, so there are no build args: one image, configured at runtime.
+# API_BASE_URL is resolved from the deployed backend service, so run the API pipeline first.
+# Only this service is behind the load balancer; the browser never calls the backend directly.
+substitutions:
+  _REGION: asia-northeast1
+  _PROJECT_ID: ai0017287-dca-diet-coke-test
+  _REPO_NAME: tccc-dca-test-cloud-build-repo
+  _WEB_SERVICE: tccc-dca-test-cloudrun-frontend
+  _API_SERVICE: tccc-dca-test-cloudrun-backend
+  _MAX_INSTANCES: '3'
+
+steps:
+  # Step 1: Pull existing image for cache (ignore errors if it doesn't exist)
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest || exit 0']
+    id: 'pull-cache'
+
+  # Step 2: Build the image (build context is ./web)
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'web'
+    args:
+      [
+        'build',
+        '-f',
+        'Dockerfile',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA',
+        '-t',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest',
+        '--cache-from',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest',
+        '.'
+      ]
+    id: 'build-image'
+    waitFor: ['pull-cache']
+
+  # Step 3: Push the SHA-tagged image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA']
+    id: 'push-sha'
+    waitFor: ['build-image']
+
+  # Step 4: Push latest
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest']
+    id: 'push-latest'
+    waitFor: ['build-image']
+
+  # Step 5: Look up the URL of the backend service. The backend only accepts internal and load balancer
+  # traffic, and this service egresses through the VPC (Private Google Access on), so the call is internal.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        url=$$(gcloud run services describe ${_API_SERVICE} --region=${_REGION} --project=${_PROJECT_ID} --format='value(status.url)')
+        test -n "$$url" || { echo 'backend service has no URL, run the API pipeline first' >&2; exit 1; }
+        echo "$$url" > /workspace/api_url
+    id: 'resolve-api-url'
+    waitFor: ['pull-cache']
+
+  # Step 6: Update the existing Cloud Run service
+  #  - port=3000: Next.js standalone listens on 3000 and the provisioned service probes TCP 8080 (hello image),
+  #    so the startup probe is replaced as well.
+  #  - 1 vCPU / 1536 MiB: the provisioned default (512 MiB) is too small for Next.js server rendering.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run services update ${_WEB_SERVICE} \
+          --project=${_PROJECT_ID} \
+          --region=${_REGION} \
+          --image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA \
+          --execution-environment=gen2 \
+          --port=3000 \
+          --startup-probe=httpGet.path=/login,httpGet.port=3000,initialDelaySeconds=0,periodSeconds=10,timeoutSeconds=5,failureThreshold=24 \
+          --min-instances=1 \
+          --max-instances=${_MAX_INSTANCES} \
+          --timeout=600 \
+          --cpu=1 \
+          --memory=1536Mi \
+          --set-env-vars=API_BASE_URL=$$(cat /workspace/api_url)
+    id: 'deploy-cloudrun'
+    waitFor: ['push-sha', 'push-latest', 'resolve-api-url']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:latest'
+
+timeout: 1800s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  # workerPool cannot take substitutions, so it is written out per environment.
+  workerPool: projects/ai0017287-dca-diet-coke-test/locations/asia-northeast1/workerPools/tccc-dca-test-private-workerpool
+  env:
+    - 'DOCKER_BUILDKIT=0'

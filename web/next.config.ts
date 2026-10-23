@@ -7,6 +7,21 @@ const config: NextConfig = {
   // Bundles only the files the server actually needs, so the Docker runtime
   // stage can drop node_modules entirely.
   output: "standalone",
+  // Baseline browser protections on every response, including the proxied
+  // TIFF/PDF/PNG downloads: no content-type sniffing, no framing, and no
+  // full-URL referrer leaks.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
   // API_BASE_URL is deliberately NOT declared in `env`: that inlines the value
   // at build time, which would bake a localhost address into the image. It is
   // read at runtime in lib/session.ts, which is server-only.

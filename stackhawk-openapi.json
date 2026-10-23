@@ -1,0 +1,3643 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "PrintFlow API",
+  "description": "Store-scoped print order queue: CSV intake, PSD composition, TIFF/PDF output, CUPS dispatch.",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/health": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "title": "Response Health Health Get"
+        }
+       }
+      }
+     }
+    },
+    "parameters": []
+   }
+  },
+  "/auth/login": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Login",
+    "operationId": "login_auth_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "parameters": []
+   }
+  },
+  "/auth/me": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Me",
+    "operationId": "me_auth_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserOut"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/stores": {
+   "get": {
+    "tags": [
+     "stores"
+    ],
+    "summary": "List Stores",
+    "description": "Admins see every store. Operators see only their own (needed for headers/filters).",
+    "operationId": "list_stores_stores_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "include_inactive",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Include Inactive"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/StoreWithStats"
+         },
+         "title": "Response List Stores Stores Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "stores"
+    ],
+    "summary": "Create Store",
+    "operationId": "create_store_stores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StoreCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StoreOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "parameters": []
+   }
+  },
+  "/stores/{store_id}": {
+   "patch": {
+    "tags": [
+     "stores"
+    ],
+    "summary": "Update Store",
+    "operationId": "update_store_stores__store_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "store_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Store Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StoreUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StoreOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "stores"
+    ],
+    "summary": "Delete Store",
+    "operationId": "delete_store_stores__store_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "store_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Store Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/users": {
+   "get": {
+    "tags": [
+     "users"
+    ],
+    "summary": "List Users",
+    "operationId": "list_users_users_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "store_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Store Id"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/UserOut"
+         },
+         "title": "Response List Users Users Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "users"
+    ],
+    "summary": "Create User",
+    "operationId": "create_user_users_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UserCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "parameters": []
+   }
+  },
+  "/users/{user_id}": {
+   "patch": {
+    "tags": [
+     "users"
+    ],
+    "summary": "Update User",
+    "operationId": "update_user_users__user_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "User Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UserUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "users"
+    ],
+    "summary": "Delete User",
+    "operationId": "delete_user_users__user_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "User Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/print-formats": {
+   "get": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "List Formats",
+    "operationId": "list_formats_print_formats_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "include_inactive",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Include Inactive"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PrintFormatOut"
+         },
+         "title": "Response List Formats Print Formats Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "Create Format",
+    "operationId": "create_format_print_formats_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PrintFormatCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PrintFormatOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "parameters": []
+   }
+  },
+  "/print-formats/{format_id}": {
+   "patch": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "Update Format",
+    "operationId": "update_format_print_formats__format_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "format_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Format Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PrintFormatUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PrintFormatOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "Delete Format",
+    "operationId": "delete_format_print_formats__format_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "format_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Format Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/print-formats/detect-placeholder": {
+   "post": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "Detect Placeholder Box",
+    "description": "Find the baked-in placeholder in a design and return its box.\n\nLets an admin place the text box by pointing at the placeholder's colour\ninstead of reading coordinates out of Photoshop.",
+    "operationId": "detect_placeholder_box_print_formats_detect_placeholder_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DetectPlaceholderRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DetectPlaceholderResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/print-formats/fit-text": {
+   "post": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "Fit Text Preview",
+    "description": "Report what a box will actually produce, and what a size actually needs.\n\n`font_size` is a ceiling in pixels that the renderer shrinks from, so a\n79px-tall box caps the type at 68px however large the format asks for. At\n508 dpi that is 9.6pt \u2014 nothing like what \"68\" suggests, which is why the\nfield reads as broken. `min_box_*` is the half an admin can act on.",
+    "operationId": "fit_text_preview_print_formats_fit_text_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FitTextRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FitTextResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/print-formats/page-sizes": {
+   "get": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "List Page Sizes",
+    "description": "Paper sizes a format can lay its label out on, for the format editor.",
+    "operationId": "list_page_sizes_print_formats_page_sizes_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PageSizeOut"
+         },
+         "type": "array",
+         "title": "Response List Page Sizes Print Formats Page Sizes Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/print-formats/fonts": {
+   "get": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "List Fonts",
+    "description": "Font files installed in the fonts directory, for the format editor.",
+    "operationId": "list_fonts_print_formats_fonts_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/FontOut"
+         },
+         "type": "array",
+         "title": "Response List Fonts Print Formats Fonts Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/print-formats/upload-font": {
+   "post": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "Upload Font",
+    "operationId": "upload_font_print_formats_upload_font_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_font_print_formats_upload_font_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/print-formats/upload-psd": {
+   "post": {
+    "tags": [
+     "print-formats"
+    ],
+    "summary": "Upload Psd",
+    "description": "Store a .psd in the template directory and report its pixel dimensions.",
+    "operationId": "upload_psd_print_formats_upload_psd_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_psd_print_formats_upload_psd_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/orders": {
+   "get": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "List Orders",
+    "operationId": "list_orders_orders_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/OrderStatus"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "name": "moderation",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/ModerationStatus"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Moderation"
+      }
+     },
+     {
+      "name": "on_hold",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "On Hold"
+      }
+     },
+     {
+      "name": "store_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Store Id"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     },
+     {
+      "name": "page",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "default": 1,
+       "title": "Page"
+      }
+     },
+     {
+      "name": "page_size",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 200,
+       "minimum": 1,
+       "default": 25,
+       "title": "Page Size"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderPage"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/orders/stats": {
+   "get": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Order Stats",
+    "operationId": "order_stats_orders_stats_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "store_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Store Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderStats"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/orders/{order_id}": {
+   "get": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Get Order",
+    "operationId": "get_order_orders__order_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "order_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Order Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/orders/{order_id}/moderation/review": {
+   "post": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Review Moderation",
+    "description": "Release or refuse an order the moderation gate held.\n\nThe model's own reason and categories are kept so the audit trail shows what\nwas flagged and who overrode it. A decision can be changed later by\nreviewing again.",
+    "operationId": "review_moderation_orders__order_id__moderation_review_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "order_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Order Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ModerationReviewRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/orders/{order_id}/moderation/recheck": {
+   "post": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Recheck Moderation",
+    "description": "Run the model again on one order \u2014 after an outage, or a prompt change.",
+    "operationId": "recheck_moderation_orders__order_id__moderation_recheck_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "order_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Order Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/orders/{order_id}/jobs": {
+   "get": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Order Jobs",
+    "operationId": "order_jobs_orders__order_id__jobs_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "order_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Order Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PrintJobOut"
+         },
+         "title": "Response Order Jobs Orders  Order Id  Jobs Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/csv/upload": {
+   "post": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Upload Csv",
+    "operationId": "upload_csv_csv_upload_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_csv_csv_upload_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CsvBatchOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/csv/inbox": {
+   "get": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "List Inbox",
+    "description": "CSVs sitting in the watched drop directory (data/inbox).",
+    "operationId": "list_inbox_csv_inbox_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/InboxFile"
+         },
+         "type": "array",
+         "title": "Response List Inbox Csv Inbox Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/csv/import-from-inbox": {
+   "post": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Import From Inbox",
+    "operationId": "import_from_inbox_csv_import_from_inbox_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportFromPathRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CsvBatchOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/csv/batches": {
+   "get": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "List Batches",
+    "operationId": "list_batches_csv_batches_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CsvBatchOut"
+         },
+         "title": "Response List Batches Csv Batches Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/csv/template": {
+   "get": {
+    "tags": [
+     "orders"
+    ],
+    "summary": "Csv Template",
+    "description": "The exact header the importer expects, plus one illustrative row.\n\nDriven off `COLUMN_ORDER` rather than a second hand-written list, so the\nadvertised template cannot drift away from what the parser accepts.",
+    "operationId": "csv_template_csv_template_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "parameters": []
+   }
+  },
+  "/printers": {
+   "get": {
+    "tags": [
+     "printing"
+    ],
+    "summary": "List Printers",
+    "operationId": "list_printers_printers_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PrinterOut"
+         },
+         "type": "array",
+         "title": "Response List Printers Printers Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": []
+   }
+  },
+  "/orders/{order_id}/print": {
+   "post": {
+    "tags": [
+     "printing"
+    ],
+    "summary": "Print Order",
+    "description": "Render the PSD + text, then deliver it according to `delivery`.\n\nPRINTER dispatches to CUPS from the server. DOWNLOAD marks the order printed\nand leaves the operator to print the file locally \u2014 the only route that works\nwhen the app runs in the cloud and the printer is attached to the operator's\nown machine. PROOF renders the artifacts and leaves the order status alone.\n\nBoth PRINTER and DOWNLOAD flip the order to PRINTED and, if it was already\nPRINTED, count as a reprint.",
+    "operationId": "print_order_orders__order_id__print_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "order_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Order Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PrintRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PrintResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/orders/{order_id}/artifact/{kind}": {
+   "get": {
+    "tags": [
+     "printing"
+    ],
+    "summary": "Get Artifact",
+    "operationId": "get_artifact_orders__order_id__artifact__kind__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "order_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Order Id"
+      }
+     },
+     {
+      "name": "kind",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Kind"
+      }
+     },
+     {
+      "name": "job_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Job Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Body_upload_csv_csv_upload_post": {
+    "properties": {
+     "file": {
+      "type": "string",
+      "format": "binary",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_csv_csv_upload_post"
+   },
+   "Body_upload_font_print_formats_upload_font_post": {
+    "properties": {
+     "file": {
+      "type": "string",
+      "format": "binary",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_font_print_formats_upload_font_post"
+   },
+   "Body_upload_psd_print_formats_upload_psd_post": {
+    "properties": {
+     "file": {
+      "type": "string",
+      "format": "binary",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_psd_print_formats_upload_psd_post"
+   },
+   "CsvBatchOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "filename": {
+      "type": "string",
+      "title": "Filename"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source"
+     },
+     "total_rows": {
+      "type": "integer",
+      "title": "Total Rows"
+     },
+     "imported": {
+      "type": "integer",
+      "title": "Imported"
+     },
+     "skipped": {
+      "type": "integer",
+      "title": "Skipped"
+     },
+     "flagged": {
+      "type": "integer",
+      "title": "Flagged",
+      "default": 0
+     },
+     "errors": {
+      "items": {},
+      "type": "array",
+      "title": "Errors"
+     },
+     "moderation_prompt_tokens": {
+      "type": "integer",
+      "title": "Moderation Prompt Tokens",
+      "default": 0
+     },
+     "moderation_output_tokens": {
+      "type": "integer",
+      "title": "Moderation Output Tokens",
+      "default": 0
+     },
+     "moderation_thought_tokens": {
+      "type": "integer",
+      "title": "Moderation Thought Tokens",
+      "default": 0
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "uploaded_by": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/UserOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "filename",
+     "source",
+     "total_rows",
+     "imported",
+     "skipped",
+     "errors",
+     "created_at"
+    ],
+    "title": "CsvBatchOut"
+   },
+   "Delivery": {
+    "type": "string",
+    "enum": [
+     "PRINTER",
+     "DOWNLOAD",
+     "PROOF"
+    ],
+    "title": "Delivery",
+    "description": "How the rendered file reaches paper."
+   },
+   "DetectPlaceholderRequest": {
+    "properties": {
+     "psd_path": {
+      "type": "string",
+      "title": "Psd Path"
+     },
+     "color": {
+      "type": "string",
+      "title": "Color",
+      "default": "#ED1C24"
+     },
+     "tolerance": {
+      "type": "integer",
+      "maximum": 255.0,
+      "minimum": 0.0,
+      "title": "Tolerance",
+      "default": 60
+     },
+     "expected_w": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expected W"
+     },
+     "expected_h": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expected H"
+     }
+    },
+    "type": "object",
+    "required": [
+     "psd_path"
+    ],
+    "title": "DetectPlaceholderRequest"
+   },
+   "DetectPlaceholderResponse": {
+    "properties": {
+     "text_box": {
+      "$ref": "#/components/schemas/TextBox"
+     },
+     "fill": {
+      "type": "number",
+      "title": "Fill"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text_box",
+     "fill"
+    ],
+    "title": "DetectPlaceholderResponse"
+   },
+   "FitTextRequest": {
+    "properties": {
+     "text_box": {
+      "$ref": "#/components/schemas/TextBox"
+     },
+     "font_size": {
+      "type": "integer",
+      "maximum": 2000.0,
+      "minimum": 1.0,
+      "title": "Font Size"
+     },
+     "font_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Path"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Text",
+      "default": "Sample Name"
+     },
+     "dpi": {
+      "type": "integer",
+      "maximum": 2400.0,
+      "minimum": 1.0,
+      "title": "Dpi",
+      "default": 300
+     }
+    },
+    "type": "object",
+    "required": [
+     "text_box",
+     "font_size"
+    ],
+    "title": "FitTextRequest",
+    "description": "Ask what size a box would actually produce, and what box a size needs.\n\n`font_size` on a format is a ceiling in *pixels*, not a setting \u2014 the\nrenderer shrinks it until the text fits. Designers think in points, and at\n508 dpi a point is 7.06 px, so a 68px cap is 9.6pt: far smaller than the\nnumber suggests. Both halves of that confusion are answered here."
+   },
+   "FitTextResponse": {
+    "properties": {
+     "font_size_used": {
+      "type": "integer",
+      "title": "Font Size Used"
+     },
+     "font_size_used_pt": {
+      "type": "number",
+      "title": "Font Size Used Pt"
+     },
+     "requested_pt": {
+      "type": "number",
+      "title": "Requested Pt"
+     },
+     "capped": {
+      "type": "boolean",
+      "title": "Capped"
+     },
+     "lines": {
+      "type": "integer",
+      "title": "Lines"
+     },
+     "line_height": {
+      "type": "integer",
+      "title": "Line Height"
+     },
+     "line_height_mm": {
+      "type": "number",
+      "title": "Line Height Mm"
+     },
+     "min_box_width": {
+      "type": "integer",
+      "title": "Min Box Width"
+     },
+     "min_box_height": {
+      "type": "integer",
+      "title": "Min Box Height"
+     }
+    },
+    "type": "object",
+    "required": [
+     "font_size_used",
+     "font_size_used_pt",
+     "requested_pt",
+     "capped",
+     "lines",
+     "line_height",
+     "line_height_mm",
+     "min_box_width",
+     "min_box_height"
+    ],
+    "title": "FitTextResponse"
+   },
+   "FontOut": {
+    "properties": {
+     "filename": {
+      "type": "string",
+      "title": "Filename"
+     },
+     "family": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Family"
+     }
+    },
+    "type": "object",
+    "required": [
+     "filename"
+    ],
+    "title": "FontOut",
+    "description": "A font file available on the API host for formats to reference."
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "ImportFromPathRequest": {
+    "properties": {
+     "filename": {
+      "type": "string",
+      "title": "Filename"
+     }
+    },
+    "type": "object",
+    "required": [
+     "filename"
+    ],
+    "title": "ImportFromPathRequest"
+   },
+   "InboxFile": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "size": {
+      "type": "integer",
+      "title": "Size"
+     },
+     "modified": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Modified"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "size",
+     "modified"
+    ],
+    "title": "InboxFile"
+   },
+   "JobKind": {
+    "type": "string",
+    "enum": [
+     "TIFF",
+     "PDF"
+    ],
+    "title": "JobKind"
+   },
+   "JobStatus": {
+    "type": "string",
+    "enum": [
+     "QUEUED",
+     "RENDERED",
+     "SENT_TO_PRINTER",
+     "DOWNLOADED",
+     "FAILED"
+    ],
+    "title": "JobStatus"
+   },
+   "LoginRequest": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "password": {
+      "type": "string",
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email",
+     "password"
+    ],
+    "title": "LoginRequest"
+   },
+   "ModerationReviewRequest": {
+    "properties": {
+     "decision": {
+      "type": "string",
+      "enum": [
+       "APPROVE",
+       "REJECT"
+      ],
+      "title": "Decision"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     }
+    },
+    "type": "object",
+    "required": [
+     "decision"
+    ],
+    "title": "ModerationReviewRequest"
+   },
+   "ModerationStatus": {
+    "type": "string",
+    "enum": [
+     "UNCHECKED",
+     "CLEAR",
+     "FLAGGED",
+     "NEEDS_REVIEW",
+     "APPROVED",
+     "REJECTED"
+    ],
+    "title": "ModerationStatus",
+    "description": "Where an order's text stands with the LLM brand-safety gate.\n\nStored as a plain varchar rather than a Postgres enum so that adding a\nmember is an additive migration, not an ALTER TYPE."
+   },
+   "OrderOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "order_ref": {
+      "type": "string",
+      "title": "Order Ref"
+     },
+     "store_id": {
+      "type": "integer",
+      "title": "Store Id"
+     },
+     "store_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Store Name"
+     },
+     "city": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "City"
+     },
+     "sku_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sku Code"
+     },
+     "brand": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Brand"
+     },
+     "amount": {
+      "type": "string",
+      "title": "Amount"
+     },
+     "print_format_id": {
+      "type": "integer",
+      "title": "Print Format Id"
+     },
+     "print_text": {
+      "type": "string",
+      "title": "Print Text"
+     },
+     "status": {
+      "$ref": "#/components/schemas/OrderStatus"
+     },
+     "reprint_count": {
+      "type": "integer",
+      "title": "Reprint Count"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "printed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Printed At"
+     },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Error"
+     },
+     "moderation_status": {
+      "$ref": "#/components/schemas/ModerationStatus",
+      "default": "UNCHECKED"
+     },
+     "moderation_categories": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Moderation Categories"
+     },
+     "moderation_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Moderation Reason"
+     },
+     "moderation_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Moderation Note"
+     },
+     "moderated_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Moderated At"
+     },
+     "store": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/StoreOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "print_format": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PrintFormatOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "printed_by": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/UserOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reviewed_by": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/UserOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "order_ref",
+     "store_id",
+     "store_name",
+     "city",
+     "sku_code",
+     "brand",
+     "amount",
+     "print_format_id",
+     "print_text",
+     "status",
+     "reprint_count",
+     "created_at",
+     "printed_at",
+     "last_error"
+    ],
+    "title": "OrderOut"
+   },
+   "OrderPage": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/OrderOut"
+      },
+      "type": "array",
+      "title": "Items"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "page": {
+      "type": "integer",
+      "title": "Page"
+     },
+     "page_size": {
+      "type": "integer",
+      "title": "Page Size"
+     }
+    },
+    "type": "object",
+    "required": [
+     "items",
+     "total",
+     "page",
+     "page_size"
+    ],
+    "title": "OrderPage"
+   },
+   "OrderStats": {
+    "properties": {
+     "pending": {
+      "type": "integer",
+      "title": "Pending",
+      "default": 0
+     },
+     "printing": {
+      "type": "integer",
+      "title": "Printing",
+      "default": 0
+     },
+     "printed": {
+      "type": "integer",
+      "title": "Printed",
+      "default": 0
+     },
+     "failed": {
+      "type": "integer",
+      "title": "Failed",
+      "default": 0
+     },
+     "on_hold": {
+      "type": "integer",
+      "title": "On Hold",
+      "default": 0
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total",
+      "default": 0
+     },
+     "amount_pending": {
+      "type": "string",
+      "title": "Amount Pending",
+      "default": "0"
+     }
+    },
+    "type": "object",
+    "title": "OrderStats"
+   },
+   "OrderStatus": {
+    "type": "string",
+    "enum": [
+     "PENDING",
+     "PRINTING",
+     "PRINTED",
+     "FAILED"
+    ],
+    "title": "OrderStatus"
+   },
+   "PageSizeOut": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "width_in": {
+      "type": "number",
+      "title": "Width In"
+     },
+     "height_in": {
+      "type": "number",
+      "title": "Height In"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "width_in",
+     "height_in"
+    ],
+    "title": "PageSizeOut",
+    "description": "A paper size a format can centre its label on, in portrait inches."
+   },
+   "PrintFormatCreate": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "psd_path": {
+      "type": "string",
+      "title": "Psd Path"
+     },
+     "text_box": {
+      "$ref": "#/components/schemas/TextBox"
+     },
+     "text_layer_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Text Layer Name"
+     },
+     "dpi": {
+      "type": "integer",
+      "title": "Dpi",
+      "default": 300
+     },
+     "font_size": {
+      "type": "integer",
+      "title": "Font Size",
+      "default": 64
+     },
+     "font_color": {
+      "type": "string",
+      "title": "Font Color",
+      "default": "#111111"
+     },
+     "align": {
+      "type": "string",
+      "title": "Align",
+      "default": "center"
+     },
+     "font_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Path"
+     },
+     "placeholder_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Placeholder Color"
+     },
+     "colorspace": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Colorspace"
+     },
+     "preserve_alpha": {
+      "type": "boolean",
+      "title": "Preserve Alpha",
+      "default": false
+     },
+     "page_size": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Page Size"
+     },
+     "print_passes": {
+      "type": "integer",
+      "maximum": 10.0,
+      "minimum": 1.0,
+      "title": "Print Passes",
+      "default": 1
+     },
+     "white_passes": {
+      "type": "integer",
+      "maximum": 6.0,
+      "minimum": 0.0,
+      "title": "White Passes",
+      "default": 0
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "name",
+     "psd_path",
+     "text_box"
+    ],
+    "title": "PrintFormatCreate"
+   },
+   "PrintFormatOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "psd_path": {
+      "type": "string",
+      "title": "Psd Path"
+     },
+     "width_px": {
+      "type": "integer",
+      "title": "Width Px"
+     },
+     "height_px": {
+      "type": "integer",
+      "title": "Height Px"
+     },
+     "dpi": {
+      "type": "integer",
+      "title": "Dpi"
+     },
+     "text_box": {
+      "type": "object",
+      "title": "Text Box"
+     },
+     "text_layer_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Text Layer Name"
+     },
+     "font_size": {
+      "type": "integer",
+      "title": "Font Size"
+     },
+     "font_color": {
+      "type": "string",
+      "title": "Font Color"
+     },
+     "align": {
+      "type": "string",
+      "title": "Align"
+     },
+     "font_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Path"
+     },
+     "placeholder_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Placeholder Color"
+     },
+     "colorspace": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Colorspace"
+     },
+     "preserve_alpha": {
+      "type": "boolean",
+      "title": "Preserve Alpha"
+     },
+     "page_size": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Page Size"
+     },
+     "print_passes": {
+      "type": "integer",
+      "title": "Print Passes"
+     },
+     "white_passes": {
+      "type": "integer",
+      "title": "White Passes"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "code",
+     "name",
+     "psd_path",
+     "width_px",
+     "height_px",
+     "dpi",
+     "text_box",
+     "text_layer_name",
+     "font_size",
+     "font_color",
+     "align",
+     "font_path",
+     "placeholder_color",
+     "colorspace",
+     "preserve_alpha",
+     "page_size",
+     "print_passes",
+     "white_passes",
+     "is_active"
+    ],
+    "title": "PrintFormatOut"
+   },
+   "PrintFormatUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "psd_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Psd Path"
+     },
+     "text_box": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/TextBox"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "text_layer_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Text Layer Name"
+     },
+     "dpi": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dpi"
+     },
+     "font_size": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Size"
+     },
+     "font_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Color"
+     },
+     "align": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Align"
+     },
+     "font_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Path"
+     },
+     "placeholder_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Placeholder Color"
+     },
+     "colorspace": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Colorspace"
+     },
+     "preserve_alpha": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preserve Alpha"
+     },
+     "page_size": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Page Size"
+     },
+     "print_passes": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 10.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Print Passes"
+     },
+     "white_passes": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 6.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "White Passes"
+     },
+     "is_active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Active"
+     }
+    },
+    "type": "object",
+    "title": "PrintFormatUpdate"
+   },
+   "PrintJobOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "order_id": {
+      "type": "integer",
+      "title": "Order Id"
+     },
+     "kind": {
+      "$ref": "#/components/schemas/JobKind"
+     },
+     "is_reprint": {
+      "type": "boolean",
+      "title": "Is Reprint"
+     },
+     "without_text": {
+      "type": "boolean",
+      "title": "Without Text"
+     },
+     "printer_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Printer Name"
+     },
+     "status": {
+      "$ref": "#/components/schemas/JobStatus"
+     },
+     "passes": {
+      "type": "integer",
+      "title": "Passes"
+     },
+     "font_size_used": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Size Used"
+     },
+     "cups_job_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cups Job Id"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "user": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/UserOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "order_id",
+     "kind",
+     "is_reprint",
+     "without_text",
+     "printer_name",
+     "status",
+     "passes",
+     "font_size_used",
+     "cups_job_id",
+     "error",
+     "created_at"
+    ],
+    "title": "PrintJobOut"
+   },
+   "PrintRequest": {
+    "properties": {
+     "kind": {
+      "$ref": "#/components/schemas/JobKind",
+      "default": "TIFF"
+     },
+     "printer_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Printer Name"
+     },
+     "copies": {
+      "type": "integer",
+      "maximum": 20.0,
+      "minimum": 1.0,
+      "title": "Copies",
+      "default": 1
+     },
+     "delivery": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Delivery"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "send_to_printer": {
+      "type": "boolean",
+      "title": "Send To Printer",
+      "default": true
+     },
+     "without_text": {
+      "type": "boolean",
+      "title": "Without Text",
+      "default": false
+     }
+    },
+    "type": "object",
+    "title": "PrintRequest"
+   },
+   "PrintResponse": {
+    "properties": {
+     "job": {
+      "$ref": "#/components/schemas/PrintJobOut"
+     },
+     "order": {
+      "$ref": "#/components/schemas/OrderOut"
+     },
+     "tiff_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tiff Url"
+     },
+     "pdf_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pdf Url"
+     },
+     "preview_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview Url"
+     },
+     "warning": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Warning"
+     }
+    },
+    "type": "object",
+    "required": [
+     "job",
+     "order"
+    ],
+    "title": "PrintResponse"
+   },
+   "PrinterOut": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "is_default": {
+      "type": "boolean",
+      "title": "Is Default",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "status"
+    ],
+    "title": "PrinterOut"
+   },
+   "Role": {
+    "type": "string",
+    "enum": [
+     "ADMIN",
+     "OPERATOR"
+    ],
+    "title": "Role"
+   },
+   "StoreCreate": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "city": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "City"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "name"
+    ],
+    "title": "StoreCreate"
+   },
+   "StoreOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "city": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "City"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "code",
+     "name",
+     "city",
+     "is_active",
+     "created_at"
+    ],
+    "title": "StoreOut"
+   },
+   "StoreUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "city": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "City"
+     },
+     "is_active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Active"
+     }
+    },
+    "type": "object",
+    "title": "StoreUpdate"
+   },
+   "StoreWithStats": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "city": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "City"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "user_count": {
+      "type": "integer",
+      "title": "User Count",
+      "default": 0
+     },
+     "pending_orders": {
+      "type": "integer",
+      "title": "Pending Orders",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "code",
+     "name",
+     "city",
+     "is_active",
+     "created_at"
+    ],
+    "title": "StoreWithStats"
+   },
+   "TextBox": {
+    "properties": {
+     "x": {
+      "type": "integer",
+      "title": "X"
+     },
+     "y": {
+      "type": "integer",
+      "title": "Y"
+     },
+     "w": {
+      "type": "integer",
+      "title": "W"
+     },
+     "h": {
+      "type": "integer",
+      "title": "H"
+     }
+    },
+    "type": "object",
+    "required": [
+     "x",
+     "y",
+     "w",
+     "h"
+    ],
+    "title": "TextBox"
+   },
+   "TokenResponse": {
+    "properties": {
+     "access_token": {
+      "type": "string",
+      "title": "Access Token"
+     },
+     "token_type": {
+      "type": "string",
+      "title": "Token Type",
+      "default": "bearer"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     },
+     "user": {
+      "$ref": "#/components/schemas/UserOut"
+     }
+    },
+    "type": "object",
+    "required": [
+     "access_token",
+     "expires_in",
+     "user"
+    ],
+    "title": "TokenResponse"
+   },
+   "UserCreate": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 6,
+      "title": "Password"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "role": {
+      "$ref": "#/components/schemas/Role",
+      "default": "OPERATOR"
+     },
+     "store_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Store Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email",
+     "password"
+    ],
+    "title": "UserCreate"
+   },
+   "UserOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "role": {
+      "$ref": "#/components/schemas/Role"
+     },
+     "store_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Store Id"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "last_login_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Login At"
+     },
+     "store": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/StoreOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "email",
+     "full_name",
+     "role",
+     "store_id",
+     "is_active",
+     "created_at"
+    ],
+    "title": "UserOut"
+   },
+   "UserUpdate": {
+    "properties": {
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "password": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 6
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password"
+     },
+     "role": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Role"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "store_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Store Id"
+     },
+     "is_active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Active"
+     }
+    },
+    "type": "object",
+    "title": "UserUpdate"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ },
+ "servers": [
+  {
+   "url": "http://localhost:8000"
+  }
+ ]
+}

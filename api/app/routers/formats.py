@@ -8,6 +8,7 @@ from ..config import settings
 from ..deps import AdminUser, CurrentUser, DbSession
 from ..models import Order, PrintFormat
 from ..schemas import (
+    RowId,
     DetectPlaceholderRequest,
     DetectPlaceholderResponse,
     FitTextRequest,
@@ -74,7 +75,7 @@ def create_format(payload: PrintFormatCreate, db: DbSession, _: AdminUser):
 
 
 @router.patch("/{format_id}", response_model=PrintFormatOut)
-def update_format(format_id: int, payload: PrintFormatUpdate, db: DbSession, _: AdminUser):
+def update_format(format_id: RowId, payload: PrintFormatUpdate, db: DbSession, _: AdminUser):
     fmt = db.get(PrintFormat, format_id)
     if fmt is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Print format not found")
@@ -98,7 +99,7 @@ def update_format(format_id: int, payload: PrintFormatUpdate, db: DbSession, _: 
 
 
 @router.delete("/{format_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_format(format_id: int, db: DbSession, _: AdminUser):
+def delete_format(format_id: RowId, db: DbSession, _: AdminUser):
     fmt = db.get(PrintFormat, format_id)
     if fmt is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Print format not found")

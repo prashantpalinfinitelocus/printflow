@@ -9,6 +9,7 @@ from ..config import settings
 from ..deps import AdminUser, CurrentUser, DbSession
 from ..models import HOLD_STATUSES, CsvBatch, ModerationStatus, Order, OrderStatus, Role, Store, User
 from ..schemas import (
+    RowId,
     CsvBatchOut,
     ImportFromPathRequest,
     InboxFile,
@@ -47,7 +48,7 @@ def list_orders(
     status_filter: OrderStatus | None = Query(default=None, alias="status"),
     moderation: ModerationStatus | None = None,
     on_hold: bool = False,
-    store_id: int | None = None,
+    store_id: RowId | None = None,
     q: str | None = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=200),
@@ -95,7 +96,7 @@ def list_orders(
 
 
 @router.get("/orders/stats", response_model=OrderStats)
-def order_stats(db: DbSession, user: CurrentUser, store_id: int | None = None):
+def order_stats(db: DbSession, user: CurrentUser, store_id: RowId | None = None):
     stmt = _scoped(select(Order.status, func.count(Order.id)), user)
     if store_id is not None and user.role == Role.ADMIN:
         stmt = stmt.where(Order.store_id == store_id)
@@ -126,7 +127,7 @@ def order_stats(db: DbSession, user: CurrentUser, store_id: int | None = None):
 
 
 @router.get("/orders/{order_id}", response_model=OrderOut)
-def get_order(order_id: int, db: DbSession, user: CurrentUser):
+def get_order(order_id: RowId, db: DbSession, user: CurrentUser):
     order = db.scalar(
         _scoped(select(Order).where(Order.id == order_id), user).options(
             selectinload(Order.store),
@@ -150,7 +151,7 @@ _REVIEWABLE = {
 }
 
 
-def _load_for_admin(db, order_id: int) -> Order:
+def _load_for_admin(db, order_id: RowId) -> Order:
     order = db.scalar(
         select(Order)
         .where(Order.id == order_id)
@@ -167,7 +168,7 @@ def _load_for_admin(db, order_id: int) -> Order:
 
 
 @router.post("/orders/{order_id}/moderation/review", response_model=OrderOut)
-def review_moderation(order_id: int, payload: ModerationReviewRequest, db: DbSession, admin: AdminUser):
+def review_moderation(order_id: RowId, payload: ModerationReviewRequest, db: DbSession, admin: AdminUser):
     """Release or refuse an order the moderation gate held.
 
     The model's own reason and categories are kept so the audit trail shows what
@@ -192,7 +193,7 @@ def review_moderation(order_id: int, payload: ModerationReviewRequest, db: DbSes
 
 
 @router.post("/orders/{order_id}/moderation/recheck", response_model=OrderOut)
-def recheck_moderation(order_id: int, db: DbSession, _: AdminUser):
+def recheck_moderation(order_id: RowId, db: DbSession, _: AdminUser):
     """Run the model again on one order — after an outage, or a prompt change."""
     order = _load_for_admin(db, order_id)
     outcome = moderate_texts([order.print_text])
@@ -203,7 +204,7 @@ def recheck_moderation(order_id: int, db: DbSession, _: AdminUser):
 
 
 @router.get("/orders/{order_id}/jobs", response_model=list[PrintJobOut])
-def order_jobs(order_id: int, db: DbSession, user: CurrentUser):
+def order_jobs(order_id: RowId, db: DbSession, user: CurrentUser):
     order = db.scalar(_scoped(select(Order).where(Order.id == order_id), user))
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")

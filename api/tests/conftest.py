@@ -65,6 +65,8 @@ def _environment(tmp_path_factory: pytest.TempPathFactory):
             "PRINTFLOW_LP_BINARY": str(bin_dir / "lp"),
             "PRINTFLOW_LPSTAT_BINARY": str(bin_dir / "lpstat"),
             "PRINTFLOW_JWT_SECRET": "test-secret",
+            # The deployed API sits behind a load balancer under /backend.
+            "PRINTFLOW_ROOT_PATH": "/backend",
             "PRINTFLOW_STUB_LOG": str(stub_log),
         }
     )
