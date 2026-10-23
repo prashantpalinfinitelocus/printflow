@@ -164,6 +164,11 @@ class PrintFormat(Base):
     #: actually loads.
     page_size: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
+    #: Reminder shown to the operator on every order using this design — a
+    #: manual step the file cannot do for them (load a different jig, apply a
+    #: sticker after printing). Blank shows nothing.
+    operator_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

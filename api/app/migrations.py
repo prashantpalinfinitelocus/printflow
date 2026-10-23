@@ -28,6 +28,7 @@ STATEMENTS: list[str] = [
     "ALTER TABLE print_formats ADD COLUMN IF NOT EXISTS page_size VARCHAR(16)",
     "ALTER TABLE print_formats ADD COLUMN IF NOT EXISTS print_passes INTEGER NOT NULL DEFAULT 1",
     "ALTER TABLE print_formats ADD COLUMN IF NOT EXISTS white_passes INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE print_formats ADD COLUMN IF NOT EXISTS operator_note TEXT",
     # Order enrichment carried by the CSV. All nullable: rows imported before
     # these existed have no value, and a NOT NULL column could only be added by
     # backfilling invented data.

@@ -1157,6 +1157,31 @@ def test_print_passes_round_trips_and_is_bounded(client, admin_headers):
         )
 
 
+def test_operator_note_round_trips_and_blank_clears(client, admin_headers):
+    fmt = _page_format(client, admin_headers, "NOTE_RT")
+    assert fmt["operator_note"] is None
+
+    res = client.patch(
+        f"/print-formats/{fmt['id']}",
+        headers=admin_headers,
+        json={"operator_note": "  Apply the gloss sticker after printing  "},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["operator_note"] == "Apply the gloss sticker after printing"
+
+    res = client.patch(
+        f"/print-formats/{fmt['id']}", headers=admin_headers, json={"operator_note": "   "}
+    )
+    assert res.json()["operator_note"] is None
+
+    assert (
+        client.patch(
+            f"/print-formats/{fmt['id']}", headers=admin_headers, json={"operator_note": "x" * 501}
+        ).status_code
+        == 422
+    )
+
+
 def test_each_pass_is_submitted_to_cups(client, admin_headers, operator_headers, stub_log):
     """Three passes must reach the printer as three impressions on one object."""
     _page_format(client, admin_headers, "PASS_CUPS", print_passes=3)

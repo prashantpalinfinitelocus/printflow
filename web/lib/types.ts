@@ -69,6 +69,8 @@ export interface PrintFormat {
   print_passes: number;
   /** Passes of white ink emitted as spot channels. 0 = plain RGBA file. */
   white_passes: number;
+  /** Manual step to remind the operator of on every order using this design. */
+  operator_note: string | null;
   is_active: boolean;
 }
 
