@@ -351,6 +351,46 @@ def test_a_client_that_cannot_be_built_holds_every_row(fake_gemini, monkeypatch)
     assert "GEMINI_API_KEY" in outcome.verdicts[0].reason
 
 
+def test_vertex_client_uses_adc_with_project_and_location(monkeypatch):
+    """Deployed environments must not use an API key: the client is built for Vertex AI
+    and left to Application Default Credentials (the Cloud Run service account)."""
+    from google import genai
+
+    from app.config import settings
+    from app.services import moderation
+
+    seen = {}
+    monkeypatch.setattr(genai, "Client", lambda **kw: seen.update(kw) or object())
+    monkeypatch.undo()  # drop the autouse fake so the real _make_client runs
+    monkeypatch.setattr(genai, "Client", lambda **kw: seen.update(kw) or object())
+    monkeypatch.setattr(settings, "moderation_use_vertex", True)
+    monkeypatch.setattr(settings, "moderation_vertex_project", "my-project")
+    monkeypatch.setattr(settings, "moderation_vertex_location", "global")
+
+    moderation._make_client()
+
+    assert seen["vertexai"] is True
+    assert seen["project"] == "my-project"
+    assert seen["location"] == "global"
+    assert "api_key" not in seen
+
+
+def test_api_key_client_is_the_default_for_local_dev(monkeypatch):
+    from google import genai
+
+    from app.config import settings
+    from app.services import moderation
+
+    seen = {}
+    monkeypatch.undo()  # drop the autouse fake so the real _make_client runs
+    monkeypatch.setattr(genai, "Client", lambda **kw: seen.update(kw) or object())
+    monkeypatch.setattr(settings, "moderation_use_vertex", False)
+
+    moderation._make_client()
+
+    assert "vertexai" not in seen
+
+
 def test_prompt_names_indian_political_parties_and_gives_examples(fake_gemini):
     from app.services.moderation import moderate_texts
 

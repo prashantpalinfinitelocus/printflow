@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     # print. The SDK reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the environment.
     moderation_enabled: bool = True
     moderation_model: str = "gemini-3.5-flash"
+    # Deployed environments call Gemini through Vertex AI with the Cloud Run service
+    # account (company policy forbids API keys). Local dev keeps using GEMINI_API_KEY.
+    moderation_use_vertex: bool = False
+    # Blank = the project the service account runs in (resolved by Application Default Credentials).
+    moderation_vertex_project: str = ""
+    # Gemini 3.x models are served from the "global" endpoint; use a region only if the model is available there.
+    moderation_vertex_location: str = "global"
     # Texts per API call. The system prompt is paid once per call, so bigger
     # batches are cheaper; 25 keeps the reply small enough that the model never
     # loses track of indexes.

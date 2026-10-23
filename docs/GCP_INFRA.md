@@ -1,5 +1,7 @@
 # PrintFlow: GCP Infrastructure Request
 
+> **Superseded for names and values.** The cloud team provisioned a different layout (`tccc-dca-*`, `asia-northeast1`, Vertex AI instead of a Gemini API key). See [DEPLOY_GCP.md](DEPLOY_GCP.md) for what actually exists and how the pipelines deploy to it.
+
 Audience: cloud team. Purpose: provision test and prod environments for PrintFlow, following the same pattern as the existing `jiab` and `thums-up` projects.
 
 Names below (`tccc-pf-*`) follow the `tccc-<app>-<env>-<thing>` convention of those projects. `pf` is a proposed app code. Change it if the team prefers another.

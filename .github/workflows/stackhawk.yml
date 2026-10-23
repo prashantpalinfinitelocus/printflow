@@ -1,0 +1,53 @@
+name: StackHawk DAST
+
+on:
+  push:
+    branches: ["main"]
+  schedule:
+    - cron: "0 3 * * 2" # Tuesdays 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  dast:
+    name: DAST scan of the PrintFlow API
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Throwaway secrets for a throwaway stack that only lives for this job.
+      - name: Create test environment file
+        run: |
+          {
+            echo "PRINTFLOW_JWT_SECRET=$(openssl rand -hex 32)"
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 12)"
+            echo "PRINTFLOW_MODERATION_ENABLED=false"
+          } > .env
+
+      - name: Start the stack and seed test data
+        run: |
+          docker compose up --build -d
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/health && break || sleep 3
+          done
+          docker compose exec -T api python -m scripts.seed
+
+      - name: Run StackHawk scan
+        env:
+          HAWK_API_KEY: ${{ secrets.HAWK_API_KEY }}
+          SCAN_USERNAME: admin@printflow.local
+          SCAN_PASSWORD: admin123 # seeded test user in the throwaway stack, not a real credential
+          APP_ENV: CI
+          COMMIT_SHA: ${{ github.sha }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          docker run --rm --network host \
+            -v "$PWD:/hawk:rw" \
+            -e API_KEY="$HAWK_API_KEY" \
+            -e SCAN_USERNAME -e SCAN_PASSWORD -e APP_ENV -e COMMIT_SHA -e BRANCH_NAME \
+            stackhawk/hawkscan stackhawk.yml
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v

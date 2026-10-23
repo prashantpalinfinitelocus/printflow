@@ -319,9 +319,15 @@ def _make_client():
     from google import genai
     from google.genai import types
 
-    return genai.Client(
-        http_options=types.HttpOptions(timeout=int(settings.moderation_timeout_seconds * 1000))
-    )
+    http_options = types.HttpOptions(timeout=int(settings.moderation_timeout_seconds * 1000))
+    if settings.moderation_use_vertex:
+        return genai.Client(
+            vertexai=True,
+            project=settings.moderation_vertex_project or None,
+            location=settings.moderation_vertex_location,
+            http_options=http_options,
+        )
+    return genai.Client(http_options=http_options)
 
 
 def _request_config():
