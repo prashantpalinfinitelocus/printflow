@@ -35,6 +35,7 @@ export function OrderTable({
               {showStore && <th className="th">Store</th>}
               <th className="th">Text</th>
               <th className="th">Template</th>
+              <th className="th">Reminder</th>
               <th className="th text-right">Amount</th>
               <th className="th">Status</th>
               <th className="th">Created</th>
@@ -69,9 +70,11 @@ export function OrderTable({
                 </td>
                 <td className="td">
                   <span className="chip bg-cream-200 text-ink-600">{order.print_format?.code}</span>
+                </td>
+                <td className="td max-w-[220px]">
                   {order.print_format?.operator_note && (
                     <span
-                      className="mt-1 block max-w-[220px] truncate text-[11px] font-bold text-sky-700"
+                      className="block truncate text-xs font-bold text-sky-700"
                       title={order.print_format.operator_note}
                     >
                       ⚑ {order.print_format.operator_note}
