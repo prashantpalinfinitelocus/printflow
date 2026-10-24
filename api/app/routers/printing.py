@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -22,6 +23,28 @@ from ..services import printing as printing_service
 from ..services.renderer import RenderError, render_order
 
 router = APIRouter(tags=["printing"])
+
+#: Cloud Run refuses an HTTP/1 response over 32 MiB when it carries a Content-Length, but lets a
+#: chunked one through. A TIFF with white spot plates is uncompressed (the press RIP needs it that
+#: way) and about 34 MB for a 2240x2514 label, so anything near the limit is streamed instead. Smaller
+#: files keep FileResponse, which sets the length and supports range requests.
+STREAM_ABOVE_BYTES = 30 * 1024 * 1024
+_STREAM_CHUNK = 1024 * 1024
+
+
+def _file_chunks(path: Path):
+    with path.open("rb") as handle:
+        while chunk := handle.read(_STREAM_CHUNK):
+            yield chunk
+
+
+def _content_disposition(kind: str, filename: str) -> str:
+    """Same header FileResponse builds, so a streamed download names the file identically."""
+    quoted = quote(filename)
+    if quoted != filename:
+        return f"{kind}; filename*=utf-8''{quoted}"
+    return f'{kind}; filename="{filename}"'
+
 
 ARTIFACT_SUFFIX = {"tiff": ".tif", "pdf": ".pdf", "preview": ".png"}
 ARTIFACT_MEDIA = {
@@ -266,6 +289,12 @@ def get_artifact(order_id: RowId, kind: str, db: DbSession, user: CurrentUser, j
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Artifact file is missing: {path.name}")
 
     inline = kind in ("pdf", "preview")
+    if path.stat().st_size > STREAM_ABOVE_BYTES:
+        return StreamingResponse(
+            _file_chunks(path),
+            media_type=ARTIFACT_MEDIA[kind],
+            headers={"Content-Disposition": _content_disposition("inline" if inline else "attachment", path.name)},
+        )
     return FileResponse(
         path,
         media_type=ARTIFACT_MEDIA[kind],

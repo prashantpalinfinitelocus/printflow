@@ -1704,3 +1704,27 @@ def test_growing_the_box_to_the_reported_size_reaches_the_request(client, operat
     ).json()
     assert grown["capped"] is False
     assert grown["font_size_used_pt"] >= 24.0
+
+
+def test_large_artifact_is_streamed_so_cloud_run_does_not_reject_it(client, admin_headers, operator_headers, monkeypatch):
+    """Cloud Run turns an HTTP/1 response over 32 MiB that has a Content-Length into a 500. A big
+    artifact must go out chunked (no Content-Length), with the same bytes and the same file name."""
+    from app.routers import printing
+
+    order = _make_order(client, admin_headers, "ORD-STREAM")
+    job = client.post(
+        f"/orders/{order['id']}/print", headers=operator_headers, json={"kind": "PDF", "send_to_printer": False}
+    ).json()["job"]
+    url = f"/orders/{order['id']}/artifact/tiff?job_id={job['id']}"
+
+    whole = client.get(url, headers=operator_headers)
+    assert whole.status_code == 200 and "content-length" in whole.headers
+
+    monkeypatch.setattr(printing, "STREAM_ABOVE_BYTES", 1)
+    streamed = client.get(url, headers=operator_headers)
+
+    assert streamed.status_code == 200
+    assert "content-length" not in streamed.headers
+    assert streamed.content == whole.content
+    assert streamed.headers["content-type"] == whole.headers["content-type"] == "image/tiff"
+    assert streamed.headers["content-disposition"] == whole.headers["content-disposition"]
