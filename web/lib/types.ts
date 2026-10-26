@@ -16,6 +16,13 @@ export const isHeld = (status: ModerationStatus) => HELD_STATUSES.has(status);
 /** How the rendered file reaches paper — see the API's Delivery enum. */
 export type Delivery = "PRINTER" | "DOWNLOAD" | "PROOF";
 
+/** App-wide settings an admin changes at runtime. */
+export interface AppSettings {
+  /** Render every order's text in capitals. The stored text keeps its original case. */
+  uppercase_text: boolean;
+  updated_at: string;
+}
+
 export interface Store {
   id: number;
   code: string;

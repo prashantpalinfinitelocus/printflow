@@ -1797,3 +1797,67 @@ def test_large_artifact_is_streamed_so_cloud_run_does_not_reject_it(client, admi
     assert streamed.content == whole.content
     assert streamed.headers["content-type"] == whole.headers["content-type"] == "image/tiff"
     assert streamed.headers["content-disposition"] == whole.headers["content-disposition"]
+
+
+# ---------------- uppercase text (global setting) ----------------
+
+
+def test_uppercase_text_is_off_by_default(client, operator_headers):
+    res = client.get("/app-settings", headers=operator_headers)
+    assert res.status_code == 200, res.text
+    assert res.json()["uppercase_text"] is False
+
+
+def test_only_admins_can_change_app_settings(client, admin_headers, operator_headers):
+    assert (
+        client.patch("/app-settings", headers=operator_headers, json={"uppercase_text": True}).status_code
+        == 403
+    )
+    res = client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": True})
+    assert res.status_code == 200, res.text
+    assert res.json()["uppercase_text"] is True
+    assert client.get("/app-settings", headers=operator_headers).json()["uppercase_text"] is True
+
+    client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": False})
+
+
+def _rendered_text(client, admin_headers, operator_headers, monkeypatch, ref: str) -> str:
+    """Print a proof and return the text the renderer was asked to draw."""
+    from app.routers import printing
+
+    seen: list[str] = []
+    real = printing.render_order
+
+    def spy(**kwargs):
+        seen.append(kwargs["text"])
+        return real(**kwargs)
+
+    monkeypatch.setattr(printing, "render_order", spy)
+    order = _make_order(client, admin_headers, ref, text="Happy Birthday, Riya!")
+    res = client.post(
+        f"/orders/{order['id']}/print",
+        headers=operator_headers,
+        json={"kind": "PDF", "send_to_printer": False},
+    )
+    assert res.status_code == 200, res.text
+    # The stored text is untouched either way; only the render changes.
+    assert res.json()["order"]["print_text"] == "Happy Birthday, Riya!"
+    return seen[-1]
+
+
+def test_uppercase_setting_prints_the_text_in_capitals(
+    client, admin_headers, operator_headers, monkeypatch
+):
+    client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": True})
+    try:
+        text = _rendered_text(client, admin_headers, operator_headers, monkeypatch, "ORD-CAPS-ON")
+    finally:
+        client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": False})
+    assert text == "HAPPY BIRTHDAY, RIYA!"
+
+
+def test_without_the_setting_the_text_prints_as_given(
+    client, admin_headers, operator_headers, monkeypatch
+):
+    text = _rendered_text(client, admin_headers, operator_headers, monkeypatch, "ORD-CAPS-OFF")
+    assert text == "Happy Birthday, Riya!"

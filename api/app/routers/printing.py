@@ -20,6 +20,7 @@ from ..schemas import (
     PrintResponse,
 )
 from ..services import printing as printing_service
+from ..services.app_settings import apply_text_case, get_app_settings
 from ..services.renderer import RenderError, render_order
 
 router = APIRouter(tags=["printing"])
@@ -143,7 +144,7 @@ def print_order(order_id: RowId, payload: PrintRequest, db: DbSession, user: Cur
             # The single point where a held order's text is dropped. Everything
             # downstream — TIFF, PDF, preview, CUPS — is built from this render,
             # so there is no second path the text could leak through.
-            text="" if payload.without_text else order.print_text,
+            text="" if payload.without_text else apply_text_case(order.print_text, get_app_settings(db)),
             text_box=fmt.text_box,
             text_layer_name=fmt.text_layer_name,
             font_size=fmt.font_size,
