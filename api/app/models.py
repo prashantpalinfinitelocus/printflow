@@ -184,9 +184,10 @@ class AppSettings(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    #: Print every order's text in capitals, whatever case the CSV carried.
-    #: Applied at render time: the stored text keeps its case, so turning this
-    #: off restores it for every later print.
+    #: Capitalise every order's text. Applied when a CSV is imported, so the
+    #: queue shows exactly what will print, and again at render time so orders
+    #: imported before it was switched on print in capitals too. Turning it off
+    #: affects later imports only — text already stored in capitals stays so.
     uppercase_text: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     updated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

@@ -12,7 +12,7 @@ export default async function SettingsPage() {
       <PageHeader
         eyebrow="Administration"
         title="Settings"
-        description="App-wide behaviour. Changes apply to every store from the next print — no redeploy needed."
+        description="App-wide behaviour. Changes apply to every store straight away — no redeploy needed."
       />
       <SettingsForm initial={settings} />
     </>

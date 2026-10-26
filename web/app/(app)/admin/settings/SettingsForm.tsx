@@ -48,9 +48,10 @@ export function SettingsForm({ initial }: { initial: AppSettings | null }) {
               {busy && <Spinner />}
             </span>
             <span className="mt-0.5 block text-ink-400">
-              Every order's text is capitalised when the artwork is rendered — &ldquo;Happy Birthday,
-              Riya!&rdquo; prints as &ldquo;HAPPY BIRTHDAY, RIYA!&rdquo;. Orders keep the text exactly as
-              the CSV sent it, so turning this off restores the original case for every later print.
+              Order text is capitalised as CSVs are imported — &ldquo;happy birthday, riya!&rdquo; is
+              stored, shown in the queue and printed as &ldquo;HAPPY BIRTHDAY, RIYA!&rdquo;. Orders
+              already in the queue also print in capitals while this is on. Turning it off affects
+              later imports only; text already imported in capitals stays that way.
             </span>
           </span>
         </label>
