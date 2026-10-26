@@ -1,8 +1,7 @@
+import { CsvIntake } from "@/components/CsvIntake";
 import { PageHeader } from "@/components/Shell";
 import { apiJson } from "@/lib/session";
 import type { CsvBatch, InboxFile, PrintFormat, Store } from "@/lib/types";
-
-import { CsvIntake } from "./CsvIntake";
 
 export default async function UploadPage() {
   const [inbox, batches, stores, formats] = await Promise.all([

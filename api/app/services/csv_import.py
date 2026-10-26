@@ -178,7 +178,11 @@ def import_csv(
     filename: str,
     source: str,
     uploaded_by_id: int | None,
+    restrict_store_id: int | None = None,
 ) -> tuple[CsvBatch, ImportResult]:
+    """`restrict_store_id` confines the import to one store: rows for any other
+    store are skipped. Operators import through this so a file cannot route
+    orders into a queue they do not own."""
     rows = parse_rows(raw)
     result = ImportResult(total_rows=len(rows))
 
@@ -208,6 +212,9 @@ def import_csv(
         store = stores.get(row.get("store_id", "").upper())
         if store is None:
             result.error(index, order_ref, f"unknown store code '{row.get('store_id')}'")
+            continue
+        if restrict_store_id is not None and store.id != restrict_store_id:
+            result.error(index, order_ref, f"store '{store.code}' is not your store")
             continue
         if not store.is_active:
             result.error(index, order_ref, f"store '{store.code}' is inactive")

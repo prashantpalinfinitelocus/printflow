@@ -415,6 +415,76 @@ def test_operator_sees_only_their_own_store(client, admin_headers, operator_head
     )
 
 
+def test_operator_upload_imports_only_their_own_store(client, admin_headers, operator_headers):
+    body = _upload(
+        client,
+        operator_headers,
+        _csv(
+            _row("ORD-OP-MINE", text="Mine"),
+            _row("ORD-OP-THEIRS", "TST02", text="Theirs"),
+        ),
+        name="operator.csv",
+    )
+    assert body.status_code == 201, body.text
+    batch = body.json()
+    assert batch["imported"] == 1
+    assert batch["skipped"] == 1
+    assert batch["errors"][0]["order_ref"] == "ORD-OP-THEIRS"
+    assert "not your store" in batch["errors"][0]["reason"]
+
+    refs = {o["order_ref"] for o in client.get("/orders", headers=admin_headers).json()["items"]}
+    assert "ORD-OP-MINE" in refs
+    assert "ORD-OP-THEIRS" not in refs
+
+
+def test_operator_sees_only_batches_they_uploaded(client, admin_headers, operator_headers):
+    _upload(client, admin_headers, _csv(_row("ORD-BATCH-ADMIN")), name="admin-batch.csv")
+    _upload(client, operator_headers, _csv(_row("ORD-BATCH-OP")), name="op-batch.csv")
+
+    mine = client.get("/csv/batches", headers=operator_headers).json()
+    assert {b["filename"] for b in mine} >= {"op-batch.csv"}
+    assert all(b["uploaded_by"]["email"] == "op@test.local" for b in mine)
+
+    everything = {b["filename"] for b in client.get("/csv/batches", headers=admin_headers).json()}
+    assert {"admin-batch.csv", "op-batch.csv"} <= everything
+
+
+def test_operator_cannot_use_the_shared_inbox(client, operator_headers):
+    assert client.get("/csv/inbox", headers=operator_headers).status_code == 403
+    assert (
+        client.post(
+            "/csv/import-from-inbox", headers=operator_headers, json={"filename": "x.csv"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post("/csv/upload-url", headers=operator_headers, json={"filename": "x.csv"}).status_code
+        == 403
+    )
+
+
+def test_operator_without_a_store_cannot_upload(client):
+    # The users API refuses to create one, but rows from before that rule can exist.
+    from app.db import SessionLocal
+    from app.models import Role, User
+    from app.security import hash_password
+
+    with SessionLocal() as db:
+        db.add(
+            User(
+                email="legacy-nostore@test.local",
+                password_hash=hash_password("nostorepw"),
+                role=Role.OPERATOR,
+            )
+        )
+        db.commit()
+    token = client.post(
+        "/auth/login", json={"email": "legacy-nostore@test.local", "password": "nostorepw"}
+    ).json()["access_token"]
+    res = _upload(client, {"Authorization": f"Bearer {token}"}, _csv(_row("ORD-NOSTORE")))
+    assert res.status_code == 403
+
+
 # ---------------- printers ----------------
 
 
