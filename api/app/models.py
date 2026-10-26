@@ -173,6 +173,28 @@ class PrintFormat(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class AppSettings(Base):
+    """App-wide settings an admin changes at runtime. A single row, id 1.
+
+    Deploy-time knobs live in `config.Settings` (environment). This table is for
+    the ones that must change without a redeploy.
+    """
+
+    __tablename__ = "app_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    #: Print every order's text in capitals, whatever case the CSV carried.
+    #: Applied at render time: the stored text keeps its case, so turning this
+    #: off restores it for every later print.
+    uppercase_text: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+    updated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class CsvBatch(Base):
     __tablename__ = "csv_batches"
 

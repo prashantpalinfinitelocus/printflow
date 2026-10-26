@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { artifactUrl, get, post } from "@/lib/client";
-import { isHeld, type Delivery, type JobKind, type Order, type PrintJob, type Printer, type PrintResponse } from "@/lib/types";
+import { isHeld, type AppSettings, type Delivery, type JobKind, type Order, type PrintJob, type Printer, type PrintResponse } from "@/lib/types";
 
 import { dateTime, money } from "@/lib/format";
 
@@ -40,6 +40,7 @@ export function PrintDialog({
   const [warning, setWarning] = useState<string | null>(null);
   const [lastJob, setLastJob] = useState<PrintJob | null>(null);
   const [history, setHistory] = useState<PrintJob[]>([]);
+  const [uppercase, setUppercase] = useState(false);
 
   const isReprint = order?.status === "PRINTED";
 
@@ -65,6 +66,10 @@ export function PrintDialog({
     setCopies(1);
     setKind("TIFF");
     void loadHistory(orderId);
+
+    get<AppSettings>("/app-settings")
+      .then((s) => setUppercase(s.uppercase_text))
+      .catch(() => setUppercase(false));
 
     get<Printer[]>("/printers")
       .then((list) => {
@@ -166,7 +171,11 @@ export function PrintDialog({
           <div className="rounded-xl border border-cream-200 bg-cream p-4">
             <p className="label mb-2">Text to print</p>
             <p className="text-lg leading-snug font-bold break-words">
-              {order.print_text || <span className="text-ink-400">(blank)</span>}
+              {order.print_text ? (
+                uppercase ? order.print_text.toUpperCase() : order.print_text
+              ) : (
+                <span className="text-ink-400">(blank)</span>
+              )}
             </p>
           </div>
 

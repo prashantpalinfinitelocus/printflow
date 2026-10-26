@@ -10,7 +10,7 @@ from sqlalchemy import text
 from .config import settings
 from .db import Base, engine
 from .migrations import run_migrations
-from .routers import auth, formats, orders, printing, stores, users
+from .routers import app_settings, auth, formats, orders, printing, stores, users
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("printflow")
@@ -75,3 +75,4 @@ app.include_router(users.router)
 app.include_router(formats.router)
 app.include_router(orders.router)
 app.include_router(printing.router)
+app.include_router(app_settings.router)

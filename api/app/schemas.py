@@ -80,6 +80,15 @@ class StoreCreate(BaseModel):
     is_active: bool = True
 
 
+class AppSettingsOut(ORMModel):
+    uppercase_text: bool
+    updated_at: datetime
+
+
+class AppSettingsUpdate(BaseModel):
+    uppercase_text: bool | None = None
+
+
 class StoreUpdate(BaseModel):
     name: str | None = None
     city: str | None = None
