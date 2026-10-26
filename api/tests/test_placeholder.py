@@ -175,6 +175,65 @@ def test_clearing_refuses_when_the_ink_runs_on_into_artwork():
     assert image.tobytes() == before, "artwork must be left alone, not painted over"
 
 
+def test_clearing_takes_the_placeholder_and_leaves_artwork_crossing_the_box():
+    """Red Ribbon in prod: the swoosh runs through the corner of the text box.
+    Judged as one block, its ink reached the window edge and the XXXXXXXX beside
+    it was refused too — and shipped on a print that was meant to have no text."""
+    import numpy as np
+
+    from app.services.renderer import clear_ink_in_box
+
+    image = canvas()
+    ink = draw_glyph_run(image, 300, 200)
+    # Same red, entering from off the window and crossing under the last glyphs
+    # without touching them.
+    d = ImageDraw.Draw(image)
+    swoosh = [(700, ink[1] + ink[3] + 40), (1200, ink[1] + ink[3] - 20), (1200, 600), (700, 600)]
+    d.polygon(swoosh, fill=RED)
+    swoosh_px = np.array(image)[ink[1] + ink[3] + 30, 900].tolist()
+
+    assert clear_ink_in_box(image, ink) is True
+    assert _red_pixels_in(image, ink) == 0, "the XXXXXXXX must go"
+    assert np.array(image)[ink[1] + ink[3] + 30, 900].tolist() == swoosh_px, "swoosh untouched"
+
+
+def test_clearing_leaves_small_artwork_inside_the_window():
+    """Cheers: black sparkles sit wholly inside the search window, just under
+    the XXXXXXXX. Being inside the window does not make them placeholder."""
+    from app.services.renderer import clear_ink_in_box
+
+    image = canvas()
+    ink = draw_glyph_run(image, 300, 200)
+    d = ImageDraw.Draw(image)
+    sparkle = (ink[0] + 100, ink[1] + ink[3] + 8, ink[0] + 110, ink[1] + ink[3] + 18)
+    d.ellipse(sparkle, fill=(20, 20, 20, 255))
+    before = image.crop(sparkle).tobytes()
+
+    assert clear_ink_in_box(image, ink, color="#ED1C24") is True
+    assert _red_pixels_in(image, ink) == 0
+    assert image.crop(sparkle).tobytes() == before, "the sparkle is artwork"
+
+
+def test_artwork_touching_the_placeholder_does_not_shield_it():
+    """Fun Stickers: the X's touch a white sparkle that runs off the window.
+    Judged by all ink, the whole run counted as artwork and nothing cleared."""
+    from app.services.renderer import clear_ink_in_box
+
+    image = Image.new("RGBA", (1200, 600), (255, 255, 255, 0))  # die-cut: transparent
+    ink = draw_glyph_run(image, 300, 200)
+    d = ImageDraw.Draw(image)
+    # Pale blue (not white: that is the background's RGB), from inside the last
+    # glyph down past the bottom of the search window.
+    star = (ink[0] + ink[2] - 30, ink[1] + ink[3] - 10, ink[0] + ink[2] - 20, 600)
+    d.rectangle(star, fill=(200, 220, 255, 255))
+    below = (star[0], ink[1] + ink[3] + 10, star[2] + 1, 600)
+    before = image.crop(below).tobytes()
+
+    assert clear_ink_in_box(image, ink, color="#ED1C24") is True
+    assert _red_pixels_in(image, ink) == 0
+    assert image.crop(below).tobytes() == before, "the sparkle stays"
+
+
 def test_a_wrong_placeholder_colour_still_protects_the_artwork():
     """Unchanged on the normal path: no confirmed placeholder, no paint."""
     from app.services.renderer import erase_placeholder
