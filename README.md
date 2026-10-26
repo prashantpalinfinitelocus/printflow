@@ -152,7 +152,8 @@ operator requesting another store's order gets a 404.
 2. The text is word-wrapped and the font shrunk until it fits the box, then
    drawn with the format's colour and alignment.
 3. Three files are written to `data/output/<ORDER>/<ORDER>-v<n>.*`:
-   - `.tif` — CMYK, LZW, DPI stamped. **This is what goes to the printer.**
+   - `.tif` — CMYK, DPI stamped; LZW, or uncompressed with named channels when
+     the format keeps transparency or has white passes. **This is what goes to the printer.**
    - `.pdf` — RGB proof at the same physical size, for cross-checking.
    - `.png` — downscaled preview for the browser.
 
@@ -274,8 +275,12 @@ Two traps worth knowing, both found the hard way:
   file. Photoshop is the authority — the press accepts what it writes. The cost
   is that Photopea cannot preview these channels.
 
-CMYK gives way to RGB when white passes are set: a CMYK conversion destroys both
-the spot channels and the alpha they are derived from.
+CMYK formats get the same layout with C, M, Y, K in place of R, G, B — seven
+samples, Photometric 5. The reference is a Photoshop Image > Mode > CMYK of one
+of our RGB files, which the press printed successfully: its alpha, plates and
+channel-name blocks are byte-identical to the RGB layout. Ink is premultiplied
+toward paper, so the transparent margin carries none. CMYK with **Keep
+transparency** and no white goes out the same way, minus the plates.
 
 A design whose background is transparent still prints as bare substrate wherever
 there is no ink — white plates put white *under the artwork*, not across the
@@ -284,14 +289,17 @@ whole label.
 ### Colour management
 
 Separation is colour-managed through littleCMS: sRGB → CMYK using a real ICC
-profile, with relative-colorimetric intent, and **the profile is embedded in the
-TIFF**. Embedding is not cosmetic — an untagged CMYK TIFF is interpreted using
+profile, with relative-colorimetric intent and black point compensation
+(Photoshop's defaults), and **the profile is embedded in the TIFF**. Embedding is not cosmetic — an untagged CMYK TIFF is interpreted using
 whatever default press profile the reader assumes, and macOS Preview rendered
 untagged files near-black.
 
-The profile is auto-detected (macOS ColorSync, then common Linux paths). Point
-`PRINTFLOW_CMYK_ICC_PROFILE` at your press profile (SWOP, FOGRA, or whatever
-your printer supplies) for output that matches their proofs:
+The default is the bundled `api/app/assets/icc/USWebCoatedSWOP.icc` — U.S. Web
+Coated (SWOP) v2, extracted unmodified from the press-accepted reference file.
+Our separation lands within 6/255 of Photoshop's on that file. System profiles
+(macOS ColorSync, then common Linux paths) are only a fallback. Point
+`PRINTFLOW_CMYK_ICC_PROFILE` at a different press profile if the printer
+supplies one:
 
 ```bash
 PRINTFLOW_CMYK_ICC_PROFILE=/path/to/CoatedFOGRA39.icc
