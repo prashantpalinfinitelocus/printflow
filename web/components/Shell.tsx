@@ -13,6 +13,7 @@ const ADMIN_NAV = [
   { href: "/admin/stores", label: "Stores" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/formats", label: "Print Formats" },
+  { href: "/admin/settings", label: "Settings" },
 ];
 
 const OPERATOR_NAV = [{ href: "/queue", label: "Print Queue" }];

@@ -26,6 +26,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .app_settings import apply_text_case, get_app_settings
 from .moderation import apply_verdict, is_held, moderate_texts
 from ..models import CsvBatch, Order, PrintFormat, Store
 
@@ -184,6 +185,7 @@ def import_csv(
 
     stores = {s.code.upper(): s for s in db.scalars(select(Store)).all()}
     formats = {f.code.upper(): f for f in db.scalars(select(PrintFormat)).all()}
+    app_settings = get_app_settings(db)
 
     batch = CsvBatch(
         filename=filename,
@@ -196,6 +198,9 @@ def import_csv(
 
     seen_in_file: set[str] = set()
     created: list[Order] = []
+    #: The text exactly as the file sent it, for moderation. The stored copy may
+    #: have been capitalised by the ALL CAPS setting.
+    original_texts: list[str] = []
     for index, row in enumerate(rows, start=2):  # row 1 is the header
         order_ref = row.get("order_id", "")
         if not order_ref:
@@ -258,17 +263,18 @@ def import_csv(
             brand=brand,
             amount=amount,
             print_format_id=fmt.id,
-            print_text=row.get("text", ""),
+            print_text=apply_text_case(row.get("text", ""), app_settings),
             batch_id=batch.id,
         )
         db.add(order)
         created.append(order)
+        original_texts.append(row.get("text", ""))
         seen_in_file.add(order_ref)
         result.imported += 1
 
     # Brand-safety gate. Rows are imported either way; a held row simply cannot
     # be printed until an admin releases it.
-    outcome = moderate_texts([o.print_text for o in created])
+    outcome = moderate_texts(original_texts)
     for order, verdict in zip(created, outcome.verdicts, strict=True):
         apply_verdict(order, verdict)
     batch.flagged = sum(is_held(v) for v in outcome.verdicts)

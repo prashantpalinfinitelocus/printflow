@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Banner, EmptyState, Modal, Spinner } from "@/components/ui";
 import { del, get, patch, post, upload } from "@/lib/client";
 import type {
+  AppSettings,
   DetectPlaceholderResponse,
   FitText,
   Font,
@@ -111,6 +112,7 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
   const [pageSizes, setPageSizes] = useState<PageSize[]>([]);
   const [fit, setFit] = useState<FitText | null>(null);
   const [sampleText, setSampleText] = useState("Sample Name");
+  const [uppercase, setUppercase] = useState(false);
   const psdInput = useRef<HTMLInputElement>(null);
   const fontInput = useRef<HTMLInputElement>(null);
 
@@ -119,6 +121,9 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
 
   useEffect(() => {
     void refreshFonts().catch(() => setFonts([]));
+    void get<AppSettings>("/app-settings")
+      .then((s) => setUppercase(s.uppercase_text))
+      .catch(() => setUppercase(false));
     void get<PageSize[]>("/print-formats/page-sizes")
       .then(setPageSizes)
       .catch(() => setPageSizes([]));
@@ -137,7 +142,9 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
         text_box: { x: draft.x, y: draft.y, w: draft.w, h: draft.h },
         font_size: draft.font_size,
         font_path: draft.font_path || null,
-        text: sampleText || "Sample Name",
+        // With the global ALL CAPS setting on, measure what will actually print —
+        // capitals are wider.
+        text: uppercase ? (sampleText || "Sample Name").toUpperCase() : sampleText || "Sample Name",
         dpi: draft.dpi || 300,
       })
         .then(setFit)
@@ -153,6 +160,7 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
     draft.font_path,
     draft.dpi,
     sampleText,
+    uppercase,
   ]);
 
   function openCreate() {

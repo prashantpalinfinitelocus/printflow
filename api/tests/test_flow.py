@@ -1797,3 +1797,99 @@ def test_large_artifact_is_streamed_so_cloud_run_does_not_reject_it(client, admi
     assert streamed.content == whole.content
     assert streamed.headers["content-type"] == whole.headers["content-type"] == "image/tiff"
     assert streamed.headers["content-disposition"] == whole.headers["content-disposition"]
+
+
+# ---------------- uppercase text (global setting) ----------------
+
+
+def test_uppercase_text_is_off_by_default(client, operator_headers):
+    res = client.get("/app-settings", headers=operator_headers)
+    assert res.status_code == 200, res.text
+    assert res.json()["uppercase_text"] is False
+
+
+def test_only_admins_can_change_app_settings(client, admin_headers, operator_headers):
+    assert (
+        client.patch("/app-settings", headers=operator_headers, json={"uppercase_text": True}).status_code
+        == 403
+    )
+    res = client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": True})
+    assert res.status_code == 200, res.text
+    assert res.json()["uppercase_text"] is True
+    assert client.get("/app-settings", headers=operator_headers).json()["uppercase_text"] is True
+
+    client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": False})
+
+
+def _rendered_text(client, admin_headers, operator_headers, monkeypatch, ref: str, *, caps: bool) -> str:
+    """Import an order, then print a proof with ALL CAPS set to `caps`.
+
+    Returns the text the renderer was asked to draw.
+    """
+    from app.routers import printing
+
+    seen: list[str] = []
+    real = printing.render_order
+
+    def spy(**kwargs):
+        seen.append(kwargs["text"])
+        return real(**kwargs)
+
+    monkeypatch.setattr(printing, "render_order", spy)
+    # Imported with the setting off, so the stored text keeps its case.
+    order = _make_order(client, admin_headers, ref, text="Happy Birthday, Riya!")
+    client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": caps})
+    try:
+        res = client.post(
+            f"/orders/{order['id']}/print",
+            headers=operator_headers,
+            json={"kind": "PDF", "send_to_printer": False},
+        )
+    finally:
+        client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": False})
+    assert res.status_code == 200, res.text
+    assert res.json()["order"]["print_text"] == "Happy Birthday, Riya!"
+    return seen[-1]
+
+
+def test_orders_imported_before_the_setting_still_print_in_capitals(
+    client, admin_headers, operator_headers, monkeypatch
+):
+    text = _rendered_text(client, admin_headers, operator_headers, monkeypatch, "ORD-CAPS-ON", caps=True)
+    assert text == "HAPPY BIRTHDAY, RIYA!"
+
+
+def test_without_the_setting_the_text_prints_as_given(
+    client, admin_headers, operator_headers, monkeypatch
+):
+    text = _rendered_text(client, admin_headers, operator_headers, monkeypatch, "ORD-CAPS-OFF", caps=False)
+    assert text == "Happy Birthday, Riya!"
+
+
+def test_uppercase_setting_capitalises_text_at_import(client, admin_headers, fake_gemini):
+    client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": True})
+    try:
+        _upload(
+            client,
+            admin_headers,
+            _csv(_row("ORD-CAPS-IMPORT", text="happy birthday, riya!")),
+            name="caps-import.csv",
+        )
+    finally:
+        client.patch("/app-settings", headers=admin_headers, json={"uppercase_text": False})
+
+    order = client.get("/orders?q=ORD-CAPS-IMPORT", headers=admin_headers).json()["items"][0]
+    assert order["print_text"] == "HAPPY BIRTHDAY, RIYA!"
+    # Moderation judges what the customer actually wrote.
+    assert fake_gemini.calls[-1]["texts"] == ["happy birthday, riya!"]
+
+
+def test_without_the_setting_import_keeps_the_text_as_given(client, admin_headers):
+    _upload(
+        client,
+        admin_headers,
+        _csv(_row("ORD-CAPS-KEEP", text="happy birthday, riya!")),
+        name="caps-keep.csv",
+    )
+    order = client.get("/orders?q=ORD-CAPS-KEEP", headers=admin_headers).json()["items"][0]
+    assert order["print_text"] == "happy birthday, riya!"
