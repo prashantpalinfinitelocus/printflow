@@ -337,36 +337,75 @@ def erase_placeholder(
     return True
 
 
+def _grow(mask: np.ndarray, steps: int = 1) -> np.ndarray:
+    """Dilate a boolean mask by `steps` pixels, diagonals included."""
+    for _ in range(steps):
+        grown = mask.copy()
+        grown[1:] |= mask[:-1]
+        grown[:-1] |= mask[1:]
+        mask = grown.copy()
+        mask[:, 1:] |= grown[:, :-1]
+        mask[:, :-1] |= grown[:, 1:]
+    return mask
+
+
+def _reach(seed: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """Everything in `mask` connected to `seed`."""
+    reached = seed & mask
+    while True:
+        grown = _grow(reached) & mask
+        if np.array_equal(grown, reached):
+            return reached
+        reached = grown
+
+
+def _touching_edge(mask: np.ndarray) -> np.ndarray:
+    """The parts of `mask` connected to the edge of the array."""
+    seed = np.zeros_like(mask)
+    seed[0], seed[-1] = mask[0], mask[-1]
+    seed[:, 0], seed[:, -1] = mask[:, 0], mask[:, -1]
+    return _reach(seed, mask)
+
+
 def clear_ink_in_box(
     image: Image.Image,
     box: tuple[int, int, int, int],
     margin: int | None = None,
     pad: int = 3,
+    color: str | None = None,
 ) -> bool:
-    """Repaint whatever ink sits in and around `box` with the background colour.
+    """Repaint the placeholder ink in and around `box` with the background colour.
 
     For printing an order without its text: nothing will be drawn over the box,
     so whatever is baked into it — a XXXXXXXX mock-up, usually — *is* the
     finished label and has to go.
 
-    Unlike `erase_placeholder` this takes no colour to look for, because here
-    there is no wrong ink to protect: the area ends up empty either way. It
-    also does not trust the box's own dimensions. A `text_box` says where copy
+    It does not trust the box's own dimensions. A `text_box` says where copy
     should be typeset, which is not the same as where the designer's mock-up
     ink actually falls — in practice the mock-up is often a little taller, and
-    a box that clips it leaves the overflow on the label while poisoning the
-    background sample with its own red.
+    a box that clips it leaves the overflow on the label.
 
-    So: search a window slightly larger than the box, take the bounding box of
-    everything that is not the background colour, and clear that. Refuse if the
-    ink runs to the window's edge — ink continuing past the search area is part
-    of the design, not a placeholder, and repainting it would destroy artwork.
+    So: search a window slightly larger than the box and pick out the
+    placeholder's ink — its colour (`color`, else the window's commonest ink
+    colour) plus the soft edges where it blends into the background. Of that,
+    clear only the shapes that sit wholly inside the window. Templates put
+    artwork right against the mock-up, and each of these has shipped XXXXXXXX
+    on a print meant to have no text:
 
-    Returns False and leaves the image untouched when the two cannot be told
-    apart.
+    - Red Ribbon's swoosh is the placeholder's own red and crosses the box. It
+      runs off the window, so it is design and stays.
+    - Fun Stickers' serif X's touch each other and a white sparkle that runs off
+      the window. The sparkle is not placeholder-coloured, so it cannot drag the
+      X's into counting as artwork.
+    - Cheers has small black sparkles wholly inside the window. Not placeholder
+      coloured, so never touched.
+
+    No ink outside the placeholder is repainted; only faint pixels below the ink
+    threshold around it are, so anti-aliased glyph edges go too.
+
+    Returns False and leaves the image untouched when no placeholder can be told
+    apart from the artwork.
     """
-    import numpy as np
-
     x, y, w, h = box
     if w <= 0 or h <= 0:
         return False
@@ -399,20 +438,43 @@ def clear_ink_in_box(
     if not ink.any():
         return True  # already clear, nothing to do
 
-    rows, cols = np.flatnonzero(ink.any(axis=1)), np.flatnonzero(ink.any(axis=0))
-    top, bottom, left, right = rows[0], rows[-1], cols[0], cols[-1]
-    if top == 0 or left == 0 or bottom == ink.shape[0] - 1 or right == ink.shape[1] - 1:
+    # Compared premultiplied, so a transparent background is (0,0,0,0) whatever
+    # RGB it happens to carry, and a glyph edge fading into it reads as a weaker
+    # version of the glyph colour rather than as some unrelated colour.
+    def premultiplied(px: np.ndarray) -> np.ndarray:
+        px = px.astype(np.float32)
+        return np.concatenate([px[..., :3] * px[..., 3:4] / 255.0, px[..., 3:4]], axis=-1)
+
+    if color:
+        fill = np.array([*_hex_to_rgb(color), 255])
+    else:
+        ink_colors, ink_counts = np.unique(window[ink], axis=0, return_counts=True)
+        fill = ink_colors[ink_counts.argmax()]
+    bg_p, fill_p = premultiplied(background), premultiplied(fill)
+    span = fill_p - bg_p
+    if not np.abs(span).max() > 24:
+        return False
+
+    # Where each pixel sits on the straight line from background to placeholder
+    # colour, and how far off that line it is.
+    win_p = premultiplied(window)
+    t = np.clip(((win_p - bg_p) * span).sum(axis=-1) / (span * span).sum(), 0.0, 1.0)
+    off_line = np.abs(win_p - (bg_p + t[..., None] * span)).max(axis=-1)
+    placeholder_ink = ink & (off_line <= 48)
+    solid = placeholder_ink & (t >= 0.5)
+
+    artwork = _touching_edge(placeholder_ink)
+    target = _reach(solid & ~artwork, placeholder_ink & ~artwork)
+    if not target.any():
         log.warning(
-            "Ink in the text area runs past the search window — it looks like artwork "
-            "rather than a placeholder, so nothing was cleared"
+            "No placeholder in the text area can be told apart from the artwork — "
+            "nothing was cleared"
         )
         return False
 
-    # A few pixels beyond the ink so anti-aliased glyph edges go too.
-    px0, py0 = max(0, left - pad), max(0, top - pad)
-    px1, py1 = min(ink.shape[1], right + 1 + pad), min(ink.shape[0], bottom + 1 + pad)
-    patch = Image.new("RGBA", (px1 - px0, py1 - py0), tuple(int(v) for v in background))
-    image.paste(patch, (wx0 + px0, wy0 + py0))
+    clear = target | (_grow(target, pad) & ~ink)
+    window[clear] = background
+    image.paste(Image.fromarray(window, "RGBA"), (wx0, wy0))
     return True
 
 
@@ -912,7 +974,7 @@ def render_order(
         # it is the finished label. Cleared by ink extent rather than by the
         # box: `text_box` is where copy would be typeset, and the mock-up it
         # stands in for is routinely taller than that.
-        placeholder_erased = clear_ink_in_box(image, box)
+        placeholder_erased = clear_ink_in_box(image, box, color=placeholder_color)
     elif placeholder_color:
         placeholder_erased = erase_placeholder(image, box, placeholder_color)
 
