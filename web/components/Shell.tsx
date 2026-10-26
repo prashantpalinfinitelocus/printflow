@@ -15,7 +15,11 @@ const ADMIN_NAV = [
   { href: "/admin/formats", label: "Print Formats" },
 ];
 
-const OPERATOR_NAV = [{ href: "/queue", label: "Print Queue" }];
+const OPERATOR_NAV = [
+  { href: "/overview", label: "Overview" },
+  { href: "/upload", label: "CSV Upload" },
+  { href: "/queue", label: "Print Queue" },
+];
 
 export function Shell({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname();

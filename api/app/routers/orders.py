@@ -214,11 +214,20 @@ def order_jobs(order_id: RowId, db: DbSession, user: CurrentUser):
     return sorted(order.jobs, key=lambda j: j.id, reverse=True)
 
 
-# ---------- CSV intake (admin) ----------
+# ---------- CSV intake ----------
+#
+# Admins can import anything. Operators can upload a file directly, but only
+# the rows for their own store are imported, and they only see the batches they
+# uploaded themselves. The server inbox is shared by every store, so it stays
+# admin-only.
 
 
 @router.post("/csv/upload", response_model=CsvBatchOut, status_code=status.HTTP_201_CREATED)
-async def upload_csv(db: DbSession, admin: AdminUser, file: UploadFile = File(...)):
+async def upload_csv(db: DbSession, user: CurrentUser, file: UploadFile = File(...)):
+    is_admin = user.role == Role.ADMIN
+    if not is_admin and user.store_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not assigned to a store")
+
     name = Path(file.filename or "upload.csv").name
     if not name.lower().endswith(".csv"):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Only .csv files are accepted")
@@ -226,12 +235,22 @@ async def upload_csv(db: DbSession, admin: AdminUser, file: UploadFile = File(..
     if not raw:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The uploaded file is empty")
 
-    # Keep a copy of exactly what was ingested.
-    (settings.inbox_dir / name).write_bytes(raw)
+    # Keep a copy of exactly what was ingested. Operator copies get a store and
+    # time prefix so two stores uploading "orders.csv" do not overwrite each other.
+    saved_name = name
+    if not is_admin:
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+        saved_name = f"{user.store.code}_{stamp}_{name}"
+    (settings.inbox_dir / saved_name).write_bytes(raw)
 
     try:
         batch, _result = import_csv(
-            db, raw=raw, filename=name, source="upload", uploaded_by_id=admin.id
+            db,
+            raw=raw,
+            filename=name,
+            source="upload",
+            uploaded_by_id=user.id,
+            restrict_store_id=None if is_admin else user.store_id,
         )
     except CsvFormatError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
@@ -287,12 +306,12 @@ def import_from_inbox(payload: ImportFromPathRequest, db: DbSession, admin: Admi
 
 
 @router.get("/csv/batches", response_model=list[CsvBatchOut])
-def list_batches(db: DbSession, _: AdminUser, limit: int = Query(default=20, ge=1, le=100)):
+def list_batches(db: DbSession, user: CurrentUser, limit: int = Query(default=20, ge=1, le=100)):
+    stmt = select(CsvBatch)
+    if user.role != Role.ADMIN:
+        stmt = stmt.where(CsvBatch.uploaded_by_id == user.id)
     return db.scalars(
-        select(CsvBatch)
-        .options(selectinload(CsvBatch.uploaded_by))
-        .order_by(CsvBatch.id.desc())
-        .limit(limit)
+        stmt.options(selectinload(CsvBatch.uploaded_by)).order_by(CsvBatch.id.desc()).limit(limit)
     ).all()
 
 

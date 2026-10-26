@@ -12,12 +12,16 @@ export function CsvIntake({
   initialBatches,
   stores,
   formats,
+  operatorStore = null,
 }: {
   initialInbox: InboxFile[];
   initialBatches: CsvBatch[];
   stores: Store[];
   formats: PrintFormat[];
+  /** Set for operators: the API imports only this store's rows, and the shared inbox is admin-only. */
+  operatorStore?: Store | null;
 }) {
+  const isOperator = operatorStore !== null;
   const [inbox, setInbox] = useState(initialInbox);
   const [batches, setBatches] = useState(initialBatches);
   const [busy, setBusy] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export function CsvIntake({
 
   async function refresh() {
     const [nextInbox, nextBatches] = await Promise.all([
-      get<InboxFile[]>("/csv/inbox"),
+      isOperator ? Promise.resolve([]) : get<InboxFile[]>("/csv/inbox"),
       get<CsvBatch[]>("/csv/batches?limit=15"),
     ]);
     setInbox(nextInbox);
@@ -44,7 +48,8 @@ export function CsvIntake({
     setError(null);
     setResult(null);
     try {
-      const target = await requestUploadTarget(file.name);
+      // The signed bucket upload lands in the shared inbox, which operators cannot import from.
+      const target = isOperator ? null : await requestUploadTarget(file.name);
       let batch: CsvBatch;
       if (target) {
         // Straight to the bucket, then import from the inbox. The response from storage is opaque, so the
@@ -119,8 +124,18 @@ export function CsvIntake({
           </div>
           <p className="text-lg font-black tracking-tight">Drop your orders CSV here</p>
           <p className="mt-1 max-w-sm text-sm text-ink-400">
-            Rows are matched to stores and templates by code. Anything that does not match is
-            skipped and listed below — the rest still imports.
+            {isOperator ? (
+              <>
+                Only rows for your store (<span className="font-mono font-bold">{operatorStore.code}</span>)
+                are imported. Rows for other stores, or that do not match a template, are skipped and
+                listed below — the rest still imports.
+              </>
+            ) : (
+              <>
+                Rows are matched to stores and templates by code. Anything that does not match is
+                skipped and listed below — the rest still imports.
+              </>
+            )}
           </p>
           <input
             ref={fileInput}
@@ -168,8 +183,18 @@ export function CsvIntake({
               <div className="border-b border-cream-200 px-5 py-3">
                 <Banner kind="warning">
                   {result.flagged} {result.flagged === 1 ? "row was" : "rows were"} imported but held by the
-                  text check. Review {result.flagged === 1 ? "it" : "them"} under{" "}
-                  <strong>All orders → On hold</strong> before {result.flagged === 1 ? "it" : "they"} can print.
+                  text check.{" "}
+                  {isOperator ? (
+                    <>
+                      {result.flagged === 1 ? "It shows" : "They show"} under <strong>Print Queue → On hold</strong>{" "}
+                      and can print once an administrator reviews {result.flagged === 1 ? "it" : "them"}.
+                    </>
+                  ) : (
+                    <>
+                      Review {result.flagged === 1 ? "it" : "them"} under <strong>All orders → On hold</strong>{" "}
+                      before {result.flagged === 1 ? "it" : "they"} can print.
+                    </>
+                  )}
                 </Banner>
               </div>
             )}
@@ -195,43 +220,45 @@ export function CsvIntake({
         )}
 
         {/* Server inbox */}
-        <div className="card overflow-hidden">
-          <header className="flex items-center justify-between border-b border-cream-200 px-5 py-4">
-            <div>
-              <h2 className="font-black tracking-tight">Server inbox</h2>
-              <p className="text-xs text-ink-400">
-                Files in the server inbox folder (<code className="font-mono">inbox/</code> in the data bucket)
-              </p>
-            </div>
-            <button onClick={() => void refresh()} className="btn-secondary btn-sm">
-              ↻
-            </button>
-          </header>
-          {inbox.length === 0 ? (
-            <EmptyState title="Inbox is empty" hint="Uploaded CSVs are imported straight away. Copy a CSV into the inbox folder to see it here." icon="📥" />
-          ) : (
-            <ul className="divide-y divide-cream-200">
-              {inbox.map((file) => (
-                <li key={file.name} className="flex items-center justify-between gap-3 px-5 py-3.5">
-                  <div className="min-w-0">
-                    <p className="truncate font-bold">{file.name}</p>
-                    <p className="text-xs text-ink-400">
-                      {(file.size / 1024).toFixed(1)} KB · {dateTime(file.modified)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => void importFromInbox(file.name)}
-                    disabled={busy !== null}
-                    className="btn-secondary btn-sm shrink-0"
-                  >
-                    {busy === file.name && <Spinner />}
-                    Import
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {!isOperator && (
+          <div className="card overflow-hidden">
+            <header className="flex items-center justify-between border-b border-cream-200 px-5 py-4">
+              <div>
+                <h2 className="font-black tracking-tight">Server inbox</h2>
+                <p className="text-xs text-ink-400">
+                  Files in the server inbox folder (<code className="font-mono">inbox/</code> in the data bucket)
+                </p>
+              </div>
+              <button onClick={() => void refresh()} className="btn-secondary btn-sm">
+                ↻
+              </button>
+            </header>
+            {inbox.length === 0 ? (
+              <EmptyState title="Inbox is empty" hint="Uploaded CSVs are imported straight away. Copy a CSV into the inbox folder to see it here." icon="📥" />
+            ) : (
+              <ul className="divide-y divide-cream-200">
+                {inbox.map((file) => (
+                  <li key={file.name} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{file.name}</p>
+                      <p className="text-xs text-ink-400">
+                        {(file.size / 1024).toFixed(1)} KB · {dateTime(file.modified)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => void importFromInbox(file.name)}
+                      disabled={busy !== null}
+                      className="btn-secondary btn-sm shrink-0"
+                    >
+                      {busy === file.name && <Spinner />}
+                      Import
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Reference column */}
@@ -243,12 +270,12 @@ export function CsvIntake({
           <div className="px-5 py-4">
             <pre className="scroll-slim overflow-x-auto rounded-xl bg-ink px-4 py-3 text-xs leading-relaxed text-cream">
 {`order_id,store_id,store_name,city,sku_code,brand,print_format,text
-ORD-1001,${stores[0]?.code ?? "MUM01"},Mumbai Flagship,Mumbai,SKU-99812,Thums Up,${formats[0]?.code ?? "GIFT_TAG"},"Happy Birthday, Riya!"`}
+ORD-1001,${operatorStore?.code ?? stores[0]?.code ?? "MUM01"},Mumbai Flagship,Mumbai,SKU-99812,Thums Up,${formats[0]?.code ?? "GIFT_TAG"},"Happy Birthday, Riya!"`}
             </pre>
             <dl className="mt-4 space-y-2.5 text-sm">
               {[
                 ["order_id", "Unique across the system. Duplicates are skipped."],
-                ["store_id", "Must match a store code exactly."],
+                ["store_id", isOperator ? "Must be your store code. Rows for other stores are skipped." : "Must match a store code exactly."],
                 ["store_name", "Optional. The store's name as the upstream system knows it — recorded, not used for routing."],
                 ["city", "Optional. Recorded on the order."],
                 ["sku_code", "The product SKU."],
@@ -301,7 +328,7 @@ ORD-1001,${stores[0]?.code ?? "MUM01"},Mumbai Flagship,Mumbai,SKU-99812,Thums Up
 
         <div className="card overflow-hidden">
           <header className="border-b border-cream-200 px-5 py-4">
-            <h2 className="font-black tracking-tight">Import history</h2>
+            <h2 className="font-black tracking-tight">{isOperator ? "My imports" : "Import history"}</h2>
           </header>
           {batches.length === 0 ? (
             <EmptyState title="Nothing imported yet" icon="🗂" />
