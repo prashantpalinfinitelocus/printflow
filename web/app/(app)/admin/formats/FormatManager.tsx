@@ -871,12 +871,6 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
                   )}
                 </span>
               )}
-              {draft.white_passes > 0 && draft.colorspace === "CMYK" && (
-                <span className="mt-1 block font-bold text-brand-600">
-                  CMYK cannot carry spot channels or the transparency they come from — RGB is used
-                  when both are set.
-                </span>
-              )}
             </p>
           </div>
 
@@ -891,7 +885,7 @@ export function FormatManager({ initial }: { initial: PrintFormat[] }) {
               Keep transparency
               <span className="block text-xs font-normal text-ink-400">
                 Required for die-cut labels — without it the artwork prints on a white rectangle.
-                CMYK cannot carry transparency, so RGB is used when both are set.
+                Always kept when white passes are set, since the white plates are made from it.
               </span>
             </span>
           </label>

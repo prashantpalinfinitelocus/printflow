@@ -9,7 +9,9 @@ Pipeline
 2. Draw the order text into the text box: word-wrapped, auto-shrunk until it
    fits, aligned per the format.
 3. Emit three artifacts:
-   - <base>.tif  : CMYK (or RGB) TIFF, LZW, DPI stamped -> goes to the printer
+   - <base>.tif  : CMYK (or RGB) TIFF, DPI stamped -> goes to the printer.
+                   Uncompressed with named channels for white plates, or for
+                   CMYK that keeps transparency.
    - <base>.pdf  : RGB PDF proof at the same physical size -> for cross-checking
    - <base>.png  : downscaled preview -> for the browser
 """
@@ -87,7 +89,13 @@ PAGE_SIZES_IN: dict[str, tuple[float, float]] = {
 # Searched in order when no profile is configured. A CMYK TIFF with no embedded
 # profile is the bug this exists to prevent: viewers fall back to a real press
 # profile, and naively-separated values (C = 255 - R) come out near-black.
+#
+# The bundled profile comes first. It is the one embedded in the CMYK + white
+# file the press operator printed successfully (Photoshop's default, U.S. Web
+# Coated (SWOP) v2), extracted unmodified. Separating with anything else makes
+# our CMYK differ from the file the press is known to accept.
 CMYK_PROFILE_CANDIDATES = [
+    str(Path(__file__).resolve().parents[1] / "assets" / "icc" / "USWebCoatedSWOP.icc"),
     "/System/Library/ColorSync/Profiles/Generic CMYK Profile.icc",
     "/Library/ColorSync/Profiles/Generic CMYK Profile.icc",
     "/usr/share/color/icc/ghostscript/default_cmyk.icc",
@@ -476,12 +484,16 @@ def to_cmyk(image: Image.Image) -> tuple[Image.Image, bytes | None]:
 
         srgb = ImageCms.createProfile("sRGB")
         cmyk = ImageCms.getOpenProfile(profile_path)
+        # Relative colorimetric with black point compensation is Photoshop's
+        # default conversion. Without BPC, LittleCMS lands up to 58 levels away
+        # from the press-accepted reference file in the shadows; with it, within 6.
         transform = ImageCms.buildTransform(
             srgb,
             cmyk,
             "RGB",
             "CMYK",
             renderingIntent=ImageCms.Intent.RELATIVE_COLORIMETRIC,
+            flags=ImageCms.Flags.BLACKPOINTCOMPENSATION,
         )
         separated = ImageCms.applyTransform(image, transform)
         return separated, Path(profile_path).read_bytes()
@@ -687,15 +699,19 @@ def composite_psd(psd_path: str | Path) -> Image.Image:
 # alpha on its own: it wants named spot channels in the file, which the operator
 # was adding by hand in Photoshop on every job.
 #
-# The structure below is copied field for field from one of those hand-made
-# files, so this is a transcription rather than an interpretation:
+# The structure below is copied field for field from those hand-made files, so
+# this is a transcription rather than an interpretation:
 #
-#   SamplesPerPixel 6      R, G, B, Transparency, W1, W2
+#   SamplesPerPixel 6 / 7  R, G, B or C, M, Y, K, then Transparency, W1, W2
 #   ExtraSamples    (1,0,0) alpha associated, plates unspecified
-#   Photometric     2 (RGB), chunky, uncompressed
+#   Photometric     2 (RGB) or 5 (separated), chunky, uncompressed
 #   1006 / 1045     ['Transparency', 'W1', 'W2']
 #   1053            channel ids 0, 5, 6
 #   1077            alpha kind=1; each plate kind=2 (spot)
+#
+# The CMYK reference is a Photoshop Image > Mode > CMYK of one of our RGB files,
+# printed successfully on the press. Its alpha, plates and every resource block
+# above are byte-identical to the RGB layout; only the colour samples differ.
 #
 # Pillow can write none of this — it caps out at RGBA and cannot even set
 # ExtraSamples — so the spot path goes through tifffile.
@@ -775,9 +791,14 @@ def write_spot_tiff(
     image: Image.Image,
     spot_names: list[str],
     dpi: int,
-    icc_profile: bytes | None,
-) -> None:
-    """Write `image` as RGB + Transparency + one white plate per name.
+    colorspace: str = "RGB",
+) -> str:
+    """Write `image` as colour + Transparency + one white plate per name.
+
+    Colour is RGB or CMYK; returns the one actually written, since CMYK falls
+    back to RGB on a host with no CMYK profile. With no names this is just
+    colour + Transparency — the way Photoshop saves a CMYK file with alpha,
+    which Pillow cannot write.
 
     Each plate is the inverse of the alpha. Spot channels store ink density
     inverted — 0 is full ink — so `255 - alpha` puts white under every opaque
@@ -789,14 +810,32 @@ def write_spot_tiff(
     """
     rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8)
     alpha = rgba[..., 3]
+
+    icc_profile: bytes | None = None
+    if colorspace == "CMYK":
+        # Separate the straight (unpremultiplied) colour, so edge pixels convert
+        # as the colour they are rather than as a darkened one.
+        separated, icc_profile = to_cmyk(Image.fromarray(rgba[..., :3], "RGB"))
+        if icc_profile is None:
+            colorspace = "RGB"
+    if colorspace == "CMYK":
+        colour = np.asarray(separated, dtype=np.uint8)
+        photometric = "separated"
+    else:
+        colorspace = "RGB"
+        colour = rgba[..., :3]
+        photometric = "rgb"
+        icc_profile = _srgb_profile()
+
     # Associated alpha means the colour is premultiplied down. Photoshop writes
-    # its transparency this way and the RIP reads it back on that assumption.
+    # its transparency this way and the RIP reads it back on that assumption. In
+    # CMYK "down" is toward no ink, which the same multiply gives: 0 is paper.
     coverage = alpha[..., None].astype(np.float32) / 255.0
-    rgb = (rgba[..., :3].astype(np.float32) * coverage).round().clip(0, 255).astype(np.uint8)
+    colour = (colour.astype(np.float32) * coverage).round().clip(0, 255).astype(np.uint8)
     plate = 255 - alpha
 
     white_channels = len(spot_names)
-    planes = [rgb[..., 0], rgb[..., 1], rgb[..., 2], alpha] + [plate] * white_channels
+    planes = [colour[..., i] for i in range(colour.shape[-1])] + [alpha] + [plate] * white_channels
     data = np.stack(planes, axis=-1)
     names = list(spot_names)
 
@@ -816,7 +855,7 @@ def write_spot_tiff(
     tifffile.imwrite(
         str(path),
         data,
-        photometric="rgb",
+        photometric=photometric,
         extrasamples=["assocalpha"] + ["unspecified"] * white_channels,
         planarconfig="contig",
         compression=None,
@@ -830,6 +869,7 @@ def write_spot_tiff(
         metadata=None,
         extratags=extratags,
     )
+    return colorspace
 
 
 def render_order(
@@ -905,9 +945,6 @@ def render_order(
     preview_path = out_base.with_suffix(".png")
 
     target_space = (colorspace or settings.tiff_colorspace).upper()
-    # Read the alpha off the label, not the padded sheet: transparent padding
-    # would otherwise make every opaque design look like it needs alpha.
-    has_alpha = image.mode == "RGBA" and image.getchannel("A").getextrema()[0] < 255
 
     # Pad the label out to the sheet it will be printed on. Everything the
     # printer sees is built from `sheet` from here on; the browser preview stays
@@ -917,38 +954,28 @@ def render_order(
         log.warning("%s", page_warning)
 
     spot_names = white_plate_names(white_passes)
-    if spot_names and target_space == "CMYK":
-        # The white plates are spot channels alongside RGB, and they are derived
-        # from the alpha — neither survives a CMYK conversion.
-        log.warning("Format asks for CMYK but needs white spot channels — writing RGB instead")
-        target_space = "RGB"
-
-    if target_space == "CMYK" and preserve_alpha and has_alpha:
-        # CMYK has nowhere to put the alpha channel. Silently flattening would
-        # print a white rectangle around a die-cut label, so RGB wins here.
-        log.warning("Format asks for CMYK but needs transparency — writing RGB instead")
-        target_space = "RGB"
-
-    if target_space == "CMYK":
-        tiff_image, icc_profile = to_cmyk(_flatten(sheet))
-    elif preserve_alpha or spot_names:
+    if spot_names or (target_space == "CMYK" and preserve_alpha):
         # White plates need the alpha they are derived from, so the spot path
-        # always keeps transparency regardless of the flag.
-        tiff_image, icc_profile = sheet, _srgb_profile()
+        # always keeps transparency regardless of the flag. It is also the only
+        # writer for CMYK with alpha — Pillow cannot save that.
+        target_space = write_spot_tiff(tiff_path, sheet, spot_names, dpi, target_space)
     else:
-        tiff_image, icc_profile = _flatten(sheet), _srgb_profile()
+        if target_space == "CMYK":
+            tiff_image, icc_profile = to_cmyk(_flatten(sheet))
+            if icc_profile is None:
+                target_space, icc_profile = "RGB", _srgb_profile()
+        elif preserve_alpha:
+            tiff_image, icc_profile = sheet, _srgb_profile()
+        else:
+            tiff_image, icc_profile = _flatten(sheet), _srgb_profile()
 
-    if spot_names:
-        write_spot_tiff(tiff_path, tiff_image, spot_names, dpi, icc_profile)
-    else:
         save_kwargs: dict = {
             "format": "TIFF",
             "compression": settings.tiff_compression,
             "dpi": (dpi, dpi),
             "resolution_unit": 2,
+            "icc_profile": icc_profile,
         }
-        if icc_profile:
-            save_kwargs["icc_profile"] = icc_profile
         tiff_image.save(tiff_path, **save_kwargs)
 
     # PDF has no alpha channel — the proof is always matted onto white so the

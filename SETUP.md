@@ -378,9 +378,9 @@ Photoshop.
 4. **`PRINTFLOW_CORS_ORIGINS`** — the real web origin, not `localhost:3000`.
 5. **Do not publish the `db` port.** Remove the `ports:` block on the `db`
    service; only `api` needs to reach it.
-6. If you move any format to CMYK, point `PRINTFLOW_CMYK_ICC_PROFILE` at your
-   printer's press profile. The image ships Ghostscript's generic CMYK profile,
-   which is correct but not your vendor's.
+6. CMYK formats separate with the bundled U.S. Web Coated (SWOP) v2 profile —
+   the one in the CMYK + white file the press printed. Point
+   `PRINTFLOW_CMYK_ICC_PROFILE` elsewhere only if the printer supplies its own.
 
 ---
 
@@ -409,6 +409,6 @@ cd ..
 Then register the designs as in step 5, pointing `--psd-dir` at `data/psd` and
 dropping the `/data` prefix. Tests: `cd api && .venv/bin/python -m pytest tests -q`.
 
-On macOS the renderer finds system fonts and the ColorSync CMYK profile
-automatically; on Linux install `fonts-dejavu-core`, `fonts-noto-core` and
+On macOS the renderer finds system fonts automatically (the CMYK profile is
+bundled with the API); on Linux install `fonts-dejavu-core`, `fonts-noto-core` and
 `ghostscript` to match what the container has.

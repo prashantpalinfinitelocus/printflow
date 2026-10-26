@@ -1526,18 +1526,87 @@ def test_channel_names_are_not_truncated(client, admin_headers, operator_headers
         assert name in ("Transparency", "W1", "W2"), f"truncated channel name: {name!r}"
 
 
-def test_cmyk_gives_way_to_the_white_plates(client, admin_headers, operator_headers):
-    """Spot plates are derived from the alpha and sit alongside RGB — a CMYK
-    conversion destroys both, so RGB has to win."""
+def test_cmyk_carries_the_white_plates(client, admin_headers, operator_headers):
+    """The press prints CMYK + Transparency + W1/W2 — the layout Photoshop
+    writes for Image > Mode > CMYK on one of our RGB files. Alpha, plates and the
+    channel-name blocks are the RGB layout unchanged; only the colour separates."""
+    import numpy as np
+
+    from app.services.renderer import CMYK_PROFILE_CANDIDATES
+
     _page_format(
         client, admin_headers, "WHITE_CMYK",
         colorspace="CMYK", preserve_alpha=True, white_passes=1,
     )
     order, body = _render(client, admin_headers, operator_headers, "ORD-WC", "WHITE_CMYK")
+    assert body["warning"] is None
+
     path = _job_artifact_path(client, admin_headers, order["id"], body["job"]["id"])
-    _, tags = _read_spot_tiff(path)
-    assert tags[262] == 2  # RGB, not separated
-    assert tags[277] == 6
+    arr, tags = _read_spot_tiff(path)
+
+    assert tags[262] == 5  # separated
+    assert tags[277] == 7  # C, M, Y, K, Transparency, W1, W2
+    assert tuple(int(e) for e in tags[338]) == (1, 0, 0)
+    assert tags[259] == 1
+    assert _channel_names(bytes(tags[34377])) == ["Transparency", "W1", "W2"]
+    assert 37724 not in tags
+    # Separated with, and tagged as, the profile the press-accepted file carried.
+    with open(CMYK_PROFILE_CANDIDATES[0], "rb") as fh:
+        assert bytes(tags[34675]) == fh.read()
+
+    alpha = arr[..., 4]
+    assert np.array_equal(arr[..., 5], 255 - alpha)
+    assert np.array_equal(arr[..., 6], 255 - alpha)
+    # The test artwork is a solid red: ink in M and Y, real separation.
+    assert arr[..., 1].max() > 200 and arr[..., 2].max() > 200
+
+
+def test_cmyk_keeps_die_cut_transparency(client, admin_headers, operator_headers):
+    """CMYK with alpha used to fall back to RGB. Padding onto a page gives the
+    test artwork a transparent margin, which must stay transparent and inkless."""
+    import numpy as np
+
+    _page_format(
+        client, admin_headers, "CMYK_ALPHA",
+        page_size="A4", colorspace="CMYK", preserve_alpha=True,
+    )
+    order, body = _render(client, admin_headers, operator_headers, "ORD-CA", "CMYK_ALPHA")
+    path = _job_artifact_path(client, admin_headers, order["id"], body["job"]["id"])
+    arr, tags = _read_spot_tiff(path)
+
+    assert tags[262] == 5
+    assert tags[277] == 5  # C, M, Y, K, Transparency — no plates asked for
+    assert tuple(int(e) for e in tags[338]) == (1,)
+    assert _channel_names(bytes(tags[34377])) == ["Transparency"]
+
+    alpha = arr[..., 4]
+    assert alpha[0, 0] == 0
+    assert alpha[alpha.shape[0] // 2, alpha.shape[1] // 2] == 255
+    # Associated alpha in CMYK premultiplies toward no ink: the margin is paper.
+    assert not arr[..., :4][alpha == 0].any()
+
+
+def test_separation_matches_photoshop_defaults():
+    """Relative colorimetric with black point compensation is what Photoshop
+    used for the press-accepted file. Without BPC a mid grey picks up visibly
+    less ink than Photoshop gives it."""
+    from PIL import Image, ImageCms
+
+    from app.services.renderer import find_cmyk_profile, to_cmyk
+
+    grey = Image.new("RGB", (4, 4), (60, 60, 60))
+    separated, _ = to_cmyk(grey)
+    without_bpc = ImageCms.applyTransform(
+        grey,
+        ImageCms.buildTransform(
+            ImageCms.createProfile("sRGB"),
+            ImageCms.getOpenProfile(find_cmyk_profile()),
+            "RGB",
+            "CMYK",
+            renderingIntent=ImageCms.Intent.RELATIVE_COLORIMETRIC,
+        ),
+    )
+    assert separated.getpixel((0, 0)) != without_bpc.getpixel((0, 0))
 
 
 # ---------------- font size is a ceiling, not a setting ----------------
