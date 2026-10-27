@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: none
@@ -34,7 +34,7 @@ jobs:
       # The SARIF file is attached to the run as evidence. Once Advanced Security is enabled,
       # remove `upload: never` so results also appear in the repository's Security tab.
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
           output: ./results
