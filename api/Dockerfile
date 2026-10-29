@@ -43,6 +43,13 @@ ENV PRINTFLOW_DATA_DIR=/data \
     PRINTFLOW_OUTPUT_DIR=/data/output \
     PRINTFLOW_FONTS_DIR=/data/fonts
 
+# Run as an unprivileged user. uid/gid 1000 must match the Cloud Run /data
+# mount options (uid=1000;gid=1000) so the app can write to the bucket.
+RUN groupadd --system --gid 1000 printflow \
+    && useradd --system --uid 1000 --gid printflow --no-create-home printflow \
+    && mkdir -p /data && chown printflow:printflow /data
+USER printflow
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \
