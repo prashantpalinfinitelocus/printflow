@@ -82,7 +82,7 @@ steps:
           --image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_WEB_SERVICE}:$SHORT_SHA \
           --execution-environment=gen2 \
           --port=3000 \
-          --startup-probe=httpGet.path=/login,httpGet.port=3000,initialDelaySeconds=0,periodSeconds=10,timeoutSeconds=5,failureThreshold=24 \
+          --startup-probe=httpGet.path=/offline/store/login,httpGet.port=3000,initialDelaySeconds=0,periodSeconds=10,timeoutSeconds=5,failureThreshold=24 \
           --min-instances=1 \
           --max-instances=${_MAX_INSTANCES} \
           --timeout=600 \

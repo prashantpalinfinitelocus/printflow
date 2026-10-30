@@ -20,10 +20,11 @@ POLICY="${POLICY:?set POLICY, e.g. tccc-pf-test-waf-ruleset}"
 BACKEND="${BACKEND:-}"      # web backend service name; required for the first run
 PROJECT="${PROJECT:-$(gcloud config get-value project)}"
 
-# Paths as seen by the load balancer. The browser only calls /api/proxy/<api path>.
+# Paths as seen by the load balancer. The web app lives under /offline/store, so the browser only calls
+# /offline/store/api/proxy/<api path>.
 # Web app routes (browser -> web) and API routes (direct, under the load balancer's /backend prefix).
-LOGIN_RE='^(/api/auth/login|/backend/auth/login)$'
-UPLOAD_RE='^(/api/proxy|/backend)/(print-formats/upload-psd|print-formats/upload-font|csv/upload)$'
+LOGIN_RE='^(/offline/store/api/auth/login|/backend/auth/login)$'
+UPLOAD_RE='^(/offline/store/api/proxy|/backend)/(print-formats/upload-psd|print-formats/upload-font|csv/upload)$'
 
 WAF_SETS=(sqli-v33-stable xss-v33-stable lfi-v33-stable rfi-v33-stable rce-v33-stable
           protocolattack-v33-stable scannerdetection-v33-stable)

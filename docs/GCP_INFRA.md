@@ -53,7 +53,7 @@ Region for everything: `asia-south1`. Two separate GCP projects, test and prod, 
 | 11 | Secret Manager | see section 6 | Secret names equal env var names, like the existing projects. |
 | 12 | Bucket lifecycle rule | on the data bucket | Delete objects under `output/` after N days (proposal: 30) so rendered files do not grow without bound. |
 | 13 | IAM | `tccc-pf-<env>-cloudrun-sa` | See section 8. |
-| 14 | Cloud Logging and Monitoring | default | Uptime check on `GET /login` (web) and log-based alert on API 5xx. |
+| 14 | Cloud Logging and Monitoring | default | Uptime check on `GET /offline/store/login` (web) and log-based alert on API 5xx. |
 
 APIs to enable: Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Cloud SQL Admin, Compute Engine, Service Networking, Cloud DNS, Cloud Logging, Cloud Monitoring, Cloud Storage.
 
@@ -168,7 +168,7 @@ Cloud Build service account:
 2. Run the api trigger, then the web trigger. The API creates the schema on first start (`create_all` plus idempotent `ADD COLUMN IF NOT EXISTS` migrations). Keep max instances at 1 for the very first revision to avoid two instances racing on `create_all`, then raise it.
 3. Create the first admin user and initial data. The pipeline does not run the seed script. The app team will add an API endpoint for this, so no extra job or service is needed. Change any default passwords straight away.
 4. Copy brand fonts (`data/fonts`, about 1 MB, in the repo) and real PSDs into the data bucket under `fonts/` and `psd/` (`gcloud storage cp`), or upload them in the admin UI.
-5. Attach the domain and certificate, then check `GET /login` through the LB.
+5. Attach the domain and certificate, then check `GET /offline/store/login` through the LB.
 6. Smoke test: log in as admin, upload a CSV, print an order with delivery DOWNLOAD, download the TIFF.
 
 ## 10. Risks and decisions for the cloud team
