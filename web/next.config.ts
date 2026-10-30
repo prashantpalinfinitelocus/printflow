@@ -13,6 +13,11 @@ const config: NextConfig = {
     // reached the API cut off mid-file and failed with "file: Field required".
     middlewareClientMaxBodySize: "100mb",
   },
+  // The home page sends every visitor, signed in or not, to the offline store.
+  // Config redirects run before middleware, so this skips the auth check.
+  async redirects() {
+    return [{ source: "/", destination: "/offline/store", permanent: false }];
+  },
   // Baseline browser protections on every response, including the proxied
   // TIFF/PDF/PNG downloads: no content-type sniffing, no framing, and no
   // full-URL referrer leaks.
