@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Banner, Spinner } from "@/components/ui";
+import { withBasePath } from "@/lib/basePath";
 
 export function LoginForm() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export function LoginForm() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(withBasePath("/api/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { withBasePath } from "@/lib/basePath";
 import type { User } from "@/lib/types";
 
 const ADMIN_NAV = [
@@ -33,7 +34,7 @@ export function Shell({ user, children }: { user: User; children: React.ReactNod
 
   async function signOut() {
     setSigningOut(true);
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch(withBasePath("/api/auth/logout"), { method: "POST" });
     router.replace("/login");
     router.refresh();
   }

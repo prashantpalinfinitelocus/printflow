@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { BASE_PATH } from "./lib/basePath";
+
 const config: NextConfig = {
   reactStrictMode: true,
   // There are lockfiles higher up the tree; pin tracing to this app.
@@ -13,10 +15,12 @@ const config: NextConfig = {
     // reached the API cut off mid-file and failed with "file: Field required".
     middlewareClientMaxBodySize: "100mb",
   },
-  // The home page sends every visitor, signed in or not, to the offline store.
-  // Config redirects run before middleware, so this skips the auth check.
+  // Every page lives under /offline/store (see lib/basePath.ts).
+  basePath: BASE_PATH,
+  // The bare domain sends every visitor, signed in or not, into the app.
+  // basePath: false matches "/" itself rather than "/offline/store/".
   async redirects() {
-    return [{ source: "/", destination: "/offline/store", permanent: false }];
+    return [{ source: "/", destination: BASE_PATH, basePath: false, permanent: false }];
   },
   // Baseline browser protections on every response, including the proxied
   // TIFF/PDF/PNG downloads: no content-type sniffing, no framing, and no

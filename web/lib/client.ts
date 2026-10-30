@@ -1,5 +1,7 @@
 "use client";
 
+import { withBasePath } from "@/lib/basePath";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -11,7 +13,7 @@ export class ApiError extends Error {
 }
 
 function proxyUrl(path: string): string {
-  return `/api/proxy${path.startsWith("/") ? path : `/${path}`}`;
+  return withBasePath(`/api/proxy${path.startsWith("/") ? path : `/${path}`}`);
 }
 
 async function toError(res: Response): Promise<ApiError> {
