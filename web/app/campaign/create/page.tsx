@@ -16,7 +16,7 @@ const CHECKER_DOWN = "Our message checker needs a moment. Your design is still h
 /** Customising tool — Figma 243:872, with popups 243:936 (heads-up) and 243:1013 (rejected). */
 export default function CreatePage() {
   const router = useRouter();
-  const { ready, session, designId, text, approvedText, headsUpSeen, update } = useCampaign();
+  const { ready, session, designId, text, approvedText, headsUpSeen, textRejected, update } = useCampaign();
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [rejected, setRejected] = useState(false);
@@ -155,10 +155,11 @@ export default function CreatePage() {
       </form>
 
       {!headsUpSeen && <HeadsUp onDone={() => update({ headsUpSeen: true })} />}
-      {rejected && (
+      {(rejected || textRejected) && (
         <Rejected
           onEdit={() => {
             setRejected(false);
+            update({ textRejected: false });
             inputRef.current?.focus();
           }}
         />

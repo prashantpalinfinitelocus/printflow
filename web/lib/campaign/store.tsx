@@ -12,6 +12,8 @@ interface CampaignState {
   /** The text moderation last approved; preview and entry need it to equal `text`. */
   approvedText: string | null;
   headsUpSeen: boolean;
+  /** The server refused the text at submit; the customiser shows the friendly-content popup. */
+  textRejected: boolean;
   /**
    * An entry sent but not confirmed. Its idempotency key outlives a reload, so a
    * submit whose response was lost cannot become a second entry on retry.
@@ -25,6 +27,7 @@ const INITIAL: CampaignState = {
   text: "",
   approvedText: null,
   headsUpSeen: false,
+  textRejected: false,
   pendingEntry: null,
 };
 

@@ -158,6 +158,14 @@ describe("entry", () => {
     expect(screen.getByRole("button", { name: "Make It Happen" })).not.toHaveAttribute("aria-busy");
   });
 
+  it("sends a text the server rejects at submit back to editing, with the friendly-content popup", async () => {
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("TEXT_REJECTED", "Not the vibe."));
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign/create"));
+    expect(savedJourney()).toMatchObject({ approvedText: null, textRejected: true, text: "Aanya" });
+  });
+
   it("sends an expired session back to log in, keeping the approved can", async () => {
     vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("UNAUTHORIZED", "expired"));
     renderCampaign(<PreviewPage />, APPROVED);

@@ -45,9 +45,14 @@ WINDOW_MESSAGE = {
 }
 
 #: Zero-width joiner and non-joiner: invisible, but Indic scripts need them to shape conjuncts.
-_JOINERS = {"‌", "‍"}
-#: Combining enclosing keycap, the tail of "1️⃣"; a mark, so the category check would let it in.
-_KEYCAP = "⃣"
+_JOINERS = {"\u200c", "\u200d"}
+
+
+def _hidden_mark(ch: str) -> bool:
+    """Marks the category check would let in that print nothing or turn text into emoji:
+    the enclosing keycap (tail of "1\ufe0f\u20e3") and the invisible variation selectors."""
+    cp = ord(ch)
+    return cp == 0x20E3 or 0xFE00 <= cp <= 0xFE0F or 0xE0100 <= cp <= 0xE01EF
 
 
 def now() -> datetime:
@@ -59,7 +64,7 @@ def _printable(ch: str) -> bool:
     """Letters, combining marks, digits, spaces and punctuation; nothing invisible or pictographic."""
     if ch in _JOINERS:
         return True
-    if ch == _KEYCAP:
+    if _hidden_mark(ch):
         return False
     category = unicodedata.category(ch)
     return category[0] in "LMNP" or category == "Zs"

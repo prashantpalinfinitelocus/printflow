@@ -135,6 +135,13 @@ describe("Check my vibe", () => {
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", designId: "DISCO_BALL" });
   });
 
+  it("opens the friendly-content popup when sent back after a rejection at submit", async () => {
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "Aanya", textRejected: true });
+    expect(await screen.findByRole("dialog", { name: "Let’s keep it friendly" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Edit Text" }));
+    await waitFor(() => expect(savedJourney().textRejected).toBe(false));
+  });
+
   it("skips a second check for text that was already approved", async () => {
     const moderate = vi.spyOn(campaignApi, "moderateText");
     renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "Aanya", approvedText: "Aanya" });

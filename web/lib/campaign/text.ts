@@ -8,7 +8,7 @@ export const MAX_TEXT_LENGTH = 12;
 export const textLength = (text: string) => Array.from(text).length;
 
 /** Emoji, including flags (regional indicators) and keycaps (U+20E3), which are not Extended_Pictographic. */
-const EMOJI = /\p{Regional_Indicator}|⃣|\p{Extended_Pictographic}/u;
+const EMOJI = /\p{Regional_Indicator}|\u20E3|\p{Extended_Pictographic}/u;
 
 /**
  * Everything printable: letters, combining marks, digits, spaces, punctuation, and
@@ -16,7 +16,10 @@ const EMOJI = /\p{Regional_Indicator}|⃣|\p{Extended_Pictographic}/u;
  * direction-changing characters (zero-width space, RTL override) can't hide a word
  * from moderation.
  */
-const PRINTABLE = /^[\p{L}\p{M}\p{N}\p{Zs}\p{P}‌‍]+$/u;
+const PRINTABLE = /^[\p{L}\p{M}\p{N}\p{Zs}\p{P}\u200C\u200D]+$/u;
+
+/** Marks \p{M} lets in that print nothing: the variation selectors (invisible, so they could hide a word). */
+const HIDDEN_MARKS = /[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u;
 
 /** ©, ® and ™ are Extended_Pictographic, but people don't think of them as emoji. */
 const LEGAL_SYMBOLS = /[©®™]/u;
@@ -30,7 +33,7 @@ export function validateText(raw: string): string | null {
   if (!text) return "Add a name or a short message first.";
   if (textLength(text) > MAX_TEXT_LENGTH) return `Keep it to ${MAX_TEXT_LENGTH} characters.`;
   if (!LEGAL_SYMBOLS.test(text) && EMOJI.test(text)) return "Emojis can't be printed — letters only, please.";
-  if (!PRINTABLE.test(text)) return "That text has characters we can't print.";
+  if (!PRINTABLE.test(text) || HIDDEN_MARKS.test(text)) return "That text has characters we can't print.";
   return null;
 }
 

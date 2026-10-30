@@ -65,6 +65,13 @@ describe("http campaign api", () => {
     await expect(api.moderateText("Aanya")).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 
+  it.each(["TEXT_REJECTED", "TEXT_INVALID"])("surfaces a server-side %s so the user can edit", async (code) => {
+    fail(422, code, "That line isn’t quite the Diet Coke vibe.");
+    await expect(
+      api.submitEntry({ designId: "DISCO_BALL", text: "Aanya", idempotencyKey: "k" }),
+    ).rejects.toMatchObject({ code, message: "That line isn’t quite the Diet Coke vibe." });
+  });
+
   it("reads the entry window", async () => {
     reply({ state: "BEFORE_OPEN" });
     expect(await api.getWindowState()).toBe("BEFORE_OPEN");

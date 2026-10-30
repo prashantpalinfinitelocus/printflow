@@ -6,8 +6,10 @@ carry `{code, message}` so the web app can tell a wrong OTP from a closed window
 
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
+from ..config import settings
 from ..deps import CurrentParticipant, DbSession
 from ..models import CampaignEntry, CampaignParticipant, ModerationStatus
 from ..schemas import (
@@ -23,7 +25,7 @@ from ..schemas import (
 )
 from ..security import create_participant_token
 from ..services import campaign
-from ..services.moderation import moderate_texts
+from ..services.moderation import Verdict, moderate_texts
 
 router = APIRouter(prefix="/campaign", tags=["campaign"])
 
@@ -35,24 +37,30 @@ def _error(status_code: int, code: str, message: str) -> HTTPException:
     return HTTPException(status_code, {"code": code, "message": message})
 
 
-def _approved_text(raw: str) -> str:
-    """The trimmed text if it may go on a can; otherwise raises. Fails closed."""
+def _check_text(raw: str) -> tuple[str, Verdict]:
+    """The trimmed text and the model's verdict. Raises if the text can't be printed or checked."""
     problem = campaign.validate_text(raw)
     if problem:
         raise _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "TEXT_INVALID", problem)
     text = raw.strip()
     verdict = moderate_texts([text]).verdicts[0]
-    if verdict.status == ModerationStatus.FLAGGED:
-        raise _error(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "TEXT_REJECTED",
-            "That line isn’t quite the Diet Coke vibe. Try another one that keeps it fun, positive, and personal.",
-        )
     if verdict.status == ModerationStatus.NEEDS_REVIEW:
         raise _error(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "MODERATION_UNAVAILABLE",
             "Our message checker needs a moment. Your design is still here — please try again.",
+        )
+    return text, verdict
+
+
+def _approved_text(raw: str) -> str:
+    """The trimmed text if it may go on a can; otherwise raises. Fails closed."""
+    text, verdict = _check_text(raw)
+    if verdict.status == ModerationStatus.FLAGGED:
+        raise _error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "TEXT_REJECTED",
+            "That line isn’t quite the Diet Coke vibe. Try another one that keeps it fun, positive, and personal.",
         )
     return text
 
@@ -60,7 +68,7 @@ def _approved_text(raw: str) -> str:
 @router.post("/otp/send", response_model=OtpSent)
 def send_otp(payload: OtpRequest):
     """Starts a login. No SMS provider is wired in yet: with the bypass on, nothing is sent."""
-    if not campaign.settings.campaign_otp_bypass:
+    if not settings.campaign_otp_bypass:
         raise _error(status.HTTP_503_SERVICE_UNAVAILABLE, "OTP_UNAVAILABLE", "Login is not available right now.")
     return OtpSent(resend_after=RESEND_AFTER)
 
@@ -70,17 +78,18 @@ def verify_otp(payload: OtpVerify, db: DbSession):
     if not campaign.otp_matches(payload.code):
         raise _error(status.HTTP_400_BAD_REQUEST, "OTP_WRONG", "That code doesn't match. Try again.")
 
-    participant = db.scalar(select(CampaignParticipant).where(CampaignParticipant.phone == payload.phone))
-    if participant is None:
-        participant = CampaignParticipant(phone=payload.phone, email=payload.email)
-        db.add(participant)
-    else:
-        # The latest email is where a winner is contacted.
-        participant.email = payload.email
+    # One atomic upsert, so two first logins for a phone at once (double tap, two tabs)
+    # can't both insert. The latest email wins: it is where a winner is contacted.
+    participant_id = db.scalar(
+        insert(CampaignParticipant)
+        .values(phone=payload.phone, email=payload.email)
+        .on_conflict_do_update(index_elements=[CampaignParticipant.phone], set_={"email": payload.email})
+        .returning(CampaignParticipant.id)
+    )
     db.commit()
 
-    token, expires_in = create_participant_token(participant_id=participant.id)
-    return CampaignSession(token=token, expires_in=expires_in, phone=participant.phone, email=participant.email)
+    token, expires_in = create_participant_token(participant_id=participant_id)
+    return CampaignSession(token=token, expires_in=expires_in, phone=payload.phone, email=payload.email)
 
 
 @router.get("/window", response_model=CampaignWindow)
@@ -90,22 +99,12 @@ def get_window():
 
 @router.post("/moderate", response_model=TextVerdict)
 def moderate(payload: TextCheck, _: CurrentParticipant):
-    try:
-        _approved_text(payload.text)
-    except HTTPException as exc:
-        if exc.detail["code"] == "TEXT_REJECTED":
-            return TextVerdict(result="REJECTED")
-        raise
-    return TextVerdict(result="APPROVED")
+    _, verdict = _check_text(payload.text)
+    return TextVerdict(result="REJECTED" if verdict.status == ModerationStatus.FLAGGED else "APPROVED")
 
 
 @router.post("/entries", response_model=EntryOut, status_code=status.HTTP_201_CREATED)
 def create_entry(payload: EntryCreate, db: DbSession, participant: CurrentParticipant, response: Response):
-    at = campaign.now()
-    state = campaign.window_state(at)
-    if state != "OPEN":
-        raise _error(status.HTTP_409_CONFLICT, "WINDOW_CLOSED", campaign.WINDOW_MESSAGE[state])
-
     def existing() -> CampaignEntry | None:
         return db.scalar(
             select(CampaignEntry).where(
@@ -114,11 +113,17 @@ def create_entry(payload: EntryCreate, db: DbSession, participant: CurrentPartic
             )
         )
 
-    # A retried submit returns the entry it already made, without re-moderating.
+    # A retried submit returns the entry it already made, without re-moderating — even
+    # after 22:00, when the first try was accepted but its response was lost.
     found = existing()
     if found is not None:
         response.status_code = status.HTTP_200_OK
         return EntryOut(entry_id=found.id)
+
+    at = campaign.now()
+    state = campaign.window_state(at)
+    if state != "OPEN":
+        raise _error(status.HTTP_409_CONFLICT, "WINDOW_CLOSED", campaign.WINDOW_MESSAGE[state])
 
     # The browser's check proves nothing: the server moderates every entry again.
     text = _approved_text(payload.text)

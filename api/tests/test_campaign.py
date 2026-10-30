@@ -60,7 +60,7 @@ def _entry(**overrides) -> dict:
 # ---------------- unit: text rules ----------------
 
 
-@pytest.mark.parametrize("text", ["Aanya", "प्रिया", "क्‍ष", "क्‌ष", "Riya's bday!", "No. 1 Mom"])
+@pytest.mark.parametrize("text", ["Aanya", "प्रिया", "क्\u200dष", "क्\u200cष", "Riya's bday!", "No. 1 Mom"])
 def test_printable_text_passes(text):
     from app.services.campaign import validate_text
 
@@ -75,11 +75,13 @@ def test_printable_text_passes(text):
         "a" * 13,
         "Hi 🎉",
         "India 🇮🇳",
-        "No 1️⃣",
-        "stu​pid",
-        "‮Aanya",
-        "Aa nya",
+        "No 1\ufe0f\u20e3",
+        "stu\u200bpid",
+        "\u202eAanya",
+        "Aa\u2028nya",
         "Coke™",
+        "stu\ufe0fpid",
+        "stu\U000e0100pid",
     ],
 )
 def test_unprintable_or_unsafe_text_is_refused(text):
@@ -183,6 +185,41 @@ def test_logging_in_again_reuses_the_participant_and_updates_the_email(client, o
     assert [r.email for r in rows] == ["second@example.com"]
 
 
+def test_a_first_login_racing_another_for_the_same_phone_succeeds(client, otp_bypass):
+    """A double tap or two tabs: another request inserts the phone just before this one does."""
+    from sqlalchemy import event, select, text
+
+    from app.db import SessionLocal, engine
+    from app.models import CampaignParticipant
+
+    phone = "9000000099"
+    raced = False
+
+    def competing_insert(conn, cursor, statement, parameters, context, executemany):
+        nonlocal raced
+        if raced or not statement.lstrip().upper().startswith("INSERT INTO CAMPAIGN_PARTICIPANTS"):
+            return
+        raced = True
+        with engine.connect() as other:
+            other.execute(
+                text("INSERT INTO campaign_participants (phone, email) VALUES (:p, 'other@example.com')"),
+                {"p": phone},
+            )
+            other.commit()
+
+    event.listen(engine, "before_cursor_execute", competing_insert)
+    try:
+        res = client.post("/campaign/otp/verify", json={"phone": phone, "email": "race@example.com", "code": "123456"})
+    finally:
+        event.remove(engine, "before_cursor_execute", competing_insert)
+
+    assert raced
+    assert res.status_code == 200, res.text
+    with SessionLocal() as db:
+        rows = db.scalars(select(CampaignParticipant).where(CampaignParticipant.phone == phone)).all()
+    assert [r.email for r in rows] == ["race@example.com"]
+
+
 # ---------------- API: tokens stay in their lane ----------------
 
 
@@ -224,10 +261,12 @@ def test_moderate_needs_a_login(client):
     assert client.post("/campaign/moderate", json={"text": "Aanya"}).status_code == 401
 
 
-def test_friendly_text_is_approved(client, participant):
+def test_friendly_text_is_approved(client, participant, fake_gemini):
     res = client.post("/campaign/moderate", json={"text": "Aanya"}, headers=participant)
     assert res.status_code == 200, res.text
     assert res.json() == {"result": "APPROVED"}
+    # The verdict came from the model (CLEAR), not from moderation being switched off.
+    assert fake_gemini.calls[-1]["texts"] == ["Aanya"]
 
 
 def test_flagged_text_is_rejected(client, participant, fake_gemini):
@@ -275,7 +314,24 @@ def test_an_entry_is_accepted_in_the_window_and_stored(client, participant, cloc
 def test_a_retried_submission_returns_the_same_entry(client, participant, clock):
     first = client.post("/campaign/entries", json=_entry(idempotency_key="retry-1"), headers=participant)
     retry = client.post("/campaign/entries", json=_entry(idempotency_key="retry-1"), headers=participant)
-    assert retry.status_code in (200, 201)
+    assert first.status_code == 201
+    assert retry.status_code == 200
+    assert retry.json()["entry_id"] == first.json()["entry_id"]
+
+
+def test_a_retry_is_not_moderated_again(client, participant, clock, fake_gemini):
+    client.post("/campaign/entries", json=_entry(idempotency_key="replay-1"), headers=participant)
+    calls = len(fake_gemini.calls)
+    client.post("/campaign/entries", json=_entry(idempotency_key="replay-1"), headers=participant)
+    assert len(fake_gemini.calls) == calls
+
+
+def test_a_retry_after_10pm_still_returns_the_entry_it_made(client, participant, clock):
+    clock.now = ist(21, 59)
+    first = client.post("/campaign/entries", json=_entry(idempotency_key="boundary"), headers=participant)
+    clock.now = ist(22, 1)
+    retry = client.post("/campaign/entries", json=_entry(idempotency_key="boundary"), headers=participant)
+    assert retry.status_code == 200, retry.text
     assert retry.json()["entry_id"] == first.json()["entry_id"]
 
 

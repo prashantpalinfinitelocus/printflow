@@ -1,13 +1,24 @@
 /**
  * Consumer campaign API. The screens only depend on `CampaignApi`; `campaignApi`
- * is the real backend (api/app/routers/campaign.py) through the campaign proxy,
- * or the in-browser mock when NEXT_PUBLIC_CAMPAIGN_API=mock (tests, offline UI work).
+ * is the real backend (api/app/routers/campaign.py) through the campaign proxy.
+ * NEXT_PUBLIC_CAMPAIGN_API=mock swaps in the in-browser mock for tests and local
+ * UI work only: it is inlined at build time, so deployed images always use the API.
  */
 
 import { withBasePath } from "@/lib/basePath";
 
-/** UNAUTHORIZED: the session token expired or was revoked — the user must log in again. */
-export type CampaignErrorCode = "OTP_WRONG" | "OTP_EXPIRED" | "WINDOW_CLOSED" | "UNAUTHORIZED";
+/**
+ * UNAUTHORIZED: the session expired or was revoked — log in again.
+ * TEXT_REJECTED / TEXT_INVALID: the server refused the text at submit (moderation is
+ * not deterministic, so a text approved earlier can still be refused) — edit it.
+ */
+export type CampaignErrorCode =
+  | "OTP_WRONG"
+  | "OTP_EXPIRED"
+  | "WINDOW_CLOSED"
+  | "UNAUTHORIZED"
+  | "TEXT_REJECTED"
+  | "TEXT_INVALID";
 
 export const isUnauthorized = (err: unknown) => err instanceof CampaignError && err.code === "UNAUTHORIZED";
 
@@ -120,7 +131,14 @@ export function createMockCampaignApi(): CampaignApi {
 /* ---------------- backend ---------------- */
 
 /** Error codes the screens branch on; any other failure is a plain Error ("please try again"). */
-const KNOWN_CODES = new Set<CampaignErrorCode>(["OTP_WRONG", "OTP_EXPIRED", "WINDOW_CLOSED", "UNAUTHORIZED"]);
+const KNOWN_CODES = new Set<CampaignErrorCode>([
+  "OTP_WRONG",
+  "OTP_EXPIRED",
+  "WINDOW_CLOSED",
+  "UNAUTHORIZED",
+  "TEXT_REJECTED",
+  "TEXT_INVALID",
+]);
 
 /** The real API, through the campaign proxy (app/api/campaign), which holds the session cookie. */
 export function createHttpCampaignApi(): CampaignApi {

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { withBasePath } from "@/lib/basePath";
 import { API_BASE } from "@/lib/session";
 
 /**
@@ -51,7 +52,8 @@ async function forward(request: NextRequest, path: string[]) {
     sameSite: "lax",
     // Key off the request scheme, not NODE_ENV — see app/api/auth/login/route.ts.
     secure: new URL(request.url).protocol === "https:",
-    path: "/",
+    // Only this proxy needs it, so no other path on the domain receives it.
+    path: withBasePath("/api/campaign"),
     maxAge: expires_in,
   });
   return response;

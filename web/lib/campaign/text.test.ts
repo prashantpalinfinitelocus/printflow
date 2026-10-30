@@ -42,11 +42,11 @@ describe("validateText", () => {
   });
 
   it("accepts the zero-width joiner Indic scripts use to shape conjuncts", () => {
-    expect(validateText("क्‍ष")).toBeNull();
+    expect(validateText("क्\u200Dष")).toBeNull();
   });
 
   it("accepts the zero-width non-joiner as well", () => {
-    expect(validateText("क्‌ष")).toBeNull();
+    expect(validateText("क्\u200Cष")).toBeNull();
   });
 
   it("accepts digits and everyday punctuation", () => {
@@ -55,17 +55,19 @@ describe("validateText", () => {
   });
 
   it.each([
-    ["a zero-width space hiding a word", "stu​pid"],
-    ["a right-to-left override", "‮Aanya"],
-    ["a line separator", "Aa nya"],
-    ["a private-use character", "Aanya"],
+    ["a zero-width space hiding a word", "stu\u200Bpid"],
+    ["a right-to-left override", "\u202EAanya"],
+    ["a line separator", "Aa\u2028nya"],
+    ["a private-use character", "Aa\uE000nya"],
+    ["an invisible variation selector", "stu\uFE0Fpid"],
+    ["a supplementary variation selector", "stu\u{E0100}pid"],
   ])("rejects %s as unprintable", (_case, text) => {
     expect(validateText(text)).toMatch(/can.t print/i);
   });
 
   it.each([
     ["a flag", "India 🇮🇳"],
-    ["a keycap", "No 1️⃣"],
+    ["a keycap", "No 1\uFE0F\u20E3"],
   ])("rejects %s as an emoji", (_case, text) => {
     expect(validateText(text)).toMatch(/emoji/i);
   });

@@ -114,6 +114,11 @@ export default function PreviewPage() {
         update({ session: null });
         return;
       }
+      if (err instanceof CampaignError && (err.code === "TEXT_REJECTED" || err.code === "TEXT_INVALID")) {
+        // Withdrawing the approval sends them back to edit (the redirect above), where the popup explains.
+        update({ approvedText: null, textRejected: true });
+        return;
+      }
       if (err instanceof CampaignError && err.code === "WINDOW_CLOSED") {
         setError(err.message);
         setWindowState(await campaignApi.getWindowState().catch(() => null));

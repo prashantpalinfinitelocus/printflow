@@ -58,6 +58,8 @@ describe("campaign proxy", () => {
     expect(await res.json()).toEqual({ phone: "9876543210", email: "a@b.co" });
     const cookie = res.cookies.get("dc_token");
     expect(cookie).toMatchObject({ value: "jwt-1", httpOnly: true, sameSite: "lax", secure: true, maxAge: 86400 });
+    // Only the campaign proxy needs it; nothing else on the domain should receive it.
+    expect(cookie?.path).toBe("/offline-store/api/campaign");
   });
 
   it("passes a failed verify straight through without setting a cookie", async () => {

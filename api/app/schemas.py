@@ -9,6 +9,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from .models import JobKind, JobStatus, ModerationStatus, OrderStatus, Role
+from .services.campaign import DESIGN_IDS
 
 #: A database row id. Postgres ids are 32-bit; anything larger would reach the
 #: database as an out-of-range integer and come back as an unhandled 500.
@@ -475,8 +476,6 @@ CampaignPhone = Annotated[str, Field(pattern=r"^[6-9]\d{9}$")]
 
 
 def _known_design(value: str) -> str:
-    from .services.campaign import DESIGN_IDS
-
     if value not in DESIGN_IDS:
         raise ValueError("not a campaign design")
     return value
