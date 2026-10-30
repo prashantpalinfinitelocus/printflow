@@ -15,10 +15,10 @@ const config: NextConfig = {
     // reached the API cut off mid-file and failed with "file: Field required".
     middlewareClientMaxBodySize: "100mb",
   },
-  // Every page lives under /offline/store (see lib/basePath.ts).
+  // Every page lives under /offline-store (see lib/basePath.ts).
   basePath: BASE_PATH,
   // The bare domain sends every visitor, signed in or not, into the app.
-  // basePath: false matches "/" itself rather than "/offline/store/".
+  // basePath: false matches "/" itself rather than "/offline-store/".
   async redirects() {
     return [{ source: "/", destination: BASE_PATH, basePath: false, permanent: false }];
   },

@@ -13,7 +13,7 @@ function appUrl(request: NextRequest, pathname: string) {
 }
 
 export function middleware(request: NextRequest) {
-  // pathname is relative to the basePath, e.g. "/login", not "/offline/store/login".
+  // pathname is relative to the basePath, e.g. "/login", not "/offline-store/login".
   const { pathname } = request.nextUrl;
   const hasToken = Boolean(request.cookies.get(TOKEN_COOKIE)?.value);
 
