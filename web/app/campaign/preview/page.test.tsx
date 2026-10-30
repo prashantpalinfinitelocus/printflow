@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CampaignError, campaignApi } from "@/lib/campaign/api";
+import { CampaignError, CampaignServerError, campaignApi } from "@/lib/campaign/api";
 import { renderCanPng } from "@/lib/campaign/canImage";
 import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
 import { router } from "@/test/navigation";
@@ -164,6 +164,15 @@ describe("entry", () => {
     await userEvent.click(await makeItHappen());
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign/create"));
     expect(savedJourney()).toMatchObject({ approvedText: null, textRejected: true, text: "Aanya" });
+  });
+
+  it("shows the server's reason when an entry cannot be submitted", async () => {
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(
+      new CampaignServerError("Our message checker needs a moment. Your design is still here — please try again."),
+    );
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    expect(await screen.findByRole("alert")).toHaveTextContent("Our message checker needs a moment.");
   });
 
   it("sends an expired session back to log in, keeping the approved can", async () => {

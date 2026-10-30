@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CampaignError, createHttpCampaignApi } from "./api";
+import { CampaignError, CampaignServerError, createHttpCampaignApi, errorMessage } from "./api";
 
 const fetchMock = vi.fn();
 const api = createHttpCampaignApi();
@@ -95,5 +95,18 @@ describe("http campaign api", () => {
   it("fails plainly when the network does", async () => {
     fetchMock.mockRejectedValueOnce(new TypeError("offline"));
     await expect(api.getWindowState()).rejects.toThrow();
+  });
+
+  it("keeps the server's message on a failure it has no code for", async () => {
+    fail(503, "UNAVAILABLE", "We can’t reach the campaign right now. Please try again.");
+    const error = await api.sendOtp("9876543210", "a@b.co").catch((e) => e);
+    expect(error).toBeInstanceOf(CampaignServerError);
+    expect(errorMessage(error, "fallback")).toBe("We can’t reach the campaign right now. Please try again.");
+  });
+
+  it("falls back to the screen's copy when there is no server message to show", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const error = await api.getWindowState().catch((e) => e);
+    expect(errorMessage(error, "fallback")).toBe("fallback");
   });
 });

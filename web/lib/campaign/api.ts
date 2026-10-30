@@ -20,6 +20,21 @@ export type CampaignErrorCode =
   | "TEXT_REJECTED"
   | "TEXT_INVALID";
 
+/** A failure the server explained in words meant for the user, but with no code the screens act on. */
+export class CampaignServerError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CampaignServerError";
+  }
+}
+
+/**
+ * What to tell the user about `err`: the server's own message when it sent one,
+ * otherwise the screen's copy — never a raw network or parse error.
+ */
+export const errorMessage = (err: unknown, fallback: string) =>
+  err instanceof CampaignError || err instanceof CampaignServerError ? err.message : fallback;
+
 export const isUnauthorized = (err: unknown) => err instanceof CampaignError && err.code === "UNAUTHORIZED";
 
 export class CampaignError extends Error {
@@ -153,7 +168,8 @@ export function createHttpCampaignApi(): CampaignApi {
     if (res.ok) return data as T;
     const { code, message } = data?.detail ?? {};
     if (KNOWN_CODES.has(code)) throw new CampaignError(code, message);
-    throw new Error(message ?? `Campaign request failed (${res.status})`);
+    if (typeof message === "string" && message) throw new CampaignServerError(message);
+    throw new Error(`Campaign request failed (${res.status})`);
   }
 
   return {

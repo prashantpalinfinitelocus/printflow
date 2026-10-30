@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { CircleButton, FieldError, PillButton } from "@/components/campaign/ui";
-import { CampaignError, WINDOW_MESSAGE, campaignApi, isUnauthorized, type WindowState } from "@/lib/campaign/api";
+import {
+  CampaignError,
+  WINDOW_MESSAGE,
+  campaignApi,
+  errorMessage,
+  isUnauthorized,
+  type WindowState,
+} from "@/lib/campaign/api";
 import { renderCanPng } from "@/lib/campaign/canImage";
 import { designById } from "@/lib/campaign/designs";
 import { canFont } from "@/lib/campaign/fonts";
@@ -123,7 +130,7 @@ export default function PreviewPage() {
         setError(err.message);
         setWindowState(await campaignApi.getWindowState().catch(() => null));
       } else {
-        setError("We couldn’t submit your entry. Your design is saved — please try again.");
+        setError(errorMessage(err, "We couldn’t submit your entry. Your design is saved — please try again."));
       }
       setSubmitting(false);
     }

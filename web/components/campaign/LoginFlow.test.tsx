@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MOCK_OTP, createMockCampaignApi, type CampaignApi } from "@/lib/campaign/api";
+import { CampaignServerError, MOCK_OTP, createMockCampaignApi, type CampaignApi } from "@/lib/campaign/api";
 
 import { LoginFlow } from "./LoginFlow";
 
@@ -96,6 +96,13 @@ describe("details step", () => {
     await fillDetails();
     expect(await screen.findByRole("alert")).toHaveTextContent(/try again/i);
     expect(screen.getByRole("dialog", { name: "Login" })).toBeInTheDocument();
+  });
+
+  it("shows the server's own reason when the OTP cannot be sent", async () => {
+    vi.spyOn(api, "sendOtp").mockRejectedValueOnce(new CampaignServerError("Login is not available right now."));
+    renderFlow();
+    await fillDetails();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Login is not available right now.");
   });
 
   it("closes from the close button", async () => {

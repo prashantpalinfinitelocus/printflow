@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CampaignError, campaignApi } from "@/lib/campaign/api";
+import { CampaignError, CampaignServerError, campaignApi } from "@/lib/campaign/api";
 import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
 import { router } from "@/test/navigation";
 
@@ -140,6 +140,16 @@ describe("Check my vibe", () => {
     expect(await screen.findByRole("dialog", { name: "Let’s keep it friendly" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Edit Text" }));
     await waitFor(() => expect(savedJourney().textRejected).toBe(false));
+  });
+
+  it("shows the server's reason when the text check fails", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockRejectedValueOnce(
+      new CampaignServerError("We can’t reach the campaign right now. Please try again."),
+    );
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("We can’t reach the campaign right now.");
   });
 
   it("skips a second check for text that was already approved", async () => {

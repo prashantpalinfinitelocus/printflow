@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { FieldError, Modal, PillButton } from "@/components/campaign/ui";
-import { campaignApi, isUnauthorized } from "@/lib/campaign/api";
+import { campaignApi, errorMessage, isUnauthorized } from "@/lib/campaign/api";
 import { DESIGNS } from "@/lib/campaign/designs";
 import { useCampaign } from "@/lib/campaign/store";
 import { MAX_TEXT_LENGTH, textLength, validateText } from "@/lib/campaign/text";
@@ -57,7 +57,7 @@ export default function CreatePage() {
         return;
       }
       // Fail safe: an unavailable checker never lets text through (PRD 6.3).
-      setError(CHECKER_DOWN);
+      setError(errorMessage(err, CHECKER_DOWN));
     }
     setChecking(false);
   }

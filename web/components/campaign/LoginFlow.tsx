@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { FieldError, Modal, PillButton } from "@/components/campaign/ui";
-import { CampaignError, campaignApi, type CampaignApi, type Session } from "@/lib/campaign/api";
+import { campaignApi, errorMessage, type CampaignApi, type Session } from "@/lib/campaign/api";
 import { isValidEmail, isValidPhone } from "@/lib/campaign/text";
 
 const OTP_LENGTH = 6;
@@ -100,8 +100,8 @@ function DetailsModal({
   async function submit(e: FormEvent) {
     e.preventDefault();
     const next = {
-      phone: isValidPhone(phone) ? undefined : "Enter a valid 10-digit mobile number.",
-      email: isValidEmail(email) ? undefined : "Enter a valid email ID — that’s where we’ll reach you if you win.",
+      phone: isValidPhone(phone) ? undefined : "Enter a valid 10 digit mobile number.",
+      email: isValidEmail(email) ? undefined : "Enter a valid email ID that’s where we’ll reach you if you win.",
       terms: agreed ? undefined : "Please agree to the terms to continue.",
     };
     setErrors(next);
@@ -111,8 +111,8 @@ function DetailsModal({
     try {
       const { resendAfter } = await api.sendOtp(phone, email.trim());
       onSent(resendAfter);
-    } catch {
-      setErrors({ form: TECH_ERROR });
+    } catch (err) {
+      setErrors({ form: errorMessage(err, TECH_ERROR) });
       setBusy(false);
     }
   }
@@ -244,7 +244,7 @@ function OtpModal({
     try {
       onVerified(await api.verifyOtp(phone, email, code));
     } catch (err) {
-      setError(err instanceof CampaignError ? err.message : TECH_ERROR);
+      setError(errorMessage(err, TECH_ERROR));
       setCode("");
       setBusy(false);
       inputRef.current?.focus();
@@ -260,8 +260,8 @@ function OtpModal({
       setNow(Date.now());
       setCode("");
       setNotice("A new code is on its way.");
-    } catch {
-      setError(TECH_ERROR);
+    } catch (err) {
+      setError(errorMessage(err, TECH_ERROR));
     } finally {
       setResending(false);
     }
