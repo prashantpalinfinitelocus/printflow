@@ -12,6 +12,10 @@ import { PillButton } from "@/components/campaign/ui";
 import { useCampaign } from "@/lib/campaign/store";
 
 
+/** On hover or keyboard focus the text darkens to black and a 2px black underline grows out from the middle. */
+const LEGAL_LINK =
+  "relative transition-colors duration-300 hover:text-black focus-visible:text-black after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-black after:transition-transform after:duration-300 hover:after:scale-x-100 focus-visible:after:scale-x-100 motion-reduce:transition-none motion-reduce:after:transition-none";
+
 /**
  * Splash screen — Figma 243:1306. "Let’s set the vibes" opens login (243:1173).
  * `openLogin` is set for /campaign?login=1, where guarded screens send a visitor without a session.
@@ -70,9 +74,13 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
           </PillButton>
         </div>
         <nav className="flex items-center justify-center gap-4 text-xs leading-[14.4px] text-[#494949]" aria-label="Legal">
-          <Link href="/campaign/terms">Terms &amp; Conditions</Link>
+          <Link href="/campaign/terms" className={LEGAL_LINK}>
+            Terms &amp; Conditions
+          </Link>
           <span className="h-4 w-px bg-[#A4A8AF]" aria-hidden="true" />
-          <Link href="/campaign/privacy">Privacy Policy</Link>
+          <Link href="/campaign/privacy" className={LEGAL_LINK}>
+            Privacy Policy
+          </Link>
         </nav>
       </div>
 

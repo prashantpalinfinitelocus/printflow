@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { FieldError, Modal, PillButton } from "@/components/campaign/ui";
@@ -178,7 +179,12 @@ function DetailsModal({
                   aria-invalid={Boolean(errors.terms)}
                   className="h-4 w-4 accent-[#1C1B1F]"
                 />
-                I Agree to Diet cokes’ terms of usage
+                <span>
+                  I Agree to Diet cokes’{" "}
+                  <Link href="/campaign/terms" className="underline underline-offset-2">
+                    terms of usage
+                  </Link>
+                </span>
               </label>
               <FieldError>{errors.terms}</FieldError>
             </div>

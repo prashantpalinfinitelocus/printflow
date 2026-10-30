@@ -105,6 +105,20 @@ describe("details step", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Login is not available right now.");
   });
 
+  it("links \"terms of usage\" to the Terms page", () => {
+    renderFlow();
+    expect(screen.getByRole("link", { name: "terms of usage" })).toHaveAttribute("href", "/campaign/terms");
+  });
+
+  it("does not tick the agreement when the terms link is clicked", async () => {
+    renderFlow();
+    const link = screen.getByRole("link", { name: "terms of usage" });
+    // jsdom cannot navigate; stop the click there so only the label behaviour is under test.
+    link.addEventListener("click", (e) => e.preventDefault());
+    await user.click(link);
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+  });
+
   it("closes from the close button", async () => {
     renderFlow();
     await user.click(screen.getByRole("button", { name: "Close" }));
