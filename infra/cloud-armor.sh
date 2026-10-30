@@ -24,6 +24,8 @@ PROJECT="${PROJECT:-$(gcloud config get-value project)}"
 # /offline-store/api/proxy/<api path>.
 # Web app routes (browser -> web) and API routes (direct, under the load balancer's /backend prefix).
 LOGIN_RE='^(/offline-store/api/auth/login|/backend/auth/login)$'
+# Consumer campaign OTP endpoints, reached through the web app's campaign proxy.
+OTP_RE='^/offline-store/api/campaign/otp/(send|verify)$'
 UPLOAD_RE='^(/offline-store/api/proxy|/backend)/(print-formats/upload-psd|print-formats/upload-font|csv/upload)$'
 
 WAF_SETS=(sqli-v33-stable xss-v33-stable lfi-v33-stable rfi-v33-stable rce-v33-stable
@@ -47,6 +49,15 @@ gcloud compute security-policies rules create 1000 --security-policy "$POLICY" -
   --description "Throttle login" \
   --expression "request.method == 'POST' && request.path.matches('${LOGIN_RE}')" \
   --action throttle --rate-limit-threshold-count 10 --rate-limit-threshold-interval-sec 60 \
+  --conform-action allow --exceed-action deny-429 --enforce-on-key IP
+
+# 1050: campaign OTP send/verify. 30 POSTs per minute per IP, then 429. This is the coarse edge limit
+# (many users can share one IP, so it is loose); the per-phone limits (5 codes / 5 min, then a 2 h block)
+# are enforced by the API and are what actually stop OTP abuse.
+gcloud compute security-policies rules create 1050 --security-policy "$POLICY" --project "$PROJECT" \
+  --description "Throttle campaign OTP" \
+  --expression "request.method == 'POST' && request.path.matches('${OTP_RE}')" \
+  --action throttle --rate-limit-threshold-count 30 --rate-limit-threshold-interval-sec 60 \
   --conform-action allow --exceed-action deny-429 --enforce-on-key IP
 
 # 1100: uploads of PSD, font and CSV. Throttled, then allowed without managed WAF inspection.

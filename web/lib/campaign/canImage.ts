@@ -1,4 +1,4 @@
-import canBlank from "@/app/campaign/_assets/can-blank.png";
+import canBlank from "@/app/user-campaign/_assets/can-blank.png";
 import { designById } from "@/lib/campaign/designs";
 
 export interface Rect {

@@ -1,6 +1,9 @@
 from functools import lru_cache
 from pathlib import Path
 
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -91,6 +94,51 @@ class Settings(BaseSettings):
     campaign_jwt_expire_minutes: int = 60 * 24
     #: Stops new entries (window state PAUSED) without a deploy.
     campaign_paused: bool = False
+    #: Daily entry window: open at `campaign_open_hour` (inclusive), closed from
+    #: `campaign_close_hour` (exclusive, 24 = midnight), in `campaign_timezone`.
+    campaign_open_hour: int = 10
+    campaign_close_hour: int = 22
+    campaign_timezone: str = "Asia/Kolkata"
+
+    @model_validator(mode="after")
+    def _check_campaign_window(self) -> "Settings":
+        if not 0 <= self.campaign_open_hour < self.campaign_close_hour <= 24:
+            raise ValueError("campaign window needs 0 <= campaign_open_hour < campaign_close_hour <= 24")
+        try:
+            ZoneInfo(self.campaign_timezone)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError(f"unknown campaign_timezone {self.campaign_timezone!r}") from exc
+        return self
+
+    # One-time codes. Every number below is a deployment setting, not a constant.
+    campaign_otp_length: int = 6
+    campaign_otp_ttl_seconds: int = 300
+    #: A phone may ask for this many codes inside `campaign_otp_send_window_seconds`;
+    #: the next ask blocks it for `campaign_otp_block_seconds`.
+    campaign_otp_send_limit: int = 5
+    campaign_otp_send_window_seconds: int = 300
+    campaign_otp_block_seconds: int = 2 * 60 * 60
+    #: Wrong codes allowed before verification locks for `campaign_otp_verify_lock_seconds`.
+    campaign_otp_verify_max_failures: int = 5
+    campaign_otp_verify_lock_seconds: int = 2 * 60 * 60
+    #: Seconds the web app waits before offering "Resend code".
+    campaign_otp_resend_after_seconds: int = 30
+
+    # SMS delivery through Infobip. OFF by default: while off, no SMS is sent and
+    # only the bypass code logs in. Turn it on once the DLT template is approved.
+    # The DLT ids default to blank on purpose; they belong to one brand's sender.
+    campaign_infobip_enabled: bool = False
+    campaign_infobip_base_url: str = ""
+    campaign_infobip_api_key: str = ""
+    campaign_infobip_sender_id: str = ""
+    campaign_infobip_dlt_entity_id: str = ""
+    campaign_infobip_dlt_template_id: str = ""
+    #: Must match the DLT-approved template text exactly, with {otp} where the code goes.
+    campaign_infobip_message: str = ""
+    campaign_infobip_timeout_seconds: float = 10.0
+
+    #: Entries one phone may submit in total (PRD 2: 50). 0 = no cap.
+    campaign_max_entries_per_participant: int = 50
 
     bootstrap_admin_email: str = "admin@printflow.local"
     bootstrap_admin_password: str = "admin123"

@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import canBlank from "@/app/campaign/_assets/can-blank.png";
+import canBlank from "@/app/user-campaign/_assets/can-blank.png";
 import { CAN_LAYOUT } from "@/lib/campaign/canImage";
 import { designById } from "@/lib/campaign/designs";
 

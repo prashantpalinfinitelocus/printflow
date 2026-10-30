@@ -54,12 +54,12 @@ async function imageReady(name: "Download My Can" | "Share My Look") {
 describe("access", () => {
   it("sends a visitor without a session back to log in", async () => {
     renderCampaign(<PreviewPage />);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
   });
 
   it("sends text that moderation has not approved back to the customiser", async () => {
     renderCampaign(<PreviewPage />, { ...APPROVED, text: "Aanya!" });
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign/create"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign/create"));
   });
 });
 
@@ -80,7 +80,7 @@ describe("preview", () => {
   it("goes back to editing", async () => {
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await screen.findByRole("button", { name: "Back to editing" }));
-    expect(router.push).toHaveBeenCalledWith("/campaign/create");
+    expect(router.push).toHaveBeenCalledWith("/user-campaign/create");
   });
 });
 
@@ -89,7 +89,7 @@ describe("entry", () => {
     const submit = vi.spyOn(campaignApi, "submitEntry");
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await makeItHappen());
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/campaign/success"), { timeout: 2000 });
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/success"), { timeout: 2000 });
     expect(submit).toHaveBeenCalledWith(
       expect.objectContaining({ designId: "DISCO_BALL", text: "Aanya", idempotencyKey: expect.any(String) }),
     );
@@ -162,7 +162,7 @@ describe("entry", () => {
     vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("TEXT_REJECTED", "Not the vibe."));
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await makeItHappen());
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign/create"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign/create"));
     expect(savedJourney()).toMatchObject({ approvedText: null, textRejected: true, text: "Aanya" });
   });
 
@@ -179,7 +179,7 @@ describe("entry", () => {
     vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("UNAUTHORIZED", "expired"));
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await makeItHappen());
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", approvedText: "Aanya" });
   });
 });

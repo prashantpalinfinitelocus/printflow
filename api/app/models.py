@@ -322,9 +322,43 @@ class CampaignParticipant(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     phone: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255))
+    #: Session tokens carry this number; logging out bumps it, which revokes every earlier token.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     entries: Mapped[list[CampaignEntry]] = relationship(back_populates="participant")
+
+
+class CampaignOtp(Base):
+    """One code sent to a phone. Doubles as the send log the rate limit counts.
+
+    Only a keyed hash of the code is kept. `code_hash` is empty when the send
+    went through the bypass, where no code exists.
+    """
+
+    __tablename__ = "campaign_otps"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phone: Mapped[str] = mapped_column(String(16), index=True)
+    code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    #: Set when the code is used or replaced by a newer one.
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class CampaignPhoneGuard(Base):
+    """Per-phone abuse state: a block on sending codes or a lock on verifying them.
+
+    Its row is also the lock that serialises concurrent sends and verifies for one phone.
+    """
+
+    __tablename__ = "campaign_phone_guards"
+
+    phone: Mapped[str] = mapped_column(String(16), primary_key=True)
+    blocked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    block_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    failed_verifies: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class CampaignEntry(Base):

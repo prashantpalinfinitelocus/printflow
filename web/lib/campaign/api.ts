@@ -11,6 +11,7 @@ import { withBasePath } from "@/lib/basePath";
  * UNAUTHORIZED: the session expired or was revoked — log in again.
  * TEXT_REJECTED / TEXT_INVALID: the server refused the text at submit (moderation is
  * not deterministic, so a text approved earlier can still be refused) — edit it.
+ * OTP_BLOCKED / OTP_LOCKED: too many codes asked for or wrong codes typed; `retryAfter` is the wait in seconds.
  */
 export type CampaignErrorCode =
   | "OTP_WRONG"
@@ -18,7 +19,11 @@ export type CampaignErrorCode =
   | "WINDOW_CLOSED"
   | "UNAUTHORIZED"
   | "TEXT_REJECTED"
-  | "TEXT_INVALID";
+  | "TEXT_INVALID"
+  | "OTP_BLOCKED"
+  | "OTP_LOCKED"
+  | "OTP_SEND_FAILED"
+  | "ENTRY_LIMIT_REACHED";
 
 /** A failure the server explained in words meant for the user, but with no code the screens act on. */
 export class CampaignServerError extends Error {
@@ -41,6 +46,7 @@ export class CampaignError extends Error {
   constructor(
     readonly code: CampaignErrorCode,
     message: string,
+    readonly retryAfter?: number,
   ) {
     super(message);
     this.name = "CampaignError";
@@ -153,6 +159,10 @@ const KNOWN_CODES = new Set<CampaignErrorCode>([
   "UNAUTHORIZED",
   "TEXT_REJECTED",
   "TEXT_INVALID",
+  "OTP_BLOCKED",
+  "OTP_LOCKED",
+  "OTP_SEND_FAILED",
+  "ENTRY_LIMIT_REACHED",
 ]);
 
 /** The real API, through the campaign proxy (app/api/campaign), which holds the session cookie. */
@@ -166,8 +176,8 @@ export function createHttpCampaignApi(): CampaignApi {
     });
     const data = await res.json().catch(() => null);
     if (res.ok) return data as T;
-    const { code, message } = data?.detail ?? {};
-    if (KNOWN_CODES.has(code)) throw new CampaignError(code, message);
+    const { code, message, retry_after } = data?.detail ?? {};
+    if (KNOWN_CODES.has(code)) throw new CampaignError(code, message, retry_after);
     if (typeof message === "string" && message) throw new CampaignServerError(message);
     throw new Error(`Campaign request failed (${res.status})`);
   }

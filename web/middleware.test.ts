@@ -13,7 +13,7 @@ const request = (path: string, cookie?: string) =>
 const redirectedTo = (res: Response) => res.headers.get("location");
 
 describe("middleware", () => {
-  it.each(["/campaign", "/campaign/create", "/campaign/preview", "/campaign/success"])(
+  it.each(["/user-campaign", "/user-campaign/create", "/user-campaign/preview", "/user-campaign/success"])(
     "lets a consumer without a staff cookie reach %s",
     (path) => {
       expect(redirectedTo(middleware(request(path)))).toBeNull();
@@ -32,6 +32,6 @@ describe("middleware", () => {
   });
 
   it("does not treat a look-alike path as the campaign", () => {
-    expect(redirectedTo(middleware(request("/campaigns-admin")))).toContain("/login");
+    expect(redirectedTo(middleware(request("/user-campaigns-admin")))).toContain("/login");
   });
 });

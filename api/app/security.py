@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -39,14 +40,21 @@ def decode_access_token(token: str) -> dict:
 #: refuses a token whose audience the caller did not ask for, so neither kind of
 #: token is accepted where the other is expected.
 CAMPAIGN_AUDIENCE = "campaign"
+CAMPAIGN_ISSUER = "printflow-campaign"
+#: A campaign token missing any of these is refused, not defaulted.
+_CAMPAIGN_REQUIRED_CLAIMS = ["sub", "iat", "exp", "aud", "iss", "jti", "ver"]
 
 
-def create_participant_token(*, participant_id: int) -> tuple[str, int]:
+def create_participant_token(*, participant_id: int, version: int = 0) -> tuple[str, int]:
+    """`version` is the participant's token_version; bumping it revokes every earlier token."""
     expires_in = settings.campaign_jwt_expire_minutes * 60
     now = datetime.now(UTC)
     payload = {
         "sub": str(participant_id),
         "aud": CAMPAIGN_AUDIENCE,
+        "iss": CAMPAIGN_ISSUER,
+        "jti": uuid.uuid4().hex,
+        "ver": version,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=expires_in)).timestamp()),
     }
@@ -56,5 +64,10 @@ def create_participant_token(*, participant_id: int) -> tuple[str, int]:
 
 def decode_participant_token(token: str) -> dict:
     return jwt.decode(
-        token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], audience=CAMPAIGN_AUDIENCE
+        token,
+        settings.jwt_secret,
+        algorithms=[settings.jwt_algorithm],
+        audience=CAMPAIGN_AUDIENCE,
+        issuer=CAMPAIGN_ISSUER,
+        options={"require": _CAMPAIGN_REQUIRED_CLAIMS},
     )

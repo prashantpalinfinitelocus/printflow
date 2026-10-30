@@ -13,11 +13,8 @@ from zoneinfo import ZoneInfo
 
 from ..config import settings
 
-IST = ZoneInfo("Asia/Kolkata")
-
-#: Entries are accepted from 10:00 to 22:00 India time (PRD 2).
-OPEN_HOUR = 10
-CLOSE_HOUR = 22
+#: The entry window (10:00 to 22:00 India time by default, PRD 2) comes from settings:
+#: campaign_open_hour, campaign_close_hour and campaign_timezone.
 
 #: Must match the web app's sticker list (web/lib/campaign/designs.ts).
 DESIGN_IDS = frozenset(
@@ -37,12 +34,24 @@ DESIGN_IDS = frozenset(
 #: Fits the can's print area at the You2013 size the design uses.
 MAX_TEXT_LENGTH = 12
 
-WINDOW_MESSAGE = {
-    "OPEN": "The style desk is open. Entries are accepted from 10 AM to 10 PM IST.",
-    "BEFORE_OPEN": "The next entry window opens at 10 AM IST. Get your can look ready.",
-    "CLOSED": "Today’s entry window is closed. Come back at 10 AM IST tomorrow.",
-    "PAUSED": "Entries are currently unavailable. Please check the campaign terms for updates.",
-}
+def _hour_label(hour: int) -> str:
+    """9 -> "9 AM", 22 -> "10 PM", 24 -> "12 AM"."""
+    return f"{hour % 12 or 12} {'AM' if hour % 24 < 12 else 'PM'}"
+
+
+def _zone_label() -> str:
+    return "IST" if settings.campaign_timezone == "Asia/Kolkata" else settings.campaign_timezone
+
+
+def window_message(state: str) -> str:
+    """The PRD 5 copy for a window state, naming the configured hours."""
+    opens, closes, zone = _hour_label(settings.campaign_open_hour), _hour_label(settings.campaign_close_hour), _zone_label()
+    return {
+        "OPEN": f"The style desk is open. Entries are accepted from {opens} to {closes} {zone}.",
+        "BEFORE_OPEN": f"The next entry window opens at {opens} {zone}. Get your can look ready.",
+        "CLOSED": f"Today’s entry window is closed. Come back at {opens} {zone} tomorrow.",
+        "PAUSED": "Entries are currently unavailable. Please check the campaign terms for updates.",
+    }[state]
 
 #: Zero-width joiner and non-joiner: invisible, but Indic scripts need them to shape conjuncts.
 _JOINERS = {"\u200c", "\u200d"}
@@ -89,21 +98,15 @@ def validate_text(raw: str) -> str | None:
 def window_state(at: datetime) -> str:
     if settings.campaign_paused:
         return "PAUSED"
-    hour = at.astimezone(IST).hour
-    if hour < OPEN_HOUR:
+    hour = at.astimezone(ZoneInfo(settings.campaign_timezone)).hour
+    if hour < settings.campaign_open_hour:
         return "BEFORE_OPEN"
-    if hour >= CLOSE_HOUR:
+    if hour >= settings.campaign_close_hour:
         return "CLOSED"
     return "OPEN"
 
 
 def campaign_day(at: datetime) -> date:
     """The India-time date an entry counts towards."""
-    return at.astimezone(IST).date()
+    return at.astimezone(ZoneInfo(settings.campaign_timezone)).date()
 
-
-def otp_matches(code: str) -> bool:
-    """Until an SMS provider is wired in, the bypass code is the only valid OTP."""
-    return settings.campaign_otp_bypass and bool(settings.campaign_otp_bypass_code) and (
-        code == settings.campaign_otp_bypass_code
-    )

@@ -107,7 +107,7 @@ describe("details step", () => {
 
   it("links \"terms of usage\" to the Terms page", () => {
     renderFlow();
-    expect(screen.getByRole("link", { name: "terms of usage" })).toHaveAttribute("href", "/campaign/terms");
+    expect(screen.getByRole("link", { name: "terms of usage" })).toHaveAttribute("href", "/user-campaign/terms");
   });
 
   it("does not tick the agreement when the terms link is clicked", async () => {

@@ -472,7 +472,7 @@ TokenResponse.model_rebuild()
 # ---------------- consumer campaign ----------------
 
 #: A 10-digit Indian mobile number, digits only (the web app strips +91 and spaces).
-CampaignPhone = Annotated[str, Field(pattern=r"^[6-9]\d{9}$")]
+CampaignPhone = Annotated[str, Field(pattern=r"^[6-9][0-9]{9}$")]
 
 
 def _known_design(value: str) -> str:
@@ -487,7 +487,7 @@ class OtpRequest(BaseModel):
 
 
 class OtpVerify(OtpRequest):
-    code: str = Field(pattern=r"^\d{4,8}$")
+    code: str = Field(pattern=r"^[0-9]{4,8}$")
 
 
 class OtpSent(BaseModel):

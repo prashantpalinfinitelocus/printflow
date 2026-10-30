@@ -13,10 +13,10 @@ import localFont from "next/font/local";
  */
 export const text = localFont({
   src: [
-    { path: "../../app/campaign/_fonts/TCCC-UnityHeadline-Medium.ttf", weight: "300" },
-    { path: "../../app/campaign/_fonts/TCCC-UnityHeadline-Medium.ttf", weight: "400" },
-    { path: "../../app/campaign/_fonts/TCCC-UnityText-Bold.ttf", weight: "600" },
-    { path: "../../app/campaign/_fonts/TCCC-UnityText-Bold.ttf", weight: "700" },
+    { path: "../../app/user-campaign/_fonts/TCCC-UnityHeadline-Medium.ttf", weight: "300" },
+    { path: "../../app/user-campaign/_fonts/TCCC-UnityHeadline-Medium.ttf", weight: "400" },
+    { path: "../../app/user-campaign/_fonts/TCCC-UnityText-Bold.ttf", weight: "600" },
+    { path: "../../app/user-campaign/_fonts/TCCC-UnityText-Bold.ttf", weight: "700" },
   ],
   variable: "--dc-text",
 });
@@ -31,9 +31,9 @@ export const serif = DM_Serif_Display({
 });
 
 export const headline = localFont({
-  src: [{ path: "../../app/campaign/_fonts/TCCC-UnityHeadline-Bold.ttf", weight: "700" }],
+  src: [{ path: "../../app/user-campaign/_fonts/TCCC-UnityHeadline-Bold.ttf", weight: "700" }],
   variable: "--dc-headline",
 });
 
 /** The face the print pipeline stamps on the can (data/fonts), so the preview matches the print. */
-export const canFont = localFont({ src: "../../app/campaign/_fonts/You2013-Regular.ttf", variable: "--dc-can" });
+export const canFont = localFont({ src: "../../app/user-campaign/_fonts/You2013-Regular.ttf", variable: "--dc-can" });

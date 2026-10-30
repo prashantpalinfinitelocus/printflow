@@ -1,14 +1,14 @@
 import type { StaticImageData } from "next/image";
 
-import arcticFriends from "@/app/campaign/_assets/stickers/arctic-friends.png";
-import beachVibes from "@/app/campaign/_assets/stickers/beach-vibes.png";
-import clinkingBottles from "@/app/campaign/_assets/stickers/clinking-bottles.png";
-import discoBall from "@/app/campaign/_assets/stickers/disco-ball.png";
-import happyBirthday from "@/app/campaign/_assets/stickers/happy-birthday.png";
-import polarBearChill from "@/app/campaign/_assets/stickers/polar-bear-chill.png";
-import polarBearsHeart from "@/app/campaign/_assets/stickers/polar-bears-heart.png";
-import redRibbon from "@/app/campaign/_assets/stickers/red-ribbon.png";
-import surfingPolarBear from "@/app/campaign/_assets/stickers/surfing-polar-bear.png";
+import arcticFriends from "@/app/user-campaign/_assets/stickers/arctic-friends.png";
+import beachVibes from "@/app/user-campaign/_assets/stickers/beach-vibes.png";
+import clinkingBottles from "@/app/user-campaign/_assets/stickers/clinking-bottles.png";
+import discoBall from "@/app/user-campaign/_assets/stickers/disco-ball.png";
+import happyBirthday from "@/app/user-campaign/_assets/stickers/happy-birthday.png";
+import polarBearChill from "@/app/user-campaign/_assets/stickers/polar-bear-chill.png";
+import polarBearsHeart from "@/app/user-campaign/_assets/stickers/polar-bears-heart.png";
+import redRibbon from "@/app/user-campaign/_assets/stickers/red-ribbon.png";
+import surfingPolarBear from "@/app/user-campaign/_assets/stickers/surfing-polar-bear.png";
 
 export interface CanDesign {
   id: string;

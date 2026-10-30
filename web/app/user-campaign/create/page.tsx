@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useCampaignRouter } from "@/lib/campaign/nav";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
@@ -15,7 +15,7 @@ const CHECKER_DOWN = "Our message checker needs a moment. Your design is still h
 
 /** Customising tool — Figma 243:872, with popups 243:936 (heads-up) and 243:1013 (rejected). */
 export default function CreatePage() {
-  const router = useRouter();
+  const router = useCampaignRouter();
   const { ready, session, designId, text, approvedText, headsUpSeen, textRejected, update } = useCampaign();
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -23,7 +23,7 @@ export default function CreatePage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (ready && !session) router.replace("/campaign?login=1");
+    if (ready && !session) router.replace("/user-campaign?login=1");
   }, [ready, session, router]);
 
   if (!ready || !session) return null;
@@ -38,7 +38,7 @@ export default function CreatePage() {
     const clean = text.trim();
     // Moderation reruns only when the text changed since it last passed (PRD 6.3).
     if (clean === approvedText) {
-      router.push("/campaign/preview");
+      router.push("/user-campaign/preview");
       return;
     }
     setChecking(true);
@@ -46,7 +46,7 @@ export default function CreatePage() {
     try {
       if ((await campaignApi.moderateText(clean)) === "APPROVED") {
         update({ text: clean, approvedText: clean });
-        router.push("/campaign/preview");
+        router.push("/user-campaign/preview");
         return;
       }
       setRejected(true);

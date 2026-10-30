@@ -22,8 +22,8 @@ describe("Landing", () => {
 
   it("links to the terms and privacy policy", async () => {
     renderCampaign(await landing());
-    expect(await screen.findByRole("link", { name: "Terms & Conditions" })).toHaveAttribute("href", "/campaign/terms");
-    expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/campaign/privacy");
+    expect(await screen.findByRole("link", { name: "Terms & Conditions" })).toHaveAttribute("href", "/user-campaign/terms");
+    expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/user-campaign/privacy");
   });
 
   it("asks a new visitor to log in before customising", async () => {
@@ -36,7 +36,7 @@ describe("Landing", () => {
   it("sends a logged-in visitor straight to the customiser", async () => {
     renderCampaign(await landing(), { session: SESSION });
     await userEvent.click(await screen.findByRole("button", { name: "Let’s set the vibes" }));
-    expect(router.push).toHaveBeenCalledWith("/campaign/create");
+    expect(router.push).toHaveBeenCalledWith("/user-campaign/create");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -71,7 +71,7 @@ describe("Landing", () => {
     await user.type(await screen.findByLabelText("6-digit code", {}, { timeout: 2000 }), MOCK_OTP);
     await user.click(screen.getByRole("button", { name: "Verify" }));
 
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/campaign/create"), { timeout: 2000 });
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/create"), { timeout: 2000 });
     await waitFor(() => expect(savedJourney().session).toMatchObject({ phone: "9876543210" }));
   });
 });

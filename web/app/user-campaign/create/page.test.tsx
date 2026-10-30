@@ -16,7 +16,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("access", () => {
   it("sends a visitor without a session back to log in", async () => {
     renderCampaign(<CreatePage />);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
   });
 });
 
@@ -94,7 +94,7 @@ describe("Check my vibe", () => {
     renderCampaign(<CreatePage />, LOGGED_IN);
     await userEvent.type(await textField(), "  Aanya ");
     await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/campaign/preview"), { timeout: 2000 });
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/preview"), { timeout: 2000 });
     expect(savedJourney()).toMatchObject({ text: "Aanya", approvedText: "Aanya" });
   });
 
@@ -131,7 +131,7 @@ describe("Check my vibe", () => {
     renderCampaign(<CreatePage />, { ...LOGGED_IN, designId: "DISCO_BALL" });
     await userEvent.type(await textField(), "Aanya");
     await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", designId: "DISCO_BALL" });
   });
 
@@ -156,7 +156,7 @@ describe("Check my vibe", () => {
     const moderate = vi.spyOn(campaignApi, "moderateText");
     renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "Aanya", approvedText: "Aanya" });
     await userEvent.click(await screen.findByRole("button", { name: "Check my vibe" }));
-    expect(router.push).toHaveBeenCalledWith("/campaign/preview");
+    expect(router.push).toHaveBeenCalledWith("/user-campaign/preview");
     expect(moderate).not.toHaveBeenCalled();
   });
 

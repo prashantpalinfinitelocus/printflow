@@ -1,7 +1,7 @@
 import Image from "next/image";
 
-import logo from "@/app/campaign/_assets/logo.png";
-import successBg from "@/app/campaign/_assets/success-bg.png";
+import logo from "@/app/user-campaign/_assets/logo.png";
+import successBg from "@/app/user-campaign/_assets/success-bg.png";
 
 /**
  * Thank-you — Figma 243:1094. Confirms the entry without implying a win

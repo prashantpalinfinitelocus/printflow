@@ -64,8 +64,13 @@ def get_current_participant(
     except jwt.PyJWTError:
         raise _unauthorized("Invalid session") from None
 
-    participant = db.get(CampaignParticipant, int(payload["sub"]))
-    if participant is None:
+    try:
+        participant_id = int(payload["sub"])
+    except (TypeError, ValueError):
+        raise _unauthorized("Invalid session") from None
+    participant = db.get(CampaignParticipant, participant_id)
+    # A token from before the last logout carries an older version number.
+    if participant is None or payload["ver"] != participant.token_version:
         raise _unauthorized("Invalid session")
     return participant
 

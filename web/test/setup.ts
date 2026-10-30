@@ -16,6 +16,9 @@ afterEach(() => {
 /* next/navigation needs the App Router runtime; tests assert on these spies instead. */
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
+/* The journey moves with full-page loads (see lib/campaign/nav.ts); tests assert on the same spies. */
+vi.mock("@/lib/campaign/nav", () => ({ useCampaignRouter: () => router }));
+
 /* next/image needs Next's image config; a plain <img> is enough for behaviour tests. */
 vi.mock("next/image", () => ({
   default: ({ src, alt, fill: _fill, priority: _priority, sizes: _sizes, ...rest }: Record<string, unknown>) =>

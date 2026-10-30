@@ -30,6 +30,16 @@ function request(path: string, init: { method?: string; body?: unknown; cookie?:
 const ctx = (path: string) => ({ params: Promise.resolve({ path: path.split("/") }) });
 
 describe("campaign proxy", () => {
+  it.each(["../auth/login", "otp/../../auth/login", "./window", "otp//send", "%2e%2e/auth/login"])(
+    "refuses the path %s instead of forwarding it",
+    async (path) => {
+      const res = await POST(request(path, { body: {} }), ctx(path));
+
+      expect(res.status).toBe(404);
+      expect(upstream).not.toHaveBeenCalled();
+    },
+  );
+
   it("forwards to the API's /campaign routes with the session cookie as a bearer token", async () => {
     upstream.mockResolvedValue(json({ result: "APPROVED" }));
     const res = await POST(request("moderate", { body: { text: "Aanya" }, cookie: "dc_token=abc" }), ctx("moderate"));

@@ -13,7 +13,21 @@ import { API_BASE } from "@/lib/session";
 
 const SESSION_COOKIE = "dc_token";
 
+/** A segment that could climb out of /campaign once the URL is normalised, however it is encoded. */
+function unsafeSegment(segment: string): boolean {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    return true;
+  }
+  return decoded === "" || decoded === "." || decoded === ".." || /[\\/]/.test(decoded);
+}
+
 async function forward(request: NextRequest, path: string[]) {
+  if (path.some(unsafeSegment)) {
+    return NextResponse.json({ detail: { code: "NOT_FOUND", message: "Not found." } }, { status: 404 });
+  }
   const target = `${API_BASE}/campaign/${path.map(encodeURIComponent).join("/")}`;
   const headers = new Headers();
   const token = request.cookies.get(SESSION_COOKIE)?.value;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useCampaignRouter } from "@/lib/campaign/nav";
 import { useEffect, useState } from "react";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
@@ -35,7 +35,7 @@ function saveFile({ file, url }: CanImage) {
 
 /** Preview — Figma 243:826. Download and share never submit an entry (PRD 7). */
 export default function PreviewPage() {
-  const router = useRouter();
+  const router = useCampaignRouter();
   const { ready, session, designId, text, approvedText, pendingEntry, update } = useCampaign();
   const [windowState, setWindowState] = useState<WindowState | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -49,8 +49,8 @@ export default function PreviewPage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (!session) router.replace("/campaign?login=1");
-    else if (!approved) router.replace("/campaign/create");
+    if (!session) router.replace("/user-campaign?login=1");
+    else if (!approved) router.replace("/user-campaign/create");
   }, [ready, session, approved, router]);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function PreviewPage() {
     try {
       await campaignApi.submitEntry({ designId, text: clean, idempotencyKey: key });
       update({ pendingEntry: null });
-      router.push("/campaign/success");
+      router.push("/user-campaign/success");
     } catch (err) {
       if (isUnauthorized(err)) {
         // Dropping the session triggers the login redirect above; the can stays saved.
@@ -141,7 +141,7 @@ export default function PreviewPage() {
   return (
     <main className="relative h-dvh overflow-hidden bg-white px-5 pt-4">
       <div className="flex items-center justify-between">
-        <CircleButton label="Back to editing" onClick={() => router.push("/campaign/create")}>
+        <CircleButton label="Back to editing" onClick={() => router.push("/user-campaign/create")}>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14.5 6.5L9 12l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>

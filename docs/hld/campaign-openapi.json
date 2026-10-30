@@ -1,0 +1,457 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "PrintFlow API",
+  "description": "Store-scoped print order queue: CSV intake, PSD composition, TIFF/PDF output, CUPS dispatch.",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/campaign/otp/send": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Send Otp",
+    "description": "Starts a login: texts a code, or (flag off, bypass on) texts nothing. Rate limited per phone.",
+    "operationId": "send_otp_campaign_otp_send_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OtpRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OtpSent"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/otp/verify": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Verify Otp",
+    "operationId": "verify_otp_campaign_otp_verify_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OtpVerify"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignSession"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/logout": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Logout",
+    "description": "Revokes every session token issued so far for this phone.",
+    "operationId": "logout_campaign_logout_post",
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign/window": {
+   "get": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Get Window",
+    "operationId": "get_window_campaign_window_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignWindow"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/moderate": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Moderate",
+    "operationId": "moderate_campaign_moderate_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TextCheck"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TextVerdict"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign/entries": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Create Entry",
+    "operationId": "create_entry_campaign_entries_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EntryCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EntryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "CampaignSession": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "title": "Token"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     },
+     "phone": {
+      "type": "string",
+      "title": "Phone"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token",
+     "expires_in",
+     "phone",
+     "email"
+    ],
+    "title": "CampaignSession"
+   },
+   "CampaignWindow": {
+    "properties": {
+     "state": {
+      "type": "string",
+      "enum": [
+       "OPEN",
+       "BEFORE_OPEN",
+       "CLOSED",
+       "PAUSED"
+      ],
+      "title": "State"
+     }
+    },
+    "type": "object",
+    "required": [
+     "state"
+    ],
+    "title": "CampaignWindow"
+   },
+   "EntryCreate": {
+    "properties": {
+     "design_id": {
+      "type": "string",
+      "title": "Design Id"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Text"
+     },
+     "idempotency_key": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Idempotency Key"
+     }
+    },
+    "type": "object",
+    "required": [
+     "design_id",
+     "text",
+     "idempotency_key"
+    ],
+    "title": "EntryCreate"
+   },
+   "EntryOut": {
+    "properties": {
+     "entry_id": {
+      "type": "string",
+      "title": "Entry Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "entry_id"
+    ],
+    "title": "EntryOut"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "OtpRequest": {
+    "properties": {
+     "phone": {
+      "type": "string",
+      "pattern": "^[6-9][0-9]{9}$",
+      "title": "Phone"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "phone",
+     "email"
+    ],
+    "title": "OtpRequest"
+   },
+   "OtpSent": {
+    "properties": {
+     "resend_after": {
+      "type": "integer",
+      "title": "Resend After"
+     }
+    },
+    "type": "object",
+    "required": [
+     "resend_after"
+    ],
+    "title": "OtpSent"
+   },
+   "OtpVerify": {
+    "properties": {
+     "phone": {
+      "type": "string",
+      "pattern": "^[6-9][0-9]{9}$",
+      "title": "Phone"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "code": {
+      "type": "string",
+      "pattern": "^[0-9]{4,8}$",
+      "title": "Code"
+     }
+    },
+    "type": "object",
+    "required": [
+     "phone",
+     "email",
+     "code"
+    ],
+    "title": "OtpVerify"
+   },
+   "TextCheck": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Text"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "TextCheck"
+   },
+   "TextVerdict": {
+    "properties": {
+     "result": {
+      "type": "string",
+      "enum": [
+       "APPROVED",
+       "REJECTED"
+      ],
+      "title": "Result"
+     }
+    },
+    "type": "object",
+    "required": [
+     "result"
+    ],
+    "title": "TextVerdict"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}

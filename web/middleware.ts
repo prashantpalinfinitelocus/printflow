@@ -6,7 +6,7 @@ const PUBLIC_PATHS = ["/login", "/api/auth/login"];
 
 /** The consumer Diet Coke site and its API proxy: they have their own phone-OTP login, not staff cookies. */
 const isCampaign = (pathname: string) =>
-  pathname === "/campaign" || pathname.startsWith("/campaign/") || pathname.startsWith("/api/campaign/");
+  pathname === "/user-campaign" || pathname.startsWith("/user-campaign/") || pathname.startsWith("/api/campaign/");
 
 /** A same-app URL: nextUrl keeps the basePath that new URL(path, request.url) would drop. */
 function appUrl(request: NextRequest, pathname: string) {

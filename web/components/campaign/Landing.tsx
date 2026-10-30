@@ -1,12 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useCampaignRouter } from "@/lib/campaign/nav";
 import { useState } from "react";
 
-import hero from "@/app/campaign/_assets/hero.png";
-import logo from "@/app/campaign/_assets/logo.png";
+import hero from "@/app/user-campaign/_assets/hero.png";
+import logo from "@/app/user-campaign/_assets/logo.png";
 import { LoginFlow } from "@/components/campaign/LoginFlow";
 import { PillButton } from "@/components/campaign/ui";
 import { useCampaign } from "@/lib/campaign/store";
@@ -21,14 +20,14 @@ const LEGAL_LINK =
  * `openLogin` is set for /campaign?login=1, where guarded screens send a visitor without a session.
  */
 export function Landing({ openLogin = false }: { openLogin?: boolean }) {
-  const router = useRouter();
+  const router = useCampaignRouter();
   const { ready, session, update } = useCampaign();
   const [loginOpen, setLoginOpen] = useState(openLogin);
   // A logged-in visitor pressing Back onto ?login=1 must not be asked to log in again.
   const showLogin = loginOpen && ready && !session;
 
   function start() {
-    if (session) router.push("/campaign/create");
+    if (session) router.push("/user-campaign/create");
     else setLoginOpen(true);
   }
 
@@ -74,13 +73,13 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
           </PillButton>
         </div>
         <nav className="flex items-center justify-center gap-4 text-xs leading-[14.4px] text-[#494949]" aria-label="Legal">
-          <Link href="/campaign/terms" className={LEGAL_LINK}>
+          <a href="/user-campaign/terms" className={LEGAL_LINK}>
             Terms &amp; Conditions
-          </Link>
+          </a>
           <span className="h-4 w-px bg-[#A4A8AF]" aria-hidden="true" />
-          <Link href="/campaign/privacy" className={LEGAL_LINK}>
+          <a href="/user-campaign/privacy" className={LEGAL_LINK}>
             Privacy Policy
-          </Link>
+          </a>
         </nav>
       </div>
 
@@ -89,7 +88,7 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
           onClose={() => setLoginOpen(false)}
           onVerified={(s) => {
             update({ session: s });
-            router.push("/campaign/create");
+            router.push("/user-campaign/create");
           }}
         />
       )}

@@ -1,7 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 
-import logo from "@/app/campaign/_assets/logo.png";
+import logo from "@/app/user-campaign/_assets/logo.png";
 
 /**
  * Shared layout for the Terms & Conditions and Privacy Policy pages.
@@ -11,9 +10,9 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
   return (
     <main className="flex min-h-dvh flex-col gap-6 px-6 pt-4 pb-10 text-[#494949]">
       <header className="flex items-center justify-between">
-        <Link href="/campaign" className="text-sm font-semibold text-black">
+        <a href="/user-campaign" className="text-sm font-semibold text-black">
           ← Back
-        </Link>
+        </a>
         <Image src={logo} alt="Diet Coke" sizes="90px" className="h-10 w-[90px] object-contain" />
       </header>
       <h1 className="font-[family-name:var(--dc-serif)] text-[32px] leading-10 text-[#F40009]">{title}</h1>

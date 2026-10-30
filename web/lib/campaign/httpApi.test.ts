@@ -47,6 +47,20 @@ describe("http campaign api", () => {
     expect(error).toMatchObject({ code: "OTP_WRONG", message: "That code doesn't match. Try again." });
   });
 
+  it.each(["OTP_BLOCKED", "OTP_LOCKED"] as const)("keeps %s and how long to wait", async (code) => {
+    reply({ detail: { code, message: "Too many tries.", retry_after: 7200 } }, 429);
+    const error = await api.sendOtp("9876543210", "a@b.co").catch((e) => e);
+    expect(error).toBeInstanceOf(CampaignError);
+    expect(error).toMatchObject({ code, message: "Too many tries.", retryAfter: 7200 });
+  });
+
+  it.each(["OTP_SEND_FAILED", "ENTRY_LIMIT_REACHED"] as const)("recognises %s", async (code) => {
+    fail(code === "OTP_SEND_FAILED" ? 503 : 409, code, "Try later.");
+    const error = await api.sendOtp("9876543210", "a@b.co").catch((e) => e);
+    expect(error).toBeInstanceOf(CampaignError);
+    expect(error.code).toBe(code);
+  });
+
   it("reports the text check's verdict", async () => {
     reply({ result: "REJECTED" });
     expect(await api.moderateText("stupid")).toBe("REJECTED");
