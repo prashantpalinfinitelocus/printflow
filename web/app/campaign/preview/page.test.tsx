@@ -91,7 +91,6 @@ describe("entry", () => {
     await userEvent.click(await makeItHappen());
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/campaign/success"), { timeout: 2000 });
     expect(submit).toHaveBeenCalledWith(
-      SESSION.token,
       expect.objectContaining({ designId: "DISCO_BALL", text: "Aanya", idempotencyKey: expect.any(String) }),
     );
     await waitFor(() => expect(savedJourney().pendingEntry).toBeNull());
@@ -104,7 +103,7 @@ describe("entry", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/couldn.t submit your entry/i);
     await userEvent.click(await makeItHappen());
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
-    const [first, second] = submit.mock.calls.map(([, entry]) => entry.idempotencyKey);
+    const [first, second] = submit.mock.calls.map(([entry]) => entry.idempotencyKey);
     expect(second).toBe(first);
   });
 
@@ -118,7 +117,7 @@ describe("entry", () => {
     renderCampaign(<PreviewPage />, savedJourney());
     await userEvent.click(await makeItHappen());
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
-    const [a, b] = submit.mock.calls.map(([, entry]) => entry.idempotencyKey);
+    const [a, b] = submit.mock.calls.map(([entry]) => entry.idempotencyKey);
     expect(b).toBe(a);
   });
 
@@ -130,7 +129,7 @@ describe("entry", () => {
     });
     await userEvent.click(await makeItHappen());
     await waitFor(() => expect(submit).toHaveBeenCalled());
-    expect(submit.mock.calls[0][1].idempotencyKey).not.toBe("old-key");
+    expect(submit.mock.calls[0][0].idempotencyKey).not.toBe("old-key");
   });
 
   it("explains the closed window and disables entry after 10 PM IST", async () => {

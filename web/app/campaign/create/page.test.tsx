@@ -148,6 +148,6 @@ describe("Check my vibe", () => {
     renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "Aanya", approvedText: "Aanya" });
     await userEvent.type(await textField(), "!");
     await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
-    expect(moderate).toHaveBeenCalledWith(SESSION.token, "Aanya!");
+    expect(moderate).toHaveBeenCalledWith("Aanya!");
   });
 });

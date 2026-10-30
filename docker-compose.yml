@@ -49,6 +49,10 @@ services:
       # says printing is unavailable. See SETUP.md → Printing from Docker.
       PRINTFLOW_PRINTING_ENABLED: ${PRINTFLOW_PRINTING_ENABLED:-false}
       CUPS_SERVER: ${CUPS_SERVER:-}
+      # Consumer campaign login — see .env.example. Off unless you turn it on.
+      PRINTFLOW_CAMPAIGN_OTP_BYPASS: ${PRINTFLOW_CAMPAIGN_OTP_BYPASS:-false}
+      PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE: ${PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE:-}
+      PRINTFLOW_CAMPAIGN_PAUSED: ${PRINTFLOW_CAMPAIGN_PAUSED:-false}
       # Gemini brand-safety check on the CSV `text` column — see README → Text moderation.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       PRINTFLOW_MODERATION_ENABLED: ${PRINTFLOW_MODERATION_ENABLED:-true}

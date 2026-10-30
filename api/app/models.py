@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+import uuid
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -306,3 +308,45 @@ class PrintJob(Base):
 
     order: Mapped[Order] = relationship(back_populates="jobs")
     user: Mapped[User | None] = relationship()
+
+
+class CampaignParticipant(Base):
+    """A consumer who logged in to the Diet Coke campaign with a verified phone.
+
+    One row per phone number; the email is the latest one they gave, which is
+    where a winner is contacted (PRD 8).
+    """
+
+    __tablename__ = "campaign_participants"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phone: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    entries: Mapped[list[CampaignEntry]] = relationship(back_populates="participant")
+
+
+class CampaignEntry(Base):
+    """One accepted entry into a day's lucky draw.
+
+    Entries are unlimited (PRD 2); the idempotency key only stops one submit,
+    retried, from landing twice. It is unique per participant, not globally,
+    because keys are generated in the browser.
+    """
+
+    __tablename__ = "campaign_entries"
+    __table_args__ = (
+        UniqueConstraint("participant_id", "idempotency_key", name="uq_campaign_entries_participant_key"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    participant_id: Mapped[int] = mapped_column(ForeignKey("campaign_participants.id"), index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(64))
+    design_id: Mapped[str] = mapped_column(String(64))
+    text: Mapped[str] = mapped_column(String(64))
+    #: The India-time date the entry counts for; the daily draw selects by it.
+    campaign_day: Mapped[date] = mapped_column(Date, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    participant: Mapped[CampaignParticipant] = relationship(back_populates="entries")

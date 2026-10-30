@@ -27,7 +27,6 @@ export default function CreatePage() {
   }, [ready, session, router]);
 
   if (!ready || !session) return null;
-  const token = session.token;
 
   async function check(e: FormEvent) {
     e.preventDefault();
@@ -45,7 +44,7 @@ export default function CreatePage() {
     setChecking(true);
     setError(null);
     try {
-      if ((await campaignApi.moderateText(token, clean)) === "APPROVED") {
+      if ((await campaignApi.moderateText(clean)) === "APPROVED") {
         update({ text: clean, approvedText: clean });
         router.push("/campaign/preview");
         return;

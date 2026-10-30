@@ -73,7 +73,6 @@ export default function PreviewPage() {
   }, [ready, approved, designId, clean]);
 
   if (!ready || !session || !approved) return null;
-  const token = session.token;
 
   function download() {
     if (!image) return;
@@ -106,7 +105,7 @@ export default function PreviewPage() {
     const key = resumable ? pendingEntry.key : crypto.randomUUID();
     if (!resumable) update({ pendingEntry: { key, designId, text: clean } });
     try {
-      await campaignApi.submitEntry(token, { designId, text: clean, idempotencyKey: key });
+      await campaignApi.submitEntry({ designId, text: clean, idempotencyKey: key });
       update({ pendingEntry: null });
       router.push("/campaign/success");
     } catch (err) {

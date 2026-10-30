@@ -3,7 +3,8 @@ import type { ReactElement } from "react";
 
 import { CampaignProvider } from "@/lib/campaign/store";
 
-export const SESSION = { token: "t-1", phone: "9876543210", email: "aanya@example.com" };
+/** The session the pages keep; the token itself lives in an httpOnly cookie. */
+export const SESSION = { phone: "9876543210", email: "aanya@example.com" };
 
 /** Renders a campaign screen with the journey state a returning tab would restore. */
 export function renderCampaign(ui: ReactElement, state: Record<string, unknown> = {}) {

@@ -1,9 +1,10 @@
 /**
- * Consumer campaign API. The backend endpoints do not exist yet, so the UI
- * talks to `campaignApi`, which is the mock below. When the real API lands,
- * write a fetch-backed `CampaignApi` and export that instead — the screens
- * only depend on this interface.
+ * Consumer campaign API. The screens only depend on `CampaignApi`; `campaignApi`
+ * is the real backend (api/app/routers/campaign.py) through the campaign proxy,
+ * or the in-browser mock when NEXT_PUBLIC_CAMPAIGN_API=mock (tests, offline UI work).
  */
+
+import { withBasePath } from "@/lib/basePath";
 
 /** UNAUTHORIZED: the session token expired or was revoked — the user must log in again. */
 export type CampaignErrorCode = "OTP_WRONG" | "OTP_EXPIRED" | "WINDOW_CLOSED" | "UNAUTHORIZED";
@@ -22,8 +23,8 @@ export class CampaignError extends Error {
 
 export type WindowState = "OPEN" | "BEFORE_OPEN" | "CLOSED" | "PAUSED";
 
+/** Who is logged in. The token itself stays in an httpOnly cookie set by the campaign proxy. */
 export interface Session {
-  token: string;
   phone: string;
   email: string;
 }
@@ -34,13 +35,10 @@ export interface CampaignApi {
   /** Sends an OTP; resolves to the seconds until a resend is allowed. */
   sendOtp(phone: string, email: string): Promise<{ resendAfter: number }>;
   verifyOtp(phone: string, email: string, code: string): Promise<Session>;
-  moderateText(token: string, text: string): Promise<ModerationResult>;
+  moderateText(text: string): Promise<ModerationResult>;
   getWindowState(): Promise<WindowState>;
   /** `idempotencyKey` makes a retried or double-tapped submit create one entry. */
-  submitEntry(
-    token: string,
-    entry: { designId: string; text: string; idempotencyKey: string },
-  ): Promise<{ entryId: string }>;
+  submitEntry(entry: { designId: string; text: string; idempotencyKey: string }): Promise<{ entryId: string }>;
 }
 
 /** PRD §5 copy for each entry-window state. */
@@ -95,10 +93,10 @@ export function createMockCampaignApi(): CampaignApi {
       }
       if (code !== MOCK_OTP) throw new CampaignError("OTP_WRONG", "That code doesn't match. Try again.");
       otpSentAt.delete(phone);
-      return { token: `mock-${crypto.randomUUID()}`, phone, email: email.trim() };
+      return { phone, email: email.trim() };
     },
 
-    async moderateText(_token, text) {
+    async moderateText(text) {
       await delay(700);
       const lower = text.toLowerCase();
       return BLOCKED.some((word) => lower.includes(word)) ? "REJECTED" : "APPROVED";
@@ -106,7 +104,7 @@ export function createMockCampaignApi(): CampaignApi {
 
     getWindowState,
 
-    async submitEntry(_token, { idempotencyKey }) {
+    async submitEntry({ idempotencyKey }) {
       await delay(700);
       const state = await getWindowState();
       if (state !== "OPEN") throw new CampaignError("WINDOW_CLOSED", WINDOW_MESSAGE[state]);
@@ -119,4 +117,49 @@ export function createMockCampaignApi(): CampaignApi {
   };
 }
 
-export const campaignApi: CampaignApi = createMockCampaignApi();
+/* ---------------- backend ---------------- */
+
+/** Error codes the screens branch on; any other failure is a plain Error ("please try again"). */
+const KNOWN_CODES = new Set<CampaignErrorCode>(["OTP_WRONG", "OTP_EXPIRED", "WINDOW_CLOSED", "UNAUTHORIZED"]);
+
+/** The real API, through the campaign proxy (app/api/campaign), which holds the session cookie. */
+export function createHttpCampaignApi(): CampaignApi {
+  async function call<T>(path: string, body?: unknown): Promise<T> {
+    const res = await fetch(withBasePath(`/api/campaign/${path}`), {
+      method: body === undefined ? "GET" : "POST",
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok) return data as T;
+    const { code, message } = data?.detail ?? {};
+    if (KNOWN_CODES.has(code)) throw new CampaignError(code, message);
+    throw new Error(message ?? `Campaign request failed (${res.status})`);
+  }
+
+  return {
+    async sendOtp(phone, email) {
+      const { resend_after } = await call<{ resend_after: number }>("otp/send", { phone, email });
+      return { resendAfter: resend_after };
+    },
+    verifyOtp: (phone, email, code) => call<Session>("otp/verify", { phone, email, code }),
+    async moderateText(text) {
+      return (await call<{ result: ModerationResult }>("moderate", { text })).result;
+    },
+    async getWindowState() {
+      return (await call<{ state: WindowState }>("window")).state;
+    },
+    async submitEntry({ designId, text, idempotencyKey }) {
+      const { entry_id } = await call<{ entry_id: string }>("entries", {
+        design_id: designId,
+        text,
+        idempotency_key: idempotencyKey,
+      });
+      return { entryId: entry_id };
+    },
+  };
+}
+
+export const campaignApi: CampaignApi =
+  process.env.NEXT_PUBLIC_CAMPAIGN_API === "mock" ? createMockCampaignApi() : createHttpCampaignApi();

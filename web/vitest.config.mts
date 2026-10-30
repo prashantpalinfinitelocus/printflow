@@ -19,6 +19,8 @@ export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname) } },
   test: {
     environment: "jsdom",
+    // Screens run against the in-browser mock; the HTTP client has its own tests.
+    env: { NEXT_PUBLIC_CAMPAIGN_API: "mock" },
     setupFiles: ["./test/setup.ts"],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules", ".next"],

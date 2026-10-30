@@ -36,7 +36,6 @@ describe("OTP", () => {
     await settle(api.sendOtp("9876543210", " a@b.co "));
     const session = await settle(api.verifyOtp("9876543210", " a@b.co ", MOCK_OTP));
     expect(session).toMatchObject({ phone: "9876543210", email: "a@b.co" });
-    expect(session.token).toBeTruthy();
   });
 
   it("rejects a wrong code as OTP_WRONG", async () => {
@@ -71,15 +70,15 @@ describe("OTP", () => {
 
 describe("moderateText", () => {
   it("approves friendly text", async () => {
-    expect(await settle(api.moderateText("t", "Aanya"))).toBe("APPROVED");
+    expect(await settle(api.moderateText("Aanya"))).toBe("APPROVED");
   });
 
   it("rejects blocked words regardless of case", async () => {
-    expect(await settle(api.moderateText("t", "You STUPID"))).toBe("REJECTED");
+    expect(await settle(api.moderateText("You STUPID"))).toBe("REJECTED");
   });
 
   it("rejects competitor brands", async () => {
-    expect(await settle(api.moderateText("t", "pepsi fan"))).toBe("REJECTED");
+    expect(await settle(api.moderateText("pepsi fan"))).toBe("REJECTED");
   });
 });
 
@@ -99,24 +98,24 @@ describe("submitEntry", () => {
   const entry = { designId: "DISCO_BALL", text: "Aanya", idempotencyKey: "k1" };
 
   it("accepts an entry while the window is open", async () => {
-    expect((await settle(api.submitEntry("t", entry))).entryId).toBeTruthy();
+    expect((await settle(api.submitEntry(entry))).entryId).toBeTruthy();
   });
 
   it("returns the same entry for a retried idempotency key", async () => {
-    const first = await settle(api.submitEntry("t", entry));
-    const retry = await settle(api.submitEntry("t", entry));
+    const first = await settle(api.submitEntry(entry));
+    const retry = await settle(api.submitEntry(entry));
     expect(retry.entryId).toBe(first.entryId);
   });
 
   it("creates a separate entry for a new key — entries are unlimited", async () => {
-    const first = await settle(api.submitEntry("t", entry));
-    const second = await settle(api.submitEntry("t", { ...entry, idempotencyKey: "k2" }));
+    const first = await settle(api.submitEntry(entry));
+    const second = await settle(api.submitEntry({ ...entry, idempotencyKey: "k2" }));
     expect(second.entryId).not.toBe(first.entryId);
   });
 
   it("refuses an entry after 10 PM IST with the PRD message", async () => {
     vi.setSystemTime(ist(22, 5));
-    await expect(settle(api.submitEntry("t", entry))).rejects.toMatchObject({
+    await expect(settle(api.submitEntry(entry))).rejects.toMatchObject({
       code: "WINDOW_CLOSED",
       message: WINDOW_MESSAGE.CLOSED,
     });

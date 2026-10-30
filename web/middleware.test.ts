@@ -20,6 +20,13 @@ describe("middleware", () => {
     },
   );
 
+  it.each(["/api/campaign/otp/send", "/api/campaign/window"])(
+    "lets the campaign proxy %s through without a staff cookie",
+    (path) => {
+      expect(redirectedTo(middleware(request(path)))).toBeNull();
+    },
+  );
+
   it("still sends a staff page without a cookie to the PrintFlow login", () => {
     expect(redirectedTo(middleware(request("/queue")))).toBe(`http://localhost${BASE_PATH}/login?next=%2Fqueue`);
   });

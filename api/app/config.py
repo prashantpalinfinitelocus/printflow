@@ -83,6 +83,15 @@ class Settings(BaseSettings):
     # every message as if it stood beside this logo ("not ok" -> "Diet Coke not ok").
     moderation_campaign_brand: str = "Diet Coke"
 
+    # Consumer Diet Coke campaign. No SMS provider is wired in yet, so while the
+    # bypass is on no OTP is sent and only `campaign_otp_bypass_code` logs in.
+    # Anyone who knows the code can log in as any number: never enable it live.
+    campaign_otp_bypass: bool = False
+    campaign_otp_bypass_code: str = ""
+    campaign_jwt_expire_minutes: int = 60 * 24
+    #: Stops new entries (window state PAUSED) without a deploy.
+    campaign_paused: bool = False
+
     bootstrap_admin_email: str = "admin@printflow.local"
     bootstrap_admin_password: str = "admin123"
 

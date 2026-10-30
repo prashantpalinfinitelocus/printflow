@@ -466,3 +466,60 @@ class PrintResponse(BaseModel):
 
 
 TokenResponse.model_rebuild()
+
+
+# ---------------- consumer campaign ----------------
+
+#: A 10-digit Indian mobile number, digits only (the web app strips +91 and spaces).
+CampaignPhone = Annotated[str, Field(pattern=r"^[6-9]\d{9}$")]
+
+
+def _known_design(value: str) -> str:
+    from .services.campaign import DESIGN_IDS
+
+    if value not in DESIGN_IDS:
+        raise ValueError("not a campaign design")
+    return value
+
+
+class OtpRequest(BaseModel):
+    phone: CampaignPhone
+    email: EmailStr
+
+
+class OtpVerify(OtpRequest):
+    code: str = Field(pattern=r"^\d{4,8}$")
+
+
+class OtpSent(BaseModel):
+    resend_after: int
+
+
+class CampaignSession(BaseModel):
+    token: str
+    #: Seconds until the token expires; the web app's session cookie lasts as long.
+    expires_in: int
+    phone: str
+    email: str
+
+
+class TextCheck(BaseModel):
+    text: str = Field(max_length=200)
+
+
+class TextVerdict(BaseModel):
+    result: Literal["APPROVED", "REJECTED"]
+
+
+class CampaignWindow(BaseModel):
+    state: Literal["OPEN", "BEFORE_OPEN", "CLOSED", "PAUSED"]
+
+
+class EntryCreate(BaseModel):
+    design_id: Annotated[str, AfterValidator(_known_design)]
+    text: str = Field(max_length=200)
+    idempotency_key: str = Field(min_length=1, max_length=64)
+
+
+class EntryOut(BaseModel):
+    entry_id: str

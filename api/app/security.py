@@ -33,3 +33,28 @@ def create_access_token(*, user_id: int, role: str, store_id: int | None) -> tup
 
 def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+
+
+#: Audience claim on consumer campaign tokens. Staff tokens carry none, and PyJWT
+#: refuses a token whose audience the caller did not ask for, so neither kind of
+#: token is accepted where the other is expected.
+CAMPAIGN_AUDIENCE = "campaign"
+
+
+def create_participant_token(*, participant_id: int) -> tuple[str, int]:
+    expires_in = settings.campaign_jwt_expire_minutes * 60
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(participant_id),
+        "aud": CAMPAIGN_AUDIENCE,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=expires_in)).timestamp()),
+    }
+    token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return token, expires_in
+
+
+def decode_participant_token(token: str) -> dict:
+    return jwt.decode(
+        token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], audience=CAMPAIGN_AUDIENCE
+    )
