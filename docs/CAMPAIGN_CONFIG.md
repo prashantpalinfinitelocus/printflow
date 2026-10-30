@@ -56,10 +56,10 @@ Every value is an environment variable (prefix `PRINTFLOW_`). On Cloud Run they 
 | `CAMPAIGN_PAUSED` | false | `_CAMPAIGN_PAUSED` |
 | `CAMPAIGN_OPEN_HOUR` / `CAMPAIGN_CLOSE_HOUR` | 10 / 22 (24 = midnight) | `_CAMPAIGN_OPEN_HOUR`, `_CAMPAIGN_CLOSE_HOUR` |
 | `CAMPAIGN_TIMEZONE` | Asia/Kolkata | `_CAMPAIGN_TIMEZONE` |
-| `CAMPAIGN_OTP_BYPASS` / `_CODE` | false / blank | test file only: `_CAMPAIGN_OTP_BYPASS`, `_CAMPAIGN_OTP_BYPASS_CODE`. **Prod hard-codes `false`.** |
+| `CAMPAIGN_OTP_BYPASS` / `_CODE` | false / blank | test file only: `_CAMPAIGN_OTP_BYPASS` (substitution) and the code from Secret Manager `PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE`. **Prod hard-codes `false`.** |
 | `CAMPAIGN_INFOBIP_ENABLED` | **false** | `_CAMPAIGN_INFOBIP_ENABLED` |
 | `CAMPAIGN_INFOBIP_BASE_URL`, `_SENDER_ID`, `_DLT_ENTITY_ID`, `_DLT_TEMPLATE_ID`, `_MESSAGE` | blank | `_CAMPAIGN_INFOBIP_*` |
-| `CAMPAIGN_INFOBIP_API_KEY` | blank | **Secret Manager, see below** |
+| `CAMPAIGN_INFOBIP_API_KEY` | blank | Secret Manager `PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY` (test: wired, value is a placeholder until the real key is added as a new version; prod: not wired yet) |
 
 `_MESSAGE` must match the DLT template text exactly with `{otp}` where the code goes. It must not contain `@`, `'` or `$`
 (the env var list uses `@` as its delimiter and Cloud Build substitutes `$`).
@@ -92,7 +92,6 @@ This is a loose edge limit because many users share carrier IPs; the per-phone l
   This follows from the specified limits; the verify lock and block lengths are settings.
 * **Still hard-coded in the web app:** the "10AM to 10PM" text in the heads-up popup, the `WINDOW_MESSAGE` copy and the
   6-digit OTP length. They match the defaults; change them together with the settings until the API exposes them.
-* **Test environment login:** `_CAMPAIGN_OTP_BYPASS` is `true` with an empty code, which never matches. Supply
-  `_CAMPAIGN_OTP_BYPASS_CODE` on the trigger or staging login stays unavailable. Production login is unavailable until
-  the Infobip flag is on.
+* **Test environment login:** `_CAMPAIGN_OTP_BYPASS` is `true` and the code comes from the Secret Manager secret
+  `PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE`. Production login is unavailable until the Infobip flag is on.
 * The Infobip response status per message (for example a DLT rejection returned with HTTP 200) is not inspected yet.
