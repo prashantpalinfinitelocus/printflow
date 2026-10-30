@@ -359,6 +359,8 @@ class CampaignPhoneGuard(Base):
     blocked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     block_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
     failed_verifies: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    #: When the last wrong code was typed; old failures stop counting after a quiet period.
+    last_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class CampaignEntry(Base):

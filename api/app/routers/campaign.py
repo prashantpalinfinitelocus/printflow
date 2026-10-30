@@ -144,12 +144,17 @@ def create_entry(payload: EntryCreate, db: DbSession, participant: CurrentPartic
         raise _error(status.HTTP_409_CONFLICT, "WINDOW_CLOSED", campaign.window_message(state))
 
     cap = settings.campaign_max_entries_per_participant
-    if cap and db.scalar(select(func.count()).select_from(CampaignEntry).where(CampaignEntry.participant_id == participant.id)) >= cap:
-        raise _error(
-            status.HTTP_409_CONFLICT,
-            "ENTRY_LIMIT_REACHED",
-            "You’ve reached the maximum number of entries for this campaign.",
-        )
+    if cap:
+        # Locks the participant until the entry is committed, so concurrent submits cannot
+        # all read "below the cap" and each add one.
+        db.execute(select(CampaignParticipant.id).where(CampaignParticipant.id == participant.id).with_for_update())
+        used = db.scalar(select(func.count()).select_from(CampaignEntry).where(CampaignEntry.participant_id == participant.id))
+        if used >= cap:
+            raise _error(
+                status.HTTP_409_CONFLICT,
+                "ENTRY_LIMIT_REACHED",
+                "You’ve reached the maximum number of entries for this campaign.",
+            )
 
     # The browser's check proves nothing: the server moderates every entry again.
     text = _approved_text(payload.text)

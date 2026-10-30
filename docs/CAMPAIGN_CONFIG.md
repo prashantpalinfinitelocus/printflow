@@ -48,6 +48,7 @@ Every value is an environment variable (prefix `PRINTFLOW_`). On Cloud Run they 
 | `CAMPAIGN_OTP_BLOCK_SECONDS` | 7200 | `_CAMPAIGN_OTP_BLOCK_SECONDS` |
 | `CAMPAIGN_OTP_VERIFY_MAX_FAILURES` | 5 | `_CAMPAIGN_OTP_VERIFY_MAX_FAILURES` |
 | `CAMPAIGN_OTP_VERIFY_LOCK_SECONDS` | 7200 | `_CAMPAIGN_OTP_VERIFY_LOCK_SECONDS` |
+| `CAMPAIGN_OTP_VERIFY_WINDOW_SECONDS` | 1800 (wrong codes count together only while each is within this of the last) | `_CAMPAIGN_OTP_VERIFY_WINDOW_SECONDS` |
 | `CAMPAIGN_OTP_TTL_SECONDS` | 300 | `_CAMPAIGN_OTP_TTL_SECONDS` |
 | `CAMPAIGN_OTP_LENGTH` | 6 | — |
 | `CAMPAIGN_OTP_RESEND_AFTER_SECONDS` | 30 | — |
@@ -77,3 +78,21 @@ Every value is an environment variable (prefix `PRINTFLOW_`). On Cloud Run they 
 
 `infra/cloud-armor.sh` adds rule 1050: 30 POSTs per minute per IP on `/offline-store/api/campaign/otp/(send|verify)`.
 This is a loose edge limit because many users share carrier IPs; the per-phone limits above are the real control.
+
+## Behaviour to know before release
+
+* **Failed sends are free.** If Infobip refuses or is down, that attempt is removed from the send log, so a vendor outage
+  cannot block users. A successful send still counts.
+* **Resend cooldown is shown by the web app (30 s) but not enforced by the server.** The server enforces the
+  5-in-5-minutes limit only. Say if a server-side minimum gap is wanted.
+* **Sign-out is not wired into the web app** (the design has no sign-out screen). `POST /campaign/logout` exists and revokes
+  every earlier token; the cookie otherwise simply expires after 24 h.
+* **Existing sessions end on deploy.** Tokens issued before this change lack `iss`, `jti` and `ver`.
+* **Lock-out of a number is possible by anyone who knows it** (6 sends or 5 wrong codes block that phone for 2 hours).
+  This follows from the specified limits; the verify lock and block lengths are settings.
+* **Still hard-coded in the web app:** the "10AM to 10PM" text in the heads-up popup, the `WINDOW_MESSAGE` copy and the
+  6-digit OTP length. They match the defaults; change them together with the settings until the API exposes them.
+* **Test environment login:** `_CAMPAIGN_OTP_BYPASS` is `true` with an empty code, which never matches. Supply
+  `_CAMPAIGN_OTP_BYPASS_CODE` on the trigger or staging login stays unavailable. Production login is unavailable until
+  the Infobip flag is on.
+* The Infobip response status per message (for example a DLT rejection returned with HTTP 200) is not inspected yet.

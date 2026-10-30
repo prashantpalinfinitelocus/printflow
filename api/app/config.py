@@ -121,6 +121,9 @@ class Settings(BaseSettings):
     #: Wrong codes allowed before verification locks for `campaign_otp_verify_lock_seconds`.
     campaign_otp_verify_max_failures: int = 5
     campaign_otp_verify_lock_seconds: int = 2 * 60 * 60
+    #: Wrong codes count together only while each is within this many seconds of the last,
+    #: so an occasional typo does not add up over days.
+    campaign_otp_verify_window_seconds: int = 30 * 60
     #: Seconds the web app waits before offering "Resend code".
     campaign_otp_resend_after_seconds: int = 30
 

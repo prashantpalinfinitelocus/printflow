@@ -59,6 +59,7 @@ STATEMENTS: list[str] = [
     "ALTER TABLE csv_batches ADD COLUMN IF NOT EXISTS moderation_thought_tokens INTEGER NOT NULL DEFAULT 0",
     # Campaign session revocation (create_all makes the new OTP tables itself).
     "ALTER TABLE campaign_participants ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE campaign_phone_guards ADD COLUMN IF NOT EXISTS last_failed_at TIMESTAMPTZ",
 ]
 
 

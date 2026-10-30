@@ -187,11 +187,12 @@ def _seconds_until(moment: datetime, now: datetime) -> int:
 def _raise_if_blocked(guard: CampaignPhoneGuard, now: datetime, db: Session) -> None:
     if guard.blocked_until is None or guard.blocked_until <= now:
         return
-    db.rollback()  # release the row lock before answering
     wait = _seconds_until(guard.blocked_until, now)
-    if guard.block_reason == REASON_VERIFY:
+    reason = guard.block_reason
+    db.rollback()  # release the row lock before answering
+    if reason == REASON_VERIFY:
         raise OtpLocked("Too many wrong codes. Please try again later.", retry_after=wait)
-    raise OtpBlocked("Too many OTP requests. Please try again after 2 hours.", retry_after=wait)
+    raise OtpBlocked("Too many OTP requests. Please try again later.", retry_after=wait)
 
 
 def _block(db: Session, guard: CampaignPhoneGuard, *, now: datetime, seconds: int, reason: str) -> int:
@@ -220,22 +221,21 @@ def send_otp(db: Session, phone: str, now: datetime) -> None:
     )
     if recent >= settings.campaign_otp_send_limit:
         wait = _block(db, guard, now=now, seconds=settings.campaign_otp_block_seconds, reason=REASON_SEND)
-        raise OtpBlocked("Too many OTP requests. Please try again after 2 hours.", retry_after=wait)
+        raise OtpBlocked("Too many OTP requests. Please try again later.", retry_after=wait)
 
     # One live code per phone: a new one replaces the last.
     db.execute(
         update(CampaignOtp).where(CampaignOtp.phone == phone, CampaignOtp.consumed_at.is_(None)).values(consumed_at=now)
     )
     code = _generate() if sender is not None else None
-    db.add(
-        CampaignOtp(
-            phone=phone,
-            code_hash=_hash(phone, code) if code else None,
-            expires_at=now + timedelta(seconds=settings.campaign_otp_ttl_seconds),
-            created_at=now,
-        )
+    row = CampaignOtp(
+        phone=phone,
+        code_hash=_hash(phone, code) if code else None,
+        expires_at=now + timedelta(seconds=settings.campaign_otp_ttl_seconds),
+        created_at=now,
     )
-    # Committed before texting: a send that the vendor then fails still counts.
+    db.add(row)
+    # Committed before texting so the row lock is not held across the vendor call.
     db.commit()
 
     if sender is not None:
@@ -243,6 +243,10 @@ def send_otp(db: Session, phone: str, now: datetime) -> None:
             sender.send(phone, code)
         except OtpDeliveryError as exc:
             log.error("OTP delivery failed for %s: %s", _mask(phone), exc)
+            # Nothing was delivered, so this attempt must not count toward the send limit:
+            # a vendor outage would otherwise block users for something that is not their fault.
+            db.delete(row)
+            db.commit()
             raise OtpSendFailed("We couldn't send the code. Please try again.") from exc
 
 
@@ -284,7 +288,12 @@ def verify_otp(db: Session, phone: str, code: str, now: datetime) -> None:
         db.commit()
         return
 
+    if guard.last_failed_at is not None and (
+        now - guard.last_failed_at > timedelta(seconds=settings.campaign_otp_verify_window_seconds)
+    ):
+        guard.failed_verifies = 0
     guard.failed_verifies += 1
+    guard.last_failed_at = now
     if guard.failed_verifies >= settings.campaign_otp_verify_max_failures:
         if active is not None:
             active.consumed_at = now
