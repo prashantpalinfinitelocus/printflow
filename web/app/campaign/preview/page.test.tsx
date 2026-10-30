@@ -1,10 +1,10 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { campaignApi } from "@/lib/campaign/api";
+import { CampaignError, campaignApi } from "@/lib/campaign/api";
 import { renderCanPng } from "@/lib/campaign/canImage";
-import { SESSION, renderCampaign } from "@/test/campaign";
+import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
 import { router } from "@/test/navigation";
 
 import PreviewPage from "./page";
@@ -29,17 +29,27 @@ beforeEach(() => {
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
-/** The file name of the last download link the page clicked. */
-const downloadedAs = () =>
-  (vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts.at(-1) as HTMLAnchorElement | undefined)?.download;
-
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.mocked(renderCanPng).mockClear();
+  // Object.assign(navigator, …) below is not undone by restoreAllMocks.
+  delete (navigator as { share?: unknown }).share;
+  delete (navigator as { canShare?: unknown }).canShare;
 });
 
+/** The file name of the last download link the page clicked. */
+const downloadedAs = () =>
+  (vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts.at(-1) as HTMLAnchorElement | undefined)?.download;
+
 const makeItHappen = () => screen.findByRole("button", { name: "Make It Happen" });
+
+/** Download/share are enabled once the can PNG has been rendered. */
+async function imageReady(name: "Download My Can" | "Share My Look") {
+  const button = await screen.findByRole("button", { name });
+  await waitFor(() => expect(button).toBeEnabled());
+  return button;
+}
 
 describe("access", () => {
   it("sends a visitor without a session back to log in", async () => {
@@ -60,6 +70,13 @@ describe("preview", () => {
     expect(screen.getByRole("img", { name: /disco ball.*aanya/i })).toBeInTheDocument();
   });
 
+  it("swaps in the exported PNG once ready, so a long-press saves the personalised can", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    const image = await screen.findByRole("img", { name: /your personalised diet coke can.*disco ball.*aanya/i });
+    expect(image).toHaveAttribute("src", "blob:can");
+    expect(renderCanPng).toHaveBeenCalledWith("DISCO_BALL", "Aanya", "can");
+  });
+
   it("goes back to editing", async () => {
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await screen.findByRole("button", { name: "Back to editing" }));
@@ -77,6 +94,7 @@ describe("entry", () => {
       SESSION.token,
       expect.objectContaining({ designId: "DISCO_BALL", text: "Aanya", idempotencyKey: expect.any(String) }),
     );
+    await waitFor(() => expect(savedJourney().pendingEntry).toBeNull());
   });
 
   it("retries a failed submission with the same idempotency key, so it cannot double-enter", async () => {
@@ -88,6 +106,31 @@ describe("entry", () => {
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
     const [first, second] = submit.mock.calls.map(([, entry]) => entry.idempotencyKey);
     expect(second).toBe(first);
+  });
+
+  it("keeps the same idempotency key after a reload, when the first response was lost", async () => {
+    const submit = vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new Error("response lost"));
+    const first = renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    await screen.findByRole("alert");
+    first.unmount();
+
+    renderCampaign(<PreviewPage />, savedJourney());
+    await userEvent.click(await makeItHappen());
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+    const [a, b] = submit.mock.calls.map(([, entry]) => entry.idempotencyKey);
+    expect(b).toBe(a);
+  });
+
+  it("uses a fresh key once the text differs from the unfinished entry", async () => {
+    const submit = vi.spyOn(campaignApi, "submitEntry");
+    renderCampaign(<PreviewPage />, {
+      ...APPROVED,
+      pendingEntry: { key: "old-key", designId: "DISCO_BALL", text: "Riya" },
+    });
+    await userEvent.click(await makeItHappen());
+    await waitFor(() => expect(submit).toHaveBeenCalled());
+    expect(submit.mock.calls[0][1].idempotencyKey).not.toBe("old-key");
   });
 
   it("explains the closed window and disables entry after 10 PM IST", async () => {
@@ -106,58 +149,76 @@ describe("entry", () => {
     expect(await screen.findByRole("alert", {}, { timeout: 2000 })).toHaveTextContent(/today’s entry window is closed/i);
     expect(router.push).not.toHaveBeenCalled();
   });
+
+  it("does not leave the button spinning when the window re-check itself fails", async () => {
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("WINDOW_CLOSED", "Closed now."));
+    vi.spyOn(campaignApi, "getWindowState").mockResolvedValueOnce("OPEN").mockRejectedValueOnce(new Error("offline"));
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    expect(await screen.findByRole("alert")).toHaveTextContent("Closed now.");
+    expect(screen.getByRole("button", { name: "Make It Happen" })).not.toHaveAttribute("aria-busy");
+  });
+
+  it("sends an expired session back to log in, keeping the approved can", async () => {
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("UNAUTHORIZED", "expired"));
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign?login=1"));
+    expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", approvedText: "Aanya" });
+  });
 });
 
 describe("download and share", () => {
   it("downloads the can without creating an entry", async () => {
     const submit = vi.spyOn(campaignApi, "submitEntry");
     renderCampaign(<PreviewPage />, APPROVED);
-    await userEvent.click(await screen.findByRole("button", { name: "Download My Can" }));
+    await userEvent.click(await imageReady("Download My Can"));
     expect(await screen.findByText(/saved! check your downloads/i)).toBeInTheDocument();
-    expect(renderCanPng).toHaveBeenCalledWith("DISCO_BALL", "Aanya", "can");
     expect(downloadedAs()).toBe("my-diet-coke-can.png");
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it("explains a fallback when the image cannot be made", async () => {
-    vi.mocked(renderCanPng).mockRejectedValueOnce(new Error("canvas"));
+  it("renders the PNG once per visit, not on every tap", async () => {
     renderCampaign(<PreviewPage />, APPROVED);
-    await userEvent.click(await screen.findByRole("button", { name: "Download My Can" }));
-    expect(await screen.findByText(/long-press the can/i)).toBeInTheDocument();
+    const download = await imageReady("Download My Can");
+    await userEvent.click(download);
+    await userEvent.click(download);
+    expect(renderCanPng).toHaveBeenCalledOnce();
   });
 
-  it("opens the native share sheet with the can image", async () => {
+  it("calls share inside the tap itself, as iOS Safari requires", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { share, canShare: () => true });
     renderCampaign(<PreviewPage />, APPROVED);
-    await userEvent.click(await screen.findByRole("button", { name: "Share My Look" }));
-    await waitFor(() => expect(share).toHaveBeenCalledOnce());
-    const [{ files }] = share.mock.calls[0];
-    expect(files[0]).toMatchObject({ name: "my-diet-coke-can.png", type: "image/png" });
+    fireEvent.click(await imageReady("Share My Look"));
+    // Synchronous: no await between the tap and share().
+    expect(share).toHaveBeenCalledOnce();
+    expect(share.mock.calls[0][0].files[0]).toMatchObject({ name: "my-diet-coke-can.png", type: "image/png" });
   });
 
   it("saves the image instead where sharing files is not supported", async () => {
     Object.assign(navigator, { share: vi.fn(), canShare: () => false });
     renderCampaign(<PreviewPage />, APPROVED);
-    await userEvent.click(await screen.findByRole("button", { name: "Share My Look" }));
+    await userEvent.click(await imageReady("Share My Look"));
     expect(await screen.findByText(/sharing isn’t supported here, so we saved it/i)).toBeInTheDocument();
     expect(navigator.share).not.toHaveBeenCalled();
+    expect(downloadedAs()).toBe("my-diet-coke-can.png");
   });
 
-  it("does not claim the image was saved when the share fallback fails too", async () => {
-    Object.assign(navigator, { share: vi.fn(), canShare: () => false });
+  it("offers a screenshot, and no false save, when the image cannot be made", async () => {
     vi.mocked(renderCanPng).mockRejectedValueOnce(new Error("canvas"));
     renderCampaign(<PreviewPage />, APPROVED);
-    await userEvent.click(await screen.findByRole("button", { name: "Share My Look" }));
-    expect(await screen.findByText(/long-press the can/i)).toBeInTheDocument();
-    expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/take a screenshot/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download My Can" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Share My Look" })).toBeDisabled();
+    expect(screen.queryByText(/long-press/i)).not.toBeInTheDocument();
   });
 
   it("treats closing the share sheet as a choice, not an error", async () => {
     const share = vi.fn().mockRejectedValue(new DOMException("cancelled", "AbortError"));
     Object.assign(navigator, { share, canShare: () => true });
     renderCampaign(<PreviewPage />, APPROVED);
-    await userEvent.click(await screen.findByRole("button", { name: "Share My Look" }));
+    await userEvent.click(await imageReady("Share My Look"));
     await waitFor(() => expect(share).toHaveBeenCalled());
     expect(screen.queryByText(/couldn.t open sharing/i)).not.toBeInTheDocument();
   });

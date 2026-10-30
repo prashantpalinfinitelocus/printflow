@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
 import type { Session } from "@/lib/campaign/api";
-import { DEFAULT_DESIGN_ID } from "@/lib/campaign/designs";
+import { DEFAULT_DESIGN_ID, designById } from "@/lib/campaign/designs";
 
 interface CampaignState {
   session: Session | null;
@@ -12,6 +12,11 @@ interface CampaignState {
   /** The text moderation last approved; preview and entry need it to equal `text`. */
   approvedText: string | null;
   headsUpSeen: boolean;
+  /**
+   * An entry sent but not confirmed. Its idempotency key outlives a reload, so a
+   * submit whose response was lost cannot become a second entry on retry.
+   */
+  pendingEntry: { key: string; designId: string; text: string } | null;
 }
 
 const INITIAL: CampaignState = {
@@ -20,6 +25,7 @@ const INITIAL: CampaignState = {
   text: "",
   approvedText: null,
   headsUpSeen: false,
+  pendingEntry: null,
 };
 
 const STORAGE_KEY = "dc-campaign";
@@ -43,7 +49,11 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) setState({ ...INITIAL, ...JSON.parse(saved) });
+      if (saved) {
+        const restored: CampaignState = { ...INITIAL, ...JSON.parse(saved) };
+        // A design retired since the tab was opened falls back to one we can still print.
+        setState({ ...restored, designId: designById(restored.designId).id });
+      }
     } catch {
       /* storage blocked or corrupt — start fresh */
     }

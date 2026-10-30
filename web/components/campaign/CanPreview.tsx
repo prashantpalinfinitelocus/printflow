@@ -30,11 +30,11 @@ export function CanPreview({
       className={`relative [container-type:inline-size] ${className}`}
       style={{ aspectRatio: `${canBlank.width} / ${canBlank.height}` }}
     >
-      <Image src={canBlank} alt="" fill priority={priority} sizes="(max-width: 430px) 50vw, 215px" className="object-contain" />
+      <Image src={canBlank} alt="" fill priority={priority} sizes="(max-width: 480px) 50vw, 240px" className="object-contain" />
       <Image
         src={design.sticker}
         alt=""
-        sizes="(max-width: 430px) 30vw, 130px"
+        sizes="(max-width: 480px) 30vw, 144px"
         className="absolute object-contain"
         style={{
           left: `${sticker.x * 100}%`,

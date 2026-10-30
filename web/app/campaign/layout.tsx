@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import { canFont, sans, serif } from "@/lib/campaign/fonts";
+import { canFont, headline, sans, serif, text } from "@/lib/campaign/fonts";
 import { CampaignProvider } from "@/lib/campaign/store";
 
 export const metadata: Metadata = {
@@ -10,13 +10,15 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#ffffff" };
 
+const FONT_VARS = [sans, serif, headline, text, canFont].map((f) => f.variable).join(" ");
+
 export default function CampaignLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`${sans.variable} ${serif.variable} ${canFont.variable} min-h-dvh bg-white font-[family-name:var(--dc-sans)] text-black`}
+      className={`${FONT_VARS} min-h-dvh bg-white font-[family-name:var(--dc-text)] text-black`}
     >
-      {/* The design is a 402px phone screen; wider viewports get it centred. */}
-      <div className="relative mx-auto min-h-dvh w-full max-w-[430px] overflow-x-hidden bg-white">
+      {/* Designed at 402px; fills every phone up to the largest (16 Pro Max is 440), then centres. */}
+      <div className="relative mx-auto min-h-dvh w-full max-w-[480px] overflow-x-hidden bg-white">
         <CampaignProvider>{children}</CampaignProvider>
       </div>
     </div>

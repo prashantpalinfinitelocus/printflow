@@ -6,57 +6,63 @@ import { describe, expect, it } from "vitest";
 import { MOCK_OTP } from "@/lib/campaign/api";
 import { CampaignProvider } from "@/lib/campaign/store";
 import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
-import { router, searchParams } from "@/test/navigation";
+import { router } from "@/test/navigation";
 
 import LandingPage from "./page";
 
+/** The page as Next renders it: a server component given the URL's query. */
+const landing = (query: Record<string, string> = {}) => LandingPage({ searchParams: Promise.resolve(query) });
+
 describe("Landing", () => {
   it("shows the Figma splash copy", async () => {
-    renderCampaign(<LandingPage />);
-    expect(await screen.findByRole("heading", { name: "Make it yours." })).toBeInTheDocument();
+    renderCampaign(await landing());
+    expect(await screen.findByRole("heading", { name: "Make it yours" })).toBeInTheDocument();
     expect(screen.getByText(/only a lucky few dc paglus score one/i)).toBeInTheDocument();
   });
 
   it("links to the terms and privacy policy", async () => {
-    renderCampaign(<LandingPage />);
-    expect(await screen.findByRole("link", { name: "Terms & Conditions" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Privacy Policy" })).toBeInTheDocument();
+    renderCampaign(await landing());
+    expect(await screen.findByRole("link", { name: "Terms & Conditions" })).toHaveAttribute("href", "/campaign/terms");
+    expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/campaign/privacy");
   });
 
   it("asks a new visitor to log in before customising", async () => {
-    renderCampaign(<LandingPage />);
+    renderCampaign(await landing());
     await userEvent.click(await screen.findByRole("button", { name: "Let’s set the vibes" }));
     expect(screen.getByRole("dialog", { name: "Login" })).toBeInTheDocument();
     expect(router.push).not.toHaveBeenCalled();
   });
 
   it("sends a logged-in visitor straight to the customiser", async () => {
-    renderCampaign(<LandingPage />, { session: SESSION });
+    renderCampaign(await landing(), { session: SESSION });
     await userEvent.click(await screen.findByRole("button", { name: "Let’s set the vibes" }));
     expect(router.push).toHaveBeenCalledWith("/campaign/create");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("keeps the CTA disabled in the server HTML, before the saved session is known", () => {
-    const html = renderToString(
-      <CampaignProvider>
-        <LandingPage />
-      </CampaignProvider>,
-    );
+  it("server-renders the splash with the CTA disabled until the saved session is known", async () => {
+    const html = renderToString(<CampaignProvider>{await landing()}</CampaignProvider>);
     const page = document.createElement("div");
     page.innerHTML = html;
+    // getByRole throws if the splash is missing from the server HTML (a client-only bail-out).
+    within(page).getByRole("heading", { name: "Make it yours" });
     expect(within(page).getByRole("button", { name: "Let’s set the vibes" })).toBeDisabled();
   });
 
   it("opens login straight away when sent back with ?login=1", async () => {
-    searchParams.value = new URLSearchParams("login=1");
-    renderCampaign(<LandingPage />);
+    renderCampaign(await landing({ login: "1" }));
     expect(await screen.findByRole("dialog", { name: "Login" })).toBeInTheDocument();
+  });
+
+  it("does not reopen login on ?login=1 for a visitor who is already logged in", async () => {
+    renderCampaign(await landing({ login: "1" }), { session: SESSION });
+    await screen.findByRole("button", { name: "Let’s set the vibes" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("saves the session and moves on once the OTP is verified", async () => {
     const user = userEvent.setup();
-    renderCampaign(<LandingPage />);
+    renderCampaign(await landing());
     await user.click(await screen.findByRole("button", { name: "Let’s set the vibes" }));
     await user.type(screen.getByLabelText("Your mobile number"), "9876543210");
     await user.type(screen.getByLabelText("your email ID"), "aanya@example.com");

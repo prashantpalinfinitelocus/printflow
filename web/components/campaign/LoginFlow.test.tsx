@@ -67,6 +67,24 @@ describe("details step", () => {
     expect(phone).toHaveValue("9876543210");
   });
 
+  it.each(["+91 98765 43210", "+919876543210", "09876543210"])(
+    "keeps the national number when %s is pasted or autofilled",
+    async (pasted) => {
+      renderFlow();
+      const phone = screen.getByLabelText("Your mobile number");
+      await user.click(phone);
+      await user.paste(pasted);
+      expect(phone).toHaveValue("9876543210");
+    },
+  );
+
+  it("does not strip a leading 91 from a real ten-digit number", async () => {
+    renderFlow();
+    const phone = screen.getByLabelText("Your mobile number");
+    await user.type(phone, "9198765432");
+    expect(phone).toHaveValue("9198765432");
+  });
+
   it("moves to the OTP popup showing the number the code went to", async () => {
     await reachOtp();
     expect(screen.getByText("+91 98765 43210")).toBeInTheDocument();
@@ -138,5 +156,6 @@ describe("OTP step", () => {
     await user.click(screen.getByRole("button", { name: "Change number" }));
     expect(screen.getByLabelText("Your mobile number")).toHaveValue("9876543210");
     expect(screen.getByLabelText("your email ID")).toHaveValue("aanya@example.com");
+    expect(screen.getByRole("checkbox")).toBeChecked();
   });
 });

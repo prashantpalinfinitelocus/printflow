@@ -43,6 +43,13 @@ describe("CampaignProvider", () => {
     expect(result.current).toMatchObject({ text: "Riya", designId: "DISCO_BALL", headsUpSeen: false });
   });
 
+  it("replaces a retired design id, so what is submitted matches what is shown", async () => {
+    sessionStorage.setItem(KEY, JSON.stringify({ designId: "RETIRED_DESIGN" }));
+    const { result } = renderHook(useCampaign, { wrapper });
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.designId).toBe(DEFAULT_DESIGN_ID);
+  });
+
   it("starts fresh when the saved journey is corrupt", async () => {
     sessionStorage.setItem(KEY, "{not json");
     const { result } = renderHook(useCampaign, { wrapper });

@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { campaignApi } from "@/lib/campaign/api";
+import { CampaignError, campaignApi } from "@/lib/campaign/api";
 import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
 import { router } from "@/test/navigation";
 
@@ -24,7 +24,8 @@ describe("heads-up popup", () => {
   it("explains the entry window and the draw on the first visit", async () => {
     renderCampaign(<CreatePage />, { session: SESSION });
     const dialog = await screen.findByRole("dialog", { name: "Quick Heads-Up!" });
-    expect(dialog).toHaveTextContent(/10AM and ends at 10PM IST/);
+    expect(dialog).toHaveTextContent("Your main-character moment starts at 10AM and ends at 10PM")
+    expect(dialog).not.toHaveTextContent("IST");
     expect(dialog).toHaveTextContent(/not every entry makes the cut/i);
   });
 
@@ -123,6 +124,15 @@ describe("Check my vibe", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/message checker needs a moment/i);
     expect(router.push).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox")).toHaveValue("Aanya");
+  });
+
+  it("sends an expired session back to log in, keeping the design and text", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockRejectedValueOnce(new CampaignError("UNAUTHORIZED", "expired"));
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, designId: "DISCO_BALL" });
+    await userEvent.type(await textField(), "Aanya");
+    await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/campaign?login=1"));
+    expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", designId: "DISCO_BALL" });
   });
 
   it("skips a second check for text that was already approved", async () => {

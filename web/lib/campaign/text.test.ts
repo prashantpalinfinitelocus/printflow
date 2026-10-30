@@ -44,6 +44,35 @@ describe("validateText", () => {
   it("accepts the zero-width joiner Indic scripts use to shape conjuncts", () => {
     expect(validateText("क्‍ष")).toBeNull();
   });
+
+  it("accepts the zero-width non-joiner as well", () => {
+    expect(validateText("क्‌ष")).toBeNull();
+  });
+
+  it("accepts digits and everyday punctuation", () => {
+    expect(validateText("Riya's bday!")).toBeNull();
+    expect(validateText("No. 1 Mom")).toBeNull();
+  });
+
+  it.each([
+    ["a zero-width space hiding a word", "stu​pid"],
+    ["a right-to-left override", "‮Aanya"],
+    ["a line separator", "Aa nya"],
+    ["a private-use character", "Aanya"],
+  ])("rejects %s as unprintable", (_case, text) => {
+    expect(validateText(text)).toMatch(/can.t print/i);
+  });
+
+  it.each([
+    ["a flag", "India 🇮🇳"],
+    ["a keycap", "No 1️⃣"],
+  ])("rejects %s as an emoji", (_case, text) => {
+    expect(validateText(text)).toMatch(/emoji/i);
+  });
+
+  it("rejects trademark-style symbols without calling them emoji", () => {
+    expect(validateText("Coke™")).toMatch(/can.t print/i);
+  });
 });
 
 describe("isValidPhone", () => {

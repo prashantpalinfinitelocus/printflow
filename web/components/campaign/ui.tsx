@@ -14,7 +14,7 @@ export function PillButton({
       {...props}
       disabled={props.disabled || busy}
       aria-busy={busy || undefined}
-      className={`flex h-12 w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-50 ${className}`}
+      className={`flex h-12 w-full items-center justify-center rounded-full bg-black text-sm leading-[16.8px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-50 ${className}`}
     >
       {busy ? (
         <span
@@ -37,18 +37,26 @@ function CloseIcon() {
   );
 }
 
+/** Height of the Figma screen below the mocked browser bar (874 − 99). */
+const FIGMA_VIEWPORT_H = 775;
+
 /**
  * White card over a 60% black scrim, as in the Figma popups. Escape and the
  * close button both call `onClose`; omit it for a popup that must be answered.
  * `children` receives the id to put on the title, which names the dialog.
+ *
+ * `figmaTop` is the card's top on the 775px Figma screen. It is kept as an
+ * offset from the vertical centre, so taller or shorter phones shift it evenly.
  */
 export function Modal({
   onClose,
   children,
+  figmaTop,
   className = "",
 }: {
   onClose?: () => void;
   children: (titleId: string) => ReactNode;
+  figmaTop: number;
   className?: string;
 }) {
   const titleId = useId();
@@ -61,12 +69,13 @@ export function Modal({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[34px]">
+    <div className="fixed inset-0 z-50 bg-black/60">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`animate-rise relative w-full max-w-[318px] rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_0_40px_rgba(0,0,0,0.25)] ${className}`}
+        style={{ top: `calc(50% - ${FIGMA_VIEWPORT_H / 2 - figmaTop}px)` }}
+        className={`animate-rise absolute left-1/2 w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] ${className}`}
       >
         {onClose && (
           <button

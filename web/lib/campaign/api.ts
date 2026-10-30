@@ -5,7 +5,10 @@
  * only depend on this interface.
  */
 
-export type CampaignErrorCode = "OTP_WRONG" | "OTP_EXPIRED" | "WINDOW_CLOSED";
+/** UNAUTHORIZED: the session token expired or was revoked — the user must log in again. */
+export type CampaignErrorCode = "OTP_WRONG" | "OTP_EXPIRED" | "WINDOW_CLOSED" | "UNAUTHORIZED";
+
+export const isUnauthorized = (err: unknown) => err instanceof CampaignError && err.code === "UNAUTHORIZED";
 
 export class CampaignError extends Error {
   constructor(

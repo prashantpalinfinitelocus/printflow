@@ -30,26 +30,26 @@ describe("PillButton", () => {
 
 describe("Modal", () => {
   it("is a modal dialog named by its title", () => {
-    render(<Modal>{(titleId) => <h2 id={titleId}>Login</h2>}</Modal>);
+    render(<Modal figmaTop={186}>{(titleId) => <h2 id={titleId}>Login</h2>}</Modal>);
     expect(screen.getByRole("dialog", { name: "Login" })).toHaveAttribute("aria-modal", "true");
   });
 
   it("closes from the close button", async () => {
     const onClose = vi.fn();
-    render(<Modal onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    render(<Modal figmaTop={186} onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("closes on Escape", async () => {
     const onClose = vi.fn();
-    render(<Modal onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    render(<Modal figmaTop={186} onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("has no close button when it must be answered", () => {
-    render(<Modal>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    render(<Modal figmaTop={186}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
     expect(screen.getByRole("dialog", { name: "Login" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
   });
