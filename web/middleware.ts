@@ -4,6 +4,9 @@ import type { NextRequest } from "next/server";
 const TOKEN_COOKIE = "pf_token";
 const PUBLIC_PATHS = ["/login", "/api/auth/login"];
 
+/** The consumer Diet Coke site: it has its own phone-OTP login, not staff cookies. */
+const isCampaign = (pathname: string) => pathname === "/campaign" || pathname.startsWith("/campaign/");
+
 /** A same-app URL: nextUrl keeps the basePath that new URL(path, request.url) would drop. */
 function appUrl(request: NextRequest, pathname: string) {
   const url = request.nextUrl.clone();
@@ -16,6 +19,8 @@ export function middleware(request: NextRequest) {
   // pathname is relative to the basePath, e.g. "/login", not "/offline-store/login".
   const { pathname } = request.nextUrl;
   const hasToken = Boolean(request.cookies.get(TOKEN_COOKIE)?.value);
+
+  if (isCampaign(pathname)) return NextResponse.next();
 
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     if (hasToken && pathname === "/login") {
