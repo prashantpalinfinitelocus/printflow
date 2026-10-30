@@ -11,7 +11,7 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
   return (
     <main className="flex min-h-dvh flex-col gap-6 px-6 pt-4 pb-10 text-[#494949]">
       <header className="flex items-center justify-between">
-        <Link href="/campaign" className="text-sm font-semibold text-[#F40009]">
+        <Link href="/campaign" className="text-sm font-semibold text-black">
           ← Back
         </Link>
         <Image src={logo} alt="Diet Coke" sizes="90px" className="h-10 w-[90px] object-contain" />
