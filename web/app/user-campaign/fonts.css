@@ -38,6 +38,6 @@
 }
 
 .dc-fonts {
-  --dc-text: "TCCC-UnityText", sans-serif;
-  --dc-headline: "TCCC-UnityHeadline", sans-serif;
+  --dc-text: "TCCC-UnityText";
+  --dc-headline: "TCCC-UnityHeadline";
 }
