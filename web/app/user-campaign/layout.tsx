@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { canFont, sans, serif } from "@/lib/campaign/fonts";
 import { CampaignProvider } from "@/lib/campaign/store";
 
+import "./campaign.css";
 import "./fonts.css";
 
 export const metadata: Metadata = {

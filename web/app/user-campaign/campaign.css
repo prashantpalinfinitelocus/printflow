@@ -1,0 +1,9 @@
+/*
+ * The root background shows wherever the page doesn't paint: behind Android's
+ * gesture bar (Chrome draws edge to edge) and on iOS over-scroll. Make it the
+ * campaign's white instead of the staff app's cream, on campaign pages only.
+ */
+html:has(.dc-fonts),
+html:has(.dc-fonts) body {
+  background: #fff;
+}
