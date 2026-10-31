@@ -7,3 +7,27 @@ html:has(.dc-fonts),
 html:has(.dc-fonts) body {
   background: #fff;
 }
+
+/* The preview's download tick pops in, so the confirmation is noticed on a 40px button. */
+@keyframes dc-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  to {
+    transform: none;
+  }
+}
+.animate-pop {
+  animation: dc-pop 0.18s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop {
+    animation: none;
+  }
+}

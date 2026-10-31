@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -189,9 +189,40 @@ describe("download and share", () => {
     const submit = vi.spyOn(campaignApi, "submitEntry");
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await imageReady("Download My Can"));
-    expect(await screen.findByText(/saved! check your downloads/i)).toBeInTheDocument();
     expect(downloadedAs()).toBe("my-diet-coke-can.png");
     expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("confirms a download by turning the icon into a tick for 2 seconds, with no message", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    const download = await imageReady("Download My Can");
+    // beforeEach only fakes the clock; reinstall so the 2-second timer can be stepped too.
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    fireEvent.click(download);
+    expect(screen.getByRole("button", { name: "Downloaded" })).toBe(download);
+    expect(download.querySelector("[data-icon='tick']")).toHaveClass("animate-pop");
+    expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1999));
+    expect(download).toHaveAccessibleName("Downloaded");
+    act(() => vi.advanceTimersByTime(1));
+    expect(download).toHaveAccessibleName("Download My Can");
+    expect(download.querySelector("[data-icon='download']")).not.toBeNull();
+  });
+
+  it("restarts the 2 seconds when the can is downloaded again", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    const download = await imageReady("Download My Can");
+    // beforeEach only fakes the clock; reinstall so the 2-second timer can be stepped too.
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    fireEvent.click(download);
+    act(() => vi.advanceTimersByTime(1500));
+    fireEvent.click(download);
+    act(() => vi.advanceTimersByTime(1500));
+    expect(download).toHaveAccessibleName("Downloaded");
+    act(() => vi.advanceTimersByTime(500));
+    expect(download).toHaveAccessibleName("Download My Can");
   });
 
   it("renders the PNG once per visit, not on every tap", async () => {

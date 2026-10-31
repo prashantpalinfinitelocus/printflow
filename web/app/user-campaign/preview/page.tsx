@@ -1,7 +1,7 @@
 "use client";
 
 import { useCampaignRouter } from "@/lib/campaign/nav";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { CircleButton, FieldError, PillButton } from "@/components/campaign/ui";
@@ -19,6 +19,8 @@ import { canFont } from "@/lib/campaign/fonts";
 import { useCampaign } from "@/lib/campaign/store";
 
 const FILE_NAME = "my-diet-coke-can.png";
+/** How long the download button shows its tick after a download. */
+const TICK_MS = 2000;
 
 interface CanImage {
   file: File;
@@ -43,6 +45,10 @@ export default function PreviewPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [image, setImage] = useState<CanImage | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+  const tickTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => () => clearTimeout(tickTimer.current), []);
 
   const clean = text.trim();
   const approved = Boolean(approvedText) && approvedText === clean;
@@ -84,7 +90,10 @@ export default function PreviewPage() {
   function download() {
     if (!image) return;
     saveFile(image);
-    setNotice("Saved! Check your downloads.");
+    // The icon turns into a tick for a moment instead of showing a message.
+    setDownloaded(true);
+    clearTimeout(tickTimer.current);
+    tickTimer.current = setTimeout(() => setDownloaded(false), TICK_MS);
   }
 
   function share() {
@@ -147,10 +156,17 @@ export default function PreviewPage() {
           </svg>
         </CircleButton>
         <div className="flex gap-4">
-          <CircleButton label="Download My Can" onClick={download} disabled={!image}>
-            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+          <CircleButton label={downloaded ? "Downloaded" : "Download My Can"} onClick={download} disabled={!image}>
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              data-icon={downloaded ? "tick" : "download"}
+              className={downloaded ? "animate-pop" : undefined}
+            >
               <path
-                d="M12 4v10m0 0l-4-4m4 4l4-4M5 15v3a1 1 0 001 1h12a1 1 0 001-1v-3"
+                d={downloaded ? "M5 12.5l4.5 4.5L19 7.5" : "M12 4v10m0 0l-4-4m4 4l4-4M5 15v3a1 1 0 001 1h12a1 1 0 001-1v-3"}
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
