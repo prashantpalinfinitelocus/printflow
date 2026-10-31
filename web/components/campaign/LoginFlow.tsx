@@ -288,7 +288,7 @@ function OtpModal({
           </p>
 
           {/* One real input under six drawn boxes keeps paste and SMS autofill working. */}
-          <div className="relative mx-auto flex gap-2">
+          <div className="relative mx-auto grid w-full max-w-[268px] grid-cols-6 gap-2">
             {Array.from({ length: OTP_LENGTH }, (_, i) => {
               const digit = code[i];
               const isActive = i === active && code.length < OTP_LENGTH;
@@ -303,7 +303,7 @@ function OtpModal({
                 <div
                   key={i}
                   aria-hidden="true"
-                  className={`flex h-[38px] w-[38px] items-center justify-center rounded-lg bg-white text-xl leading-[24.4px] font-bold ${border}`}
+                  className={`flex aspect-square items-center justify-center rounded-lg bg-white text-xl leading-[24.4px] font-bold ${border}`}
                 >
                   {digit ?? (isActive && <span className="h-[22px] w-0.5 animate-pulse rounded-full bg-black" />)}
                 </div>
@@ -352,7 +352,8 @@ function OtpModal({
           </p>
 
           <div className="flex flex-col gap-4">
-            <PillButton type="submit" busy={busy}>
+            {/* Figma sets the popup in Montserrat but this button in TCCC-UnityText Medium. */}
+            <PillButton type="submit" busy={busy} className="font-[family-name:var(--dc-text)]">
               Verify
             </PillButton>
             <button

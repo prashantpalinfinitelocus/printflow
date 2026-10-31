@@ -189,6 +189,20 @@ describe("OTP step", () => {
     expect(screen.getByText("00:30")).toBeInTheDocument();
   });
 
+  it("sets the Verify button in TCCC-UnityText like every other button, not the popup's Montserrat", async () => {
+    await reachOtp();
+    expect(screen.getByRole("button", { name: "Verify" })).toHaveClass("font-[family-name:var(--dc-text)]");
+  });
+
+  it("lets the code boxes shrink on narrow phones instead of spilling out of the popup", async () => {
+    const dialog = await reachOtp();
+    const boxes = dialog.querySelectorAll<HTMLElement>("div[aria-hidden='true']");
+    expect(boxes).toHaveLength(6);
+    // Six equal columns: Figma's 38px squares with 8px gaps at 268px across, narrower when the popup is.
+    expect(boxes[0].parentElement).toHaveClass("grid", "grid-cols-6", "w-full", "max-w-[268px]", "gap-2");
+    for (const box of boxes) expect(box).toHaveClass("aspect-square");
+  });
+
   it("opens in the same place as the login popup", async () => {
     const dialog = await reachOtp();
     expect(dialog.style.top).toContain("calc(100% - 589px)");
