@@ -3,19 +3,17 @@ import localFont from "next/font/local";
 
 /*
  * Figma fonts and where each comes from:
- *   TCCC-UnityHeadline Bold (700)  → --dc-headline (data/fonts)
- *   TCCC-UnityText                 → --dc-text. Regular (400), Medium (600) and Headline Light (300)
- *                                    are not supplied yet, so stand-ins from data/fonts fill those
- *                                    weights, chosen by matching Figma's text-box widths:
- *                                    Headline-Medium ≈ Text Regular (±1px), Text-Bold ≈ Text Medium (±2px).
- *                                    Replace those two paths once the real files arrive.
+ *   TCCC-UnityHeadline Bold (700)  → --dc-headline
+ *   TCCC-UnityText                 → --dc-text: Regular (400), Medium (600) and Bold (700).
+ *                                    Its 300 is TCCC-UnityHeadline Light, which Figma sets the
+ *                                    input placeholders in.
  * Montserrat is what Figma's OTP popup is set in.
  */
 export const text = localFont({
   src: [
-    { path: "../../app/user-campaign/_fonts/TCCC-UnityHeadline-Medium.ttf", weight: "300" },
-    { path: "../../app/user-campaign/_fonts/TCCC-UnityHeadline-Medium.ttf", weight: "400" },
-    { path: "../../app/user-campaign/_fonts/TCCC-UnityText-Bold.ttf", weight: "600" },
+    { path: "../../app/user-campaign/_fonts/TCCC-UnityHeadline-Light.ttf", weight: "300" },
+    { path: "../../app/user-campaign/_fonts/TCCC-UnityText-Regular.ttf", weight: "400" },
+    { path: "../../app/user-campaign/_fonts/TCCC-UnityText-Medium.ttf", weight: "600" },
     { path: "../../app/user-campaign/_fonts/TCCC-UnityText-Bold.ttf", weight: "700" },
   ],
   variable: "--dc-text",
