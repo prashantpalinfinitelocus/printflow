@@ -5,9 +5,10 @@ import { useCampaignRouter } from "@/lib/campaign/nav";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
-import { FieldError, Modal, PillButton } from "@/components/campaign/ui";
-import { campaignApi, errorMessage, isUnauthorized } from "@/lib/campaign/api";
+import { FieldError, LiveCheck, Modal, PillButton } from "@/components/campaign/ui";
+import { errorMessage, isUnauthorized } from "@/lib/campaign/api";
 import { DESIGNS } from "@/lib/campaign/designs";
+import { useLiveModeration } from "@/lib/campaign/liveModeration";
 import { useCampaign } from "@/lib/campaign/store";
 import { MAX_TEXT_LENGTH, textLength, validateText } from "@/lib/campaign/text";
 
@@ -21,6 +22,8 @@ export default function CreatePage() {
   const [checking, setChecking] = useState(false);
   const [rejected, setRejected] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Dropping the session triggers the login redirect below; design and text stay saved.
+  const live = useLiveModeration(text, { approvedText, onUnauthorized: () => update({ session: null }) });
 
   useEffect(() => {
     if (ready && !session) router.replace("/user-campaign?login=1");
@@ -41,10 +44,15 @@ export default function CreatePage() {
       router.push("/user-campaign/preview");
       return;
     }
+    // The live check may already have an answer (or a request under way); never ask twice.
+    if (live.status === "rejected") {
+      setRejected(true);
+      return;
+    }
     setChecking(true);
     setError(null);
     try {
-      if ((await campaignApi.moderateText(clean)) === "APPROVED") {
+      if ((await live.moderate(clean)) === "APPROVED") {
         update({ text: clean, approvedText: clean });
         router.push("/user-campaign/preview");
         return;
@@ -96,7 +104,7 @@ export default function CreatePage() {
                 placeholder="Your name or a short message"
                 autoComplete="off"
                 enterKeyHint="done"
-                aria-invalid={Boolean(error)}
+                aria-invalid={Boolean(error) || live.status === "rejected"}
                 className="w-full bg-transparent text-base leading-[19.2px] text-[#111111] outline-none placeholder:text-[#B5B5B5]"
               />
             </span>
@@ -104,7 +112,7 @@ export default function CreatePage() {
               {textLength(text)}/{MAX_TEXT_LENGTH}
             </span>
           </label>
-          <FieldError>{error}</FieldError>
+          {error ? <FieldError>{error}</FieldError> : <LiveCheck status={live.status} />}
         </div>
 
         {/* Figma "Frame 27": the grid and the button sit 8px apart, not the panel's 12px. */}

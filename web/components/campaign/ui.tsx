@@ -120,6 +120,24 @@ export function CircleButton({
   );
 }
 
+/** What the live text check has found so far; it takes the slot the field's error uses. */
+export function LiveCheck({ status }: { status: "idle" | "checking" | "approved" | "rejected" }) {
+  if (status === "idle") return null;
+  const copy = {
+    checking: ["Checking your message…", "text-[#8A8A8A]"],
+    approved: ["Looks good.", "text-[#1B7F3B]"],
+    rejected: [
+      "That line isn’t quite the Diet Coke vibe. Try another one that keeps it fun, positive, and personal.",
+      "text-[#F40009]",
+    ],
+  }[status];
+  return (
+    <p data-testid="live-check" role="status" className={`text-[11px] leading-snug font-medium ${copy[1]}`}>
+      {copy[0]}
+    </p>
+  );
+}
+
 export function FieldError({ children }: { children: ReactNode }) {
   if (!children) return null;
   return (

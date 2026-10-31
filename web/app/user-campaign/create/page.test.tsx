@@ -168,3 +168,146 @@ describe("Check my vibe", () => {
     expect(moderate).toHaveBeenCalledWith("Aanya!");
   });
 });
+
+describe("live check while typing", () => {
+  const FRIENDLY = /isn’t quite the Diet Coke vibe/i;
+  const status = () => screen.queryByTestId("live-check");
+
+  it("checks the text after a pause and says it looks good, without any click", async () => {
+    const moderate = vi.spyOn(campaignApi, "moderateText").mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+
+    expect(await screen.findByText(/looks good/i, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(moderate).toHaveBeenCalledTimes(1);
+    expect(moderate).toHaveBeenCalledWith("Aanya");
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("says so in the field when the text is flagged, before any click", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockResolvedValue("REJECTED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "stupid");
+
+    expect(await screen.findByText(FRIENDLY, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("opens the friendly-content popup on submit from the flagged verdict, without asking again", async () => {
+    const moderate = vi.spyOn(campaignApi, "moderateText").mockResolvedValue("REJECTED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "stupid");
+    await screen.findByText(FRIENDLY, {}, { timeout: 3000 });
+
+    await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
+
+    expect(await screen.findByRole("dialog", { name: "Let’s keep it friendly" })).toBeInTheDocument();
+    expect(moderate).toHaveBeenCalledTimes(1);
+  });
+
+  it("goes straight to the preview from an approved live verdict, without asking again", async () => {
+    const moderate = vi.spyOn(campaignApi, "moderateText").mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await screen.findByText(/looks good/i, {}, { timeout: 3000 });
+
+    await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
+
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/preview"));
+    expect(moderate).toHaveBeenCalledTimes(1);
+    expect(savedJourney()).toMatchObject({ text: "Aanya", approvedText: "Aanya" });
+  });
+
+  it("asks once even when the button is pressed while the live check is still running", async () => {
+    let finish!: (v: "APPROVED") => void;
+    const moderate = vi.spyOn(campaignApi, "moderateText").mockImplementation(() => new Promise((r) => (finish = r)));
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await waitFor(() => expect(moderate).toHaveBeenCalledTimes(1), { timeout: 3000 });
+
+    await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
+    finish("APPROVED");
+
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/preview"));
+    expect(moderate).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for a pause: fast typing sends one request for the final text", async () => {
+    const moderate = vi.spyOn(campaignApi, "moderateText").mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await screen.findByText(/looks good/i, {}, { timeout: 3000 });
+
+    expect(moderate.mock.calls).toEqual([["Aanya"]]);
+  });
+
+  it("does not send text that fails the local rules", async () => {
+    const moderate = vi.spyOn(campaignApi, "moderateText").mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Hi 🎉");
+    await new Promise((r) => setTimeout(r, 1000));
+
+    expect(moderate).not.toHaveBeenCalled();
+    expect(status()).toBeNull();
+  });
+
+  it("hides an old verdict as soon as the text changes", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    const field = await textField();
+    await userEvent.type(field, "Aanya");
+    await screen.findByText(/looks good/i, {}, { timeout: 3000 });
+
+    await userEvent.type(field, "!");
+
+    expect(screen.queryByText(/looks good/i)).not.toBeInTheDocument();
+  });
+
+  it("reuses a verdict for text it has already checked", async () => {
+    const moderate = vi.spyOn(campaignApi, "moderateText").mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    const field = await textField();
+    await userEvent.type(field, "Aanya");
+    await screen.findByText(/looks good/i, {}, { timeout: 3000 });
+    await userEvent.type(field, "!");
+    await userEvent.type(field, "{Backspace}");
+
+    expect(await screen.findByText(/looks good/i, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(moderate.mock.calls.filter(([t]) => t === "Aanya")).toHaveLength(1);
+  });
+
+  it("does not check text that was already approved earlier in the journey", async () => {
+    const moderate = vi.spyOn(campaignApi, "moderateText");
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "Aanya", approvedText: "Aanya" });
+    await new Promise((r) => setTimeout(r, 1000));
+
+    expect(moderate).not.toHaveBeenCalled();
+    expect(screen.getByText(/looks good/i)).toBeInTheDocument();
+  });
+
+  it("stays quiet when the checker is down, and submitting still retries it", async () => {
+    const moderate = vi
+      .spyOn(campaignApi, "moderateText")
+      .mockRejectedValueOnce(new Error("timeout"))
+      .mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await waitFor(() => expect(moderate).toHaveBeenCalledTimes(1), { timeout: 3000 });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(/looks good/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
+
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/preview"));
+    expect(moderate).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends an expired session back to log in when the live check is refused", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockRejectedValue(new CampaignError("UNAUTHORIZED", "expired"));
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, designId: "DISCO_BALL" });
+    await userEvent.type(await textField(), "Aanya");
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"), { timeout: 3000 });
+    expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", designId: "DISCO_BALL" });
+  });
+});
