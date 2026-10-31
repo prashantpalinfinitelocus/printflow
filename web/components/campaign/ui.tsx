@@ -45,21 +45,29 @@ const FIGMA_VIEWPORT_H = 775;
  * close button both call `onClose`; omit it for a popup that must be answered.
  * `children` receives the id to put on the title, which names the dialog.
  *
- * `figmaTop` is the card's top on the 775px Figma screen. It is kept as an
- * offset from the vertical centre, so taller or shorter phones shift it evenly.
+ * `figmaTop` is the card's top on the 775px Figma screen. By default it is kept
+ * as an offset from the vertical centre, so taller or shorter phones shift it
+ * evenly. `anchor="bottom"` keeps it as a distance from the foot instead, for
+ * popups over a screen whose content is pinned to the bottom.
  */
 export function Modal({
   onClose,
   children,
   figmaTop,
+  anchor = "centre",
   className = "",
 }: {
   onClose?: () => void;
   children: (titleId: string) => ReactNode;
   figmaTop: number;
+  anchor?: "centre" | "bottom";
   className?: string;
 }) {
   const titleId = useId();
+  const top =
+    anchor === "bottom"
+      ? `max(16px, calc(100% - ${FIGMA_VIEWPORT_H - figmaTop}px))`
+      : `calc(50% - ${FIGMA_VIEWPORT_H / 2 - figmaTop}px)`;
 
   useEffect(() => {
     if (!onClose) return;
@@ -74,7 +82,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        style={{ top: `calc(50% - ${FIGMA_VIEWPORT_H / 2 - figmaTop}px)` }}
+        style={{ top }}
         className={`animate-rise absolute left-1/2 w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] ${className}`}
       >
         {onClose && (

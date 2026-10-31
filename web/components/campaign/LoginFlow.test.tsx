@@ -119,6 +119,16 @@ describe("details step", () => {
     expect(screen.getByRole("checkbox")).not.toBeChecked();
   });
 
+  it("sits where Figma puts it over the landing page, measured from the foot", () => {
+    renderFlow();
+    expect(screen.getByRole("dialog", { name: "Login" }).style.top).toContain("calc(100% - 589px)");
+  });
+
+  it("draws the agreement box at Figma's 12px inside a 16px slot", () => {
+    renderFlow();
+    expect(screen.getByRole("checkbox")).toHaveClass("m-0.5", "h-3", "w-3");
+  });
+
   it("closes from the close button", async () => {
     renderFlow();
     await user.click(screen.getByRole("button", { name: "Close" }));
@@ -170,6 +180,11 @@ describe("OTP step", () => {
     expect(sendOtp).toHaveBeenCalledWith("9876543210", "aanya@example.com");
     expect(await screen.findByText(/new code is on its way/i)).toBeInTheDocument();
     expect(screen.getByText("00:30")).toBeInTheDocument();
+  });
+
+  it("opens in the same place as the login popup", async () => {
+    const dialog = await reachOtp();
+    expect(dialog.style.top).toContain("calc(100% - 589px)");
   });
 
   it("goes back to the form with the details kept when changing number", async () => {

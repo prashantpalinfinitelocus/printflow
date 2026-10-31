@@ -118,7 +118,7 @@ function DetailsModal({
   }
 
   return (
-    <Modal onClose={onClose} figmaTop={186}>
+    <Modal onClose={onClose} figmaTop={186} anchor="bottom">
       {(titleId) => (
         <form onSubmit={submit} noValidate className="flex flex-col gap-4">
           <h2 id={titleId} className="text-center font-[family-name:var(--dc-headline)] text-[21px] leading-[25px] font-bold">
@@ -176,7 +176,7 @@ function DetailsModal({
                   checked={agreed}
                   onChange={(e) => onAgreed(e.target.checked)}
                   aria-invalid={Boolean(errors.terms)}
-                  className="h-4 w-4 accent-[#1C1B1F]"
+                  className="m-0.5 h-3 w-3 accent-[#1C1B1F]"
                 />
                 <span>
                   I Agree to Diet cokes’{" "}
@@ -275,7 +275,7 @@ function OtpModal({
   const active = Math.min(code.length, OTP_LENGTH - 1);
 
   return (
-    <Modal onClose={onClose} figmaTop={186} className="font-[family-name:var(--dc-sans)]">
+    <Modal onClose={onClose} figmaTop={186} anchor="bottom" className="font-[family-name:var(--dc-sans)]">
       {(titleId) => (
         <form onSubmit={verify} noValidate className="flex flex-col gap-4">
           <h2 id={titleId} className="text-center text-[21px] leading-[25.6px] font-bold">

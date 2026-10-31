@@ -48,6 +48,17 @@ describe("Modal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("keeps its Figma top as an offset from the centre by default", () => {
+    render(<Modal figmaTop={209}>{(id) => <h2 id={id}>Heads up</h2>}</Modal>);
+    expect(screen.getByRole("dialog").style.top).toBe("calc(50% - 178.5px)");
+  });
+
+  it("keeps its Figma top as a distance from the foot when anchored to the bottom", () => {
+    // 775 − 186 = 589: on the 874px Figma frame that puts the card at 285, as designed.
+    render(<Modal figmaTop={186} anchor="bottom">{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    expect(screen.getByRole("dialog").style.top).toContain("calc(100% - 589px)");
+  });
+
   it("has no close button when it must be answered", () => {
     render(<Modal figmaTop={186}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
     expect(screen.getByRole("dialog", { name: "Login" })).toBeInTheDocument();
