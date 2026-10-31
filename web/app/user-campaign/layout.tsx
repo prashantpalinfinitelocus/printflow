@@ -7,7 +7,7 @@ import "./campaign.css";
 import "./fonts.css";
 
 export const metadata: Metadata = {
-  title: "Diet Coke — Make it yours",
+  title: "Diet Coke - Make it yours",
   description: "Design your own Diet Coke can and enter the daily lucky draw.",
 };
 
