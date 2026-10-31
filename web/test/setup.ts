@@ -31,8 +31,6 @@ vi.mock("@/lib/campaign/fonts", () => {
   return {
     sans: font("sans"),
     serif: font("serif"),
-    headline: font("headline"),
-    text: font("text"),
     canFont: font("can"),
   };
 });

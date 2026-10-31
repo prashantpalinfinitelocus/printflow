@@ -1,0 +1,43 @@
+/*
+ * The TCCC faces under the family names Figma uses, so DevTools shows
+ * "TCCC-UnityText" / "TCCC-UnityHeadline" rather than next/font's generated names.
+ */
+@font-face {
+  font-family: "TCCC-UnityText";
+  src: url("./_fonts/TCCC-UnityText-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TCCC-UnityText";
+  src: url("./_fonts/TCCC-UnityText-Medium.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TCCC-UnityText";
+  src: url("./_fonts/TCCC-UnityText-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TCCC-UnityHeadline";
+  src: url("./_fonts/TCCC-UnityHeadline-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TCCC-UnityHeadline";
+  src: url("./_fonts/TCCC-UnityHeadline-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+.dc-fonts {
+  --dc-text: "TCCC-UnityText", sans-serif;
+  --dc-headline: "TCCC-UnityHeadline", sans-serif;
+}

@@ -124,6 +124,13 @@ describe("details step", () => {
     expect(screen.getByRole("dialog", { name: "Login" }).style.top).toContain("calc(100% - 589px)");
   });
 
+  it("sets both inputs in TCCC-UnityHeadline Light, as Figma does", () => {
+    renderFlow();
+    for (const input of [screen.getByLabelText("Your mobile number"), screen.getByLabelText("your email ID")]) {
+      expect(input).toHaveClass("font-[family-name:var(--dc-headline)]", "font-light");
+    }
+  });
+
   it("draws the agreement box at Figma's 12px inside a 16px slot", () => {
     renderFlow();
     expect(screen.getByRole("checkbox")).toHaveClass("m-0.5", "h-3", "w-3");

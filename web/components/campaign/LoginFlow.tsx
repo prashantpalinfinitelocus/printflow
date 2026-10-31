@@ -145,7 +145,7 @@ function DetailsModal({
                 value={phone}
                 onChange={(e) => onPhone(toNationalNumber(e.target.value))}
                 aria-invalid={Boolean(errors.phone)}
-                className="min-w-0 flex-1 bg-transparent text-xs leading-[14.4px] font-light outline-none placeholder:text-[#8A8A8A]"
+                className="min-w-0 flex-1 bg-transparent font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-light outline-none placeholder:text-[#8A8A8A]"
               />
             </div>
             <FieldError>{errors.phone}</FieldError>
@@ -165,7 +165,7 @@ function DetailsModal({
                 value={email}
                 onChange={(e) => onEmail(e.target.value)}
                 aria-invalid={Boolean(errors.email)}
-                className={`h-12 rounded-lg border-[0.5px] bg-white px-4 text-xs leading-[14.4px] font-light outline-none placeholder:text-[#8A8A8A] focus:border-black ${
+                className={`h-12 rounded-lg border-[0.5px] bg-white px-4 font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-light outline-none placeholder:text-[#8A8A8A] focus:border-black ${
                   errors.email ? "border-[#F40009]" : "border-[#E5E5E5]"
                 }`}
               />
