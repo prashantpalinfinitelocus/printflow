@@ -3,6 +3,7 @@ import Image from "next/image";
 import canBlank from "@/app/user-campaign/_assets/can-blank.png";
 import { CAN_LAYOUT } from "@/lib/campaign/canImage";
 import { designById } from "@/lib/campaign/designs";
+import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 
 /**
  * The can as three layers — blank can, sticker, name — placed with the
@@ -30,8 +31,8 @@ export function CanPreview({
       className={`relative [container-type:inline-size] ${className}`}
       style={{ aspectRatio: `${canBlank.width} / ${canBlank.height}` }}
     >
-      <Image src={canBlank} alt="" fill priority={priority} sizes="(max-width: 480px) 50vw, 240px" className="object-contain" />
-      <Image
+      <Image quality={IMAGE_QUALITY} src={canBlank} alt="" fill priority={priority} sizes="(max-width: 480px) 50vw, 240px" className="object-contain" />
+      <Image quality={IMAGE_QUALITY}
         src={design.sticker}
         alt=""
         sizes="(max-width: 480px) 30vw, 144px"

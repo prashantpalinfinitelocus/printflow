@@ -10,9 +10,10 @@ describe("campaign metadata", () => {
 });
 
 describe("campaign layout", () => {
-  it("keeps the 480px phone column below 1024px and goes full width from there for the web designs", () => {
+  it("fills the whole screen at every width, so tablets get no white bands at the sides", () => {
     const { container } = render(<CampaignLayout>page</CampaignLayout>);
-    const column = container.querySelector(".max-w-\\[480px\\]");
-    expect(column).toHaveClass("lg:max-w-none");
+    const column = container.firstElementChild!.firstElementChild!;
+    expect(column).toHaveClass("w-full");
+    expect(column.className).not.toMatch(/max-w-/);
   });
 });

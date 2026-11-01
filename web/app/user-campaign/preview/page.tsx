@@ -19,6 +19,7 @@ import {
 import { renderCanPng } from "@/lib/campaign/canImage";
 import { designById } from "@/lib/campaign/designs";
 import { canFont } from "@/lib/campaign/fonts";
+import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useCampaign } from "@/lib/campaign/store";
 
 const FILE_NAME = "my-diet-coke-can.png";
@@ -154,14 +155,14 @@ export default function PreviewPage() {
   const closed = windowState !== null && windowState !== "OPEN";
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-white px-5 pt-4">
+    <main className="relative h-dvh overflow-hidden bg-white px-[max(20px,calc(50%-220px))] pt-4 lg:px-5">
       {/* Web: the 720px grey panel behind the can, with the small logo. */}
       <div
         data-web-panel
         className="absolute inset-y-0 left-0 hidden w-1/2 bg-[linear-gradient(to_bottom,#E8E8EA,#CECFD2)] lg:block"
         aria-hidden="true"
       >
-        <Image src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
+        <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
       </div>
 
       {/* Web: the round buttons stack 130px down, 50px in, 16px apart. */}
@@ -245,7 +246,7 @@ export default function PreviewPage() {
         </div>
 
         {/* Figma: the button's bottom edge sits 43px above the screen's. */}
-        <div className="absolute inset-x-5 bottom-[max(43px,env(safe-area-inset-bottom))] flex flex-col gap-2 lg:static">
+        <div className="absolute inset-x-[max(20px,calc(50%-220px))] bottom-[max(43px,env(safe-area-inset-bottom))] flex flex-col gap-2 lg:static">
           <p aria-live="polite" className="text-center text-[11px] text-[#8A8A8A] empty:hidden">
             {imageFailed ? "Couldn’t prepare your can image. Take a screenshot to keep it." : notice}
           </p>

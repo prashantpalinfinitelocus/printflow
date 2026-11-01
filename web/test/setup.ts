@@ -21,10 +21,10 @@ vi.mock("@/lib/campaign/nav", () => ({ useCampaignRouter: () => router }));
 
 /* next/image needs Next's image config; a plain <img> is enough for behaviour tests. */
 vi.mock("next/image", () => ({
-  default: ({ src, alt, fill: _fill, priority: _priority, sizes: _sizes, ...rest }: Record<string, unknown>) =>
-    createElement("img", { src: (src as { src?: string })?.src ?? src, alt, ...rest }),
-  getImageProps: ({ src, sizes }: { src: { src?: string } | string; sizes?: string }) => {
-    const url = typeof src === "string" ? src : (src.src ?? "");
+  default: ({ src, alt, fill: _fill, priority: _priority, sizes: _sizes, quality, ...rest }: Record<string, unknown>) =>
+    createElement("img", { src: `${(src as { src?: string })?.src ?? src}?q=${quality ?? 75}`, alt, ...rest }),
+  getImageProps: ({ src, sizes, quality }: { src: { src?: string } | string; sizes?: string; quality?: number }) => {
+    const url = `${typeof src === "string" ? src : (src.src ?? "")}?q=${quality ?? 75}`;
     return { props: { src: url, srcSet: `${url} 1x`, sizes } };
   },
 }));

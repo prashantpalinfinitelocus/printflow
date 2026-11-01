@@ -27,6 +27,18 @@ describe("Success", () => {
     expect(screen.getByText(/fingers crossed/i)).toHaveClass("lg:w-auto", "lg:text-[27.19px]", "lg:leading-[35.69px]");
   });
 
+  it("asks for the phone photo at the screen's width, so tablets get a sharp one", () => {
+    render(<SuccessPage />);
+    const phone = document.head.querySelector('link[rel="preload"][media="(max-width: 1023px)"]');
+    expect(phone?.getAttribute("imagesizes")).toBe("115vw");
+  });
+
+  it("serves every image at quality 90, and preloads the same files", () => {
+    const { container } = render(<SuccessPage />);
+    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("src")).toMatch(/\?q=90$/);
+    for (const l of document.head.querySelectorAll('link[rel="preload"][as="image"]')) expect(l.getAttribute("imagesrcset")).toMatch(/\?q=90 /);
+  });
+
   it("preloads only the photo each screen size shows", () => {
     render(<SuccessPage />);
     const preloads = [...document.head.querySelectorAll<HTMLLinkElement>('link[rel="preload"][as="image"]')];

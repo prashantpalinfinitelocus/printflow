@@ -11,10 +11,12 @@ import webHands from "@/app/user-campaign/_assets/web-hands.png";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { LoginFlow } from "@/components/campaign/LoginFlow";
 import { PillButton } from "@/components/campaign/ui";
+import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useCampaign } from "@/lib/campaign/store";
 
 
-const HERO_SIZES = "(max-width: 480px) 120vw, 576px";
+const HERO_SIZES = "120vw";
+const HANDS_SIZES = "(max-width: 1023px) 100vw, 60vw";
 
 /** On hover or keyboard focus the text darkens to black and a 2px black underline grows out from the middle. */
 const LEGAL_LINK =
@@ -43,34 +45,42 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         Pinning both edges and covering the box keeps that exact on the design size, and on taller
         phones the photo grows instead of ending in a hard edge above the text.
       */}
-      <div data-mobile-hero className="lg:hidden" aria-hidden="true">
+      <div data-mobile-hero className="min-[481px]:hidden" aria-hidden="true">
         <div className="absolute inset-x-0 top-[-78px] bottom-[141px]">
-          <Image src={hero} alt="" fill sizes={HERO_SIZES} className="object-cover" />
+          <Image quality={IMAGE_QUALITY} src={hero} alt="" fill sizes={HERO_SIZES} className="object-cover" />
         </div>
-        {/* Figma "Rectangle 3": 354px tall at the foot, clear until 8% then white by 33.5%. */}
-        <div className="absolute inset-x-0 bottom-0 h-[356px] bg-[linear-gradient(to_bottom,rgb(255_255_255/0)_28px,#fff_119px)]" />
       </div>
       {/*
         Web (1440 × 900): the sunlight photo is 2167 × 1220 from 148px above the top, and the
-        can-in-hands cut-out is 1045px tall at x 82, y −4. Sizes are kept as shares of the screen,
-        the cut-out capped by width too so it can't run into the copy on a narrow desktop.
+        can-in-hands cut-out is 1045px tall at x 82, y −4. The cut-out is always 116.11dvh tall so
+        its cut wrist stays below the screen; on a narrow desktop it slides left rather than shrink,
+        its right edge held at 65.28% where Figma's ends, clear of the copy.
+        Tablets have no Figma design: cropping the phone photo to a wide screen cut the can, so they
+        use the same backdrop with the cut-out centred and filling the height above the copy, its wrist
+        under the fade; on a narrow tablet its sides run off the screen so no cut edge shows.
         Each size preloads only its own photos; the images stay lazy, so a hidden one is never fetched.
       */}
-      <ImagePreload src={hero} sizes={HERO_SIZES} media="(max-width: 1023px)" />
-      <ImagePreload src={webBg} sizes="150vw" media="(min-width: 1024px)" />
-      <ImagePreload src={webHands} sizes="60vw" media="(min-width: 1024px)" />
-      <div data-web-backdrop className="absolute inset-0 hidden lg:block" aria-hidden="true">
+      <ImagePreload src={hero} sizes={HERO_SIZES} media="(max-width: 480px)" />
+      <ImagePreload src={webBg} sizes="150vw" media="(min-width: 481px)" />
+      <ImagePreload src={webHands} sizes={HANDS_SIZES} media="(min-width: 481px)" />
+      <div data-web-backdrop className="absolute inset-0 hidden min-[481px]:block" aria-hidden="true">
         <div className="absolute top-[-16.44%] left-0 h-[135.56%] w-[150.49%]">
-          <Image src={webBg} alt="" fill sizes="150vw" className="object-cover" />
+          <Image quality={IMAGE_QUALITY} src={webBg} alt="" fill sizes="150vw" className="object-cover" />
         </div>
-        <Image
+        <Image quality={IMAGE_QUALITY}
           src={webHands}
           alt=""
-          sizes="60vw"
-          className="absolute top-[-0.44%] left-[5.69%] h-[min(116.11dvh,72.57vw)] w-auto max-w-none"
+          sizes={HANDS_SIZES}
+          className="absolute top-0 left-1/2 h-[calc(100dvh-200px)] w-auto max-w-none -translate-x-1/2 lg:top-[-0.44%] lg:left-[min(5.69%,calc(65.28%-95.3dvh))] lg:h-[116.11dvh] lg:translate-x-0"
         />
       </div>
-      <Image
+      {/* Figma "Rectangle 3": 354px tall at the foot, clear until 8% then white by 33.5%. */}
+      <div
+        data-fade
+        className="absolute inset-x-0 bottom-0 h-[356px] bg-[linear-gradient(to_bottom,rgb(255_255_255/0)_28px,#fff_119px)] lg:hidden"
+        aria-hidden="true"
+      />
+      <Image quality={IMAGE_QUALITY}
         src={logo}
         alt="Diet Coke"
         priority
@@ -79,7 +89,7 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
       />
 
       {/* On web the copy and the legal links are placed on the screen separately, so this wrapper steps aside. */}
-      <div className="relative mt-auto flex flex-col gap-4 px-6 pb-[41px] lg:contents">
+      <div className="relative mt-auto flex flex-col gap-4 px-[max(24px,calc(50%-216px))] pb-[41px] lg:contents">
         <div data-copy className="flex flex-col gap-6 lg:absolute lg:top-[37%] lg:left-[57.08%] lg:w-[466px] lg:gap-11">
           <div className="flex flex-col gap-2 text-center lg:gap-4">
             <div className="flex flex-col gap-4">

@@ -20,8 +20,8 @@ export default function CampaignLayout({ children }: { children: React.ReactNode
     <div
       className={`${FONT_VARS} dc-fonts min-h-dvh bg-white font-[family-name:var(--dc-text)] text-black`}
     >
-      {/* Designed at 402px; fills every phone up to the largest (16 Pro Max is 440), then centres. From 1024px the web designs (1440 × 900) take the full width. */}
-      <div className="relative mx-auto min-h-dvh w-full max-w-[480px] overflow-x-hidden bg-white lg:max-w-none">
+      {/* Designed at 402px for phones and 1440 × 900 for web (1024px up). Every screen fills the full width; on tablets each page keeps its controls in a centred phone-width column. */}
+      <div className="relative min-h-dvh w-full overflow-x-hidden bg-white">
         <CampaignProvider>{children}</CampaignProvider>
       </div>
     </div>

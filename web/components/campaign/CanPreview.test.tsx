@@ -16,11 +16,11 @@ describe("CanPreview", () => {
     expect(container).toHaveTextContent("AANYA");
   });
 
-  it("layers the chosen design's sticker on the can", () => {
+  it("layers the chosen design's sticker on the can, both at quality 90", () => {
     const { container } = render(<CanPreview designId="DISCO_BALL" text="Aanya" />);
     const srcs = [...container.querySelectorAll("img")].map((img) => img.getAttribute("src"));
-    expect(srcs).toContain(designById("DISCO_BALL").sticker.src);
-    expect(srcs.some((src) => src?.includes("can-blank"))).toBe(true);
+    expect(srcs).toContain(`${designById("DISCO_BALL").sticker.src}?q=90`);
+    expect(srcs.some((src) => src?.includes("can-blank") && src.endsWith("?q=90"))).toBe(true);
   });
 
   it("shows a bare can, without a text claim, before anything is typed", () => {

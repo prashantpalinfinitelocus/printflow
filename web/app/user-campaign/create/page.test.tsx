@@ -43,6 +43,36 @@ describe("heads-up popup", () => {
   });
 });
 
+describe("tablet layout (481px to 1023px)", () => {
+  it("runs the white sheet edge to edge with the field, designs and button in a centred phone-width column", async () => {
+    const { container } = renderCampaign(<CreatePage />, LOGGED_IN);
+    await textField();
+    expect(container.querySelector("form")).toHaveClass("inset-x-0", "px-[max(19px,calc(50%-221px))]");
+  });
+});
+
+describe("short laptop screens (under 900px tall)", () => {
+  it("keeps the text card and its status line on screen, with the can 32px above the card as in Figma", async () => {
+    const { container } = renderCampaign(<CreatePage />, LOGGED_IN);
+    const card = (await textField()).closest("label")!.parentElement!.parentElement!;
+    // Figma 900 tall: the card starts 739px down, 161px above the foot; never lower than that.
+    expect(card).toHaveClass("lg:top-[min(82.11dvh,calc(100dvh-161px))]");
+    // The can (from 10.33dvh) ends 32px above the card, so it shrinks with the screen rather than overlap.
+    const can = container.querySelector('[role="img"]')!.parentElement!;
+    expect(can).toHaveClass("lg:top-[10.33dvh]", "lg:h-[min(68.22dvh,calc(89.67dvh-193px))]");
+  });
+});
+
+describe("image quality", () => {
+  it("serves the can, stickers and logo at quality 90", async () => {
+    const { container } = renderCampaign(<CreatePage />, LOGGED_IN);
+    await textField();
+    const imgs = [...container.querySelectorAll("img")];
+    expect(imgs.length).toBeGreaterThan(10);
+    for (const img of imgs) expect(img.getAttribute("src")).toMatch(/\?q=90$/);
+  });
+});
+
 describe("text and design", () => {
   it("counts characters against the limit as you type", async () => {
     renderCampaign(<CreatePage />, LOGGED_IN);
@@ -326,6 +356,13 @@ describe("web layout (1024px and up, Figma 356:1111)", () => {
     expect(all).toHaveAttribute("aria-pressed", "false");
     const visible = screen.getAllByRole("radio").filter((r) => !r.classList.contains("lg:hidden"));
     expect(visible.map((r) => r.getAttribute("aria-label"))).toEqual(["Surfing polar bear", "Polar bear chill", "Beach vibes"]);
+  });
+
+  it("wraps the chips onto a second row on a narrow desktop instead of hiding the last ones", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    const chips = await screen.findByRole("group", { name: "Design categories" });
+    expect(chips).toHaveClass("flex-wrap");
+    expect(chips).not.toHaveClass("overflow-x-auto");
   });
 
   it("offers every category Figma shows, once each", async () => {

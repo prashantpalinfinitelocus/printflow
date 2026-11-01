@@ -63,6 +63,23 @@ describe("access", () => {
   });
 });
 
+describe("tablet layout (481px to 1023px)", () => {
+  it("keeps the buttons and copy in a centred phone-width column", async () => {
+    const { container } = renderCampaign(<PreviewPage />, APPROVED);
+    await screen.findByRole("button", { name: "Make It Happen" });
+    expect(container.querySelector("main")).toHaveClass("px-[max(20px,calc(50%-220px))]", "lg:px-5");
+    expect(screen.getByRole("button", { name: "Make It Happen" }).parentElement).toHaveClass("inset-x-[max(20px,calc(50%-220px))]");
+  });
+});
+
+describe("image quality", () => {
+  it("serves the can and logo at quality 90", async () => {
+    const { container } = renderCampaign(<PreviewPage />, APPROVED);
+    await screen.findByRole("button", { name: "Make It Happen" });
+    for (const img of container.querySelectorAll("img:not([src^='blob:'])")) expect(img.getAttribute("src")).toMatch(/\?q=90$/);
+  });
+});
+
 describe("web layout (1024px and up, Figma 356:1288)", () => {
   it("puts the can on a grey left panel with the round buttons stacked beside it", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);

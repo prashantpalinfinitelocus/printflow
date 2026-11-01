@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import logo from "@/app/user-campaign/_assets/logo.png";
+import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 
 /**
  * Shared layout for the Terms & Conditions and Privacy Policy pages. Figma has no design for
@@ -21,7 +22,7 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
             <span aria-hidden="true">←</span>
             Back
           </a>
-          <Image src={logo} alt="Diet Coke" sizes="112px" className="h-10 w-[90px] object-contain lg:h-[49.8px] lg:w-28" />
+          <Image quality={IMAGE_QUALITY} src={logo} alt="Diet Coke" sizes="112px" className="h-10 w-[90px] object-contain lg:h-[49.8px] lg:w-28" />
         </div>
       </header>
 
