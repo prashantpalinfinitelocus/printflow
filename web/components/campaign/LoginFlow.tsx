@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { FieldError, Modal, PillButton } from "@/components/campaign/ui";
-import { campaignApi, errorMessage, type CampaignApi, type Session } from "@/lib/campaign/api";
+import { CampaignError, campaignApi, errorMessage, type CampaignApi, type Session } from "@/lib/campaign/api";
 import { isValidEmail, isValidPhone } from "@/lib/campaign/text";
 
 const OTP_LENGTH = 6;
@@ -19,6 +19,13 @@ function toNationalNumber(input: string) {
   else if (digits.length > 10 && digits.startsWith("0")) digits = digits.slice(1);
   return digits.slice(0, 10);
 }
+
+/** Figma: typed text in TCCC-UnityText Regular, the placeholder in UnityHeadline Light grey. */
+const INPUT_TEXT =
+  "font-[family-name:var(--dc-text)] text-xs leading-[14.4px] font-normal outline-none placeholder:font-[family-name:var(--dc-headline)] placeholder:font-light placeholder:text-[#8A8A8A]";
+
+const LABEL =
+  "font-[family-name:var(--dc-headline)] text-xs leading-[14px] font-bold lg:font-[family-name:var(--dc-text)] lg:leading-[14.4px]";
 
 const formatPhone = (phone: string) => `+91 ${phone.slice(0, 5)} ${phone.slice(5)}`;
 
@@ -100,8 +107,8 @@ function DetailsModal({
   async function submit(e: FormEvent) {
     e.preventDefault();
     const next = {
-      phone: isValidPhone(phone) ? undefined : "Enter a valid 10 digit mobile number.",
-      email: isValidEmail(email) ? undefined : "Enter a valid email ID that’s where we’ll reach you if you win.",
+      phone: isValidPhone(phone) ? undefined : "Enter a valid mobile number",
+      email: isValidEmail(email) ? undefined : "Enter a valid email address",
       terms: agreed ? undefined : "Please agree to the terms to continue.",
     };
     setErrors(next);
@@ -118,23 +125,26 @@ function DetailsModal({
   }
 
   return (
-    <Modal onClose={onClose} figmaTop={186} anchor="bottom">
+    // Web (Figma 356:1324): 32px padding, 24px rhythm, left-aligned UnityText title and labels.
+    <Modal onClose={onClose} figmaTop={186} anchor="bottom" className="lg:p-8">
       {(titleId) => (
-        <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-          <h2 id={titleId} className="text-center font-[family-name:var(--dc-headline)] text-[21px] leading-[25px] font-bold">
+        <form onSubmit={submit} noValidate className="flex flex-col gap-4 lg:gap-6">
+          <h2
+            id={titleId}
+            className="text-center font-[family-name:var(--dc-headline)] text-[21px] leading-[25px] font-bold lg:text-left lg:font-[family-name:var(--dc-text)] lg:leading-[25.2px]"
+          >
             Login
           </h2>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="dc-phone" className="font-[family-name:var(--dc-headline)] text-xs leading-[14px] font-bold">
+            <label htmlFor="dc-phone" className={LABEL}>
               Your mobile number
             </label>
-            <div
-              className={`flex h-12 items-center gap-2.5 rounded-lg border bg-white px-4 focus-within:border-black ${
-                errors.phone ? "border-[#F40009]" : "border-[#E5E5E5]"
-              }`}
-            >
-              <span className="font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-bold">+91</span>
+            {/* Figma keeps this border grey on a phone error; only the email field turns red. */}
+            <div className="flex h-12 items-center gap-2.5 rounded-lg border border-[#E5E5E5] bg-white px-4 focus-within:border-black">
+              <span className="font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-bold lg:font-[family-name:var(--dc-text)]">
+                +91
+              </span>
               <span className="h-5 w-px bg-[#E5E5E5]" aria-hidden="true" />
               <input
                 id="dc-phone"
@@ -145,7 +155,7 @@ function DetailsModal({
                 value={phone}
                 onChange={(e) => onPhone(toNationalNumber(e.target.value))}
                 aria-invalid={Boolean(errors.phone)}
-                className="min-w-0 flex-1 bg-transparent font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-light outline-none placeholder:text-[#8A8A8A]"
+                className={`min-w-0 flex-1 bg-transparent ${INPUT_TEXT} lg:placeholder:font-[family-name:var(--dc-text)] lg:placeholder:font-normal`}
               />
             </div>
             <FieldError>{errors.phone}</FieldError>
@@ -153,7 +163,7 @@ function DetailsModal({
 
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <label htmlFor="dc-email" className="font-[family-name:var(--dc-headline)] text-xs leading-[14px] font-bold">
+              <label htmlFor="dc-email" className={LABEL}>
                 your email ID
               </label>
               <input
@@ -165,8 +175,8 @@ function DetailsModal({
                 value={email}
                 onChange={(e) => onEmail(e.target.value)}
                 aria-invalid={Boolean(errors.email)}
-                className={`h-12 rounded-lg border-[0.5px] bg-white px-4 font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-light outline-none placeholder:text-[#8A8A8A] focus:border-black ${
-                  errors.email ? "border-[#F40009]" : "border-[#E5E5E5]"
+                className={`h-12 rounded-lg bg-white px-4 ${INPUT_TEXT} focus:border-black ${
+                  errors.email ? "border border-[#F40009]" : "border-[0.5px] border-[#E5E5E5]"
                 }`}
               />
               <FieldError>{errors.email}</FieldError>
@@ -190,7 +200,7 @@ function DetailsModal({
 
             <div className="flex flex-col gap-2">
               <FieldError>{errors.form}</FieldError>
-              <PillButton type="submit" busy={busy}>
+              <PillButton type="submit" busy={busy} className="lg:mx-auto lg:w-[280px]">
                 Submit
               </PillButton>
             </div>
@@ -219,8 +229,8 @@ function OtpModal({
   onVerified: (s: Session) => void;
 }) {
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // "wrong" and "expired" have their own Figma states (346:2, 353:2); anything else is a message.
+  const [error, setError] = useState<"wrong" | "expired" | string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   // Count down to a fixed deadline rather than counting ticks: phones throttle
@@ -229,6 +239,8 @@ function OtpModal({
   const [now, setNow] = useState(() => Date.now());
   const secondsLeft = Math.max(0, Math.ceil((resendAt - now) / 1000));
   const inputRef = useRef<HTMLInputElement>(null);
+  const wrong = error === "wrong";
+  const expired = error === "expired";
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -237,6 +249,14 @@ function OtpModal({
   }, [secondsLeft]);
 
   useEffect(() => inputRef.current?.focus(), []);
+
+  function onType(value: string) {
+    let digits = value.replace(/\D/g, "");
+    // After a wrong code the old digits stay on show; typing starts a fresh code.
+    if (wrong && digits.length > code.length) digits = digits.slice(code.length);
+    setCode(digits.slice(0, OTP_LENGTH));
+    setError(null);
+  }
 
   async function verify(e: FormEvent) {
     e.preventDefault();
@@ -249,8 +269,8 @@ function OtpModal({
     try {
       onVerified(await api.verifyOtp(phone, email, code));
     } catch (err) {
-      setError(errorMessage(err, TECH_ERROR));
-      setCode("");
+      const kind = err instanceof CampaignError ? err.code : null;
+      setError(kind === "OTP_WRONG" ? "wrong" : kind === "OTP_EXPIRED" ? "expired" : errorMessage(err, TECH_ERROR));
       setBusy(false);
       inputRef.current?.focus();
     }
@@ -258,13 +278,14 @@ function OtpModal({
 
   async function resend() {
     setResending(true);
-    setError(null);
     try {
       const { resendAfter } = await api.sendOtp(phone, email);
       setResendAt(Date.now() + resendAfter * 1000);
       setNow(Date.now());
       setCode("");
-      setNotice("A new code is on its way.");
+      setError(null);
+      // The input was disabled while expired; focus once it is enabled again.
+      setTimeout(() => inputRef.current?.focus());
     } catch (err) {
       setError(errorMessage(err, TECH_ERROR));
     } finally {
@@ -273,93 +294,123 @@ function OtpModal({
   }
 
   const active = Math.min(code.length, OTP_LENGTH - 1);
+  const message = wrong ? "Incorrect code. Please try again." : expired ? "This code has expired." : error;
 
   return (
-    <Modal onClose={onClose} figmaTop={186} anchor="bottom" className="font-[family-name:var(--dc-sans)]">
+    // Web (Figma 356:1063): UnityText for the title, digits and links; 373px tall with the content centred.
+    <Modal
+      onClose={onClose}
+      figmaTop={186}
+      anchor="bottom"
+      className="font-[family-name:var(--dc-sans)] lg:flex lg:min-h-[373px] lg:flex-col lg:justify-center lg:font-[family-name:var(--dc-text)]"
+    >
       {(titleId) => (
         <form onSubmit={verify} noValidate className="flex flex-col gap-4">
-          <h2 id={titleId} className="text-center text-[21px] leading-[25.6px] font-bold">
+          <h2 id={titleId} className="text-center text-[21px] leading-[25.6px] font-bold lg:leading-[25.2px]">
             Verify OTP
           </h2>
-          <p className="text-center text-[13px] leading-5 text-[#8A8A8A]">
+          <p className="text-center text-[13px] leading-5 text-[#8A8A8A] lg:font-[family-name:var(--dc-sans)] lg:text-xs">
             We’ve sent a {OTP_LENGTH}-digit code to
             <br />
             <span className="font-semibold text-black">{formatPhone(phone)}</span>
           </p>
 
-          {/* One real input under six drawn boxes keeps paste and SMS autofill working. */}
-          <div className="relative mx-auto grid w-full max-w-[268px] grid-cols-6 gap-2">
-            {Array.from({ length: OTP_LENGTH }, (_, i) => {
-              const digit = code[i];
-              const isActive = i === active && code.length < OTP_LENGTH;
-              const border = isActive
-                ? "border-2 border-black"
-                : digit
-                  ? "border border-[#8A8A8A]"
-                  : error
-                    ? "border border-[#F40009]"
-                    : "border border-[#E5E5E5]";
-              return (
-                <div
-                  key={i}
-                  aria-hidden="true"
-                  className={`flex aspect-square items-center justify-center rounded-lg bg-white text-xl leading-[24.4px] font-bold ${border}`}
-                >
-                  {digit ?? (isActive && <span className="h-[22px] w-0.5 animate-pulse rounded-full bg-black" />)}
-                </div>
-              );
-            })}
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              aria-label={`${OTP_LENGTH}-digit code`}
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH));
-                setError(null);
-                setNotice(null);
-              }}
-              className="absolute inset-0 h-full w-full cursor-text text-transparent caret-transparent opacity-0"
-            />
+          {/* Figma "OTP Field": the error line sits 8px under the boxes, as wide as they are. */}
+          <div className="mx-auto flex w-full max-w-[268px] flex-col gap-2">
+            {/* One real input under six drawn boxes keeps paste and SMS autofill working. */}
+            <div className="relative grid w-full grid-cols-6 gap-2">
+              {Array.from({ length: OTP_LENGTH }, (_, i) => {
+                const digit = code[i];
+                const isActive = !wrong && !expired && i === active && code.length < OTP_LENGTH;
+                const look = expired
+                  ? "border border-[#E5E5E5] bg-[#F7F7F7] text-[#8A8A8A]"
+                  : wrong
+                    ? "border-[1.5px] border-[#F40009] bg-white"
+                    : isActive
+                      ? "border-2 border-black bg-white"
+                      : digit
+                        ? "border border-[#8A8A8A] bg-white"
+                        : "border border-[#E5E5E5] bg-white";
+                return (
+                  <div
+                    key={i}
+                    data-otp-box
+                    aria-hidden="true"
+                    className={`flex aspect-square items-center justify-center rounded-lg text-xl leading-[24.4px] font-bold ${look}`}
+                  >
+                    {digit ?? (isActive && <span className="h-[22px] w-0.5 animate-pulse rounded-full bg-black" />)}
+                  </div>
+                );
+              })}
+              <input
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                aria-label={`${OTP_LENGTH}-digit code`}
+                value={code}
+                disabled={expired}
+                onChange={(e) => onType(e.target.value)}
+                className="absolute inset-0 h-full w-full cursor-text text-transparent caret-transparent opacity-0 disabled:cursor-default"
+              />
+            </div>
+            <FieldError className="justify-center font-[family-name:var(--dc-text)] font-semibold lg:justify-start">
+              {message}
+            </FieldError>
           </div>
 
-          {/* Rendered only when there is something to say, so the Figma 16px rhythm holds. */}
-          {(error || notice) && (
-            <div className="text-center">
-              <FieldError>{error}</FieldError>
-              {notice && !error && <p className="text-[11px] text-[#8A8A8A]">{notice}</p>}
-            </div>
+          {expired ? (
+            <p className="text-center font-[family-name:var(--dc-text)] text-xs leading-[14.4px] text-[#8A8A8A]">
+              Request a new code to continue.
+            </p>
+          ) : (
+            !wrong && (
+              <p className="text-center text-xs leading-[15px] text-[#8A8A8A]">
+                Didn’t get the code?{" "}
+                {secondsLeft > 0 ? (
+                  <span className="font-semibold text-black">
+                    Resend in <span className="text-[#F40009] tabular-nums">{formatCountdown(secondsLeft)}</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={resend}
+                    disabled={resending}
+                    className="font-[family-name:var(--dc-text)] font-bold text-[#F40009] underline underline-offset-2 disabled:opacity-50"
+                  >
+                    Resend OTP
+                  </button>
+                )}
+              </p>
+            )
           )}
 
-          <p className="text-center text-xs leading-[15px] text-[#8A8A8A]">
-            Didn’t get the code?{" "}
-            {secondsLeft > 0 ? (
-              <span className="font-semibold text-black">
-                Resend in <span className="text-[#F40009] tabular-nums">{formatCountdown(secondsLeft)}</span>
-              </span>
-            ) : (
-              <button
+          <div className="flex flex-col gap-4">
+            {expired ? (
+              <PillButton
                 type="button"
                 onClick={resend}
-                disabled={resending}
-                className="font-semibold text-black underline underline-offset-2 disabled:opacity-50"
+                busy={resending}
+                className="font-[family-name:var(--dc-text)] lg:mx-auto lg:w-[280px]"
               >
-                Resend code
-              </button>
+                Resend OTP
+              </PillButton>
+            ) : (
+              // Figma sets the popup in Montserrat but this button in TCCC-UnityText Medium,
+              // greyed out (351:75) until there is a code to check.
+              <PillButton
+                type="submit"
+                busy={busy}
+                disabled={!code}
+                className="font-[family-name:var(--dc-text)] disabled:bg-[#E5E5E5] disabled:text-[#8A8A8A] disabled:opacity-100 lg:mx-auto lg:w-[280px]"
+              >
+                Verify
+              </PillButton>
             )}
-          </p>
-
-          <div className="flex flex-col gap-4">
-            {/* Figma sets the popup in Montserrat but this button in TCCC-UnityText Medium. */}
-            <PillButton type="submit" busy={busy} className="font-[family-name:var(--dc-text)]">
-              Verify
-            </PillButton>
             <button
               type="button"
               onClick={onChangeNumber}
-              className="text-center text-[13px] leading-[15.8px] font-semibold underline underline-offset-2"
+              className="text-center text-[13px] leading-[15.8px] font-semibold underline underline-offset-2 lg:text-xs lg:leading-[14.4px]"
             >
               Change number
             </button>

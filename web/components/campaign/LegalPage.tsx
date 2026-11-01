@@ -8,7 +8,8 @@ import logo from "@/app/user-campaign/_assets/logo.png";
  */
 export function LegalPage({ title, html }: { title: string; html: string }) {
   return (
-    <main className="flex min-h-dvh flex-col gap-6 px-6 pt-4 pb-10 text-[#494949]">
+    // No web design for these pages yet, so they keep the phone column on large screens.
+    <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col gap-6 px-6 pt-4 pb-10 text-[#494949]">
       <header className="flex items-center justify-between">
         <a href="/user-campaign" className="text-sm font-semibold text-black">
           ← Back

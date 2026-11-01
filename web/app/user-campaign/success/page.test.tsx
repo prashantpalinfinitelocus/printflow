@@ -15,4 +15,15 @@ describe("Success", () => {
     expect(container.textContent).toMatch(/fingers crossed/i);
     expect(container.textContent).not.toMatch(/\b(won|winner|on its way|reserved)\b/i);
   });
+
+  it("switches to Figma's web success (356:1102) from 1024px up", () => {
+    const { container } = render(<SuccessPage />);
+    expect(container.querySelector("[data-web-logos]")).toHaveClass("hidden", "lg:block");
+    // The photo plus the two logos.
+    expect(container.querySelector("[data-web-logos]")?.querySelectorAll("img")).toHaveLength(3);
+    const heading = screen.getByRole("heading", { name: "You ate! Your entry is in.." });
+    expect(heading.parentElement?.parentElement).toHaveClass("lg:top-[39.23%]", "lg:w-[612px]");
+    expect(screen.getByText("You ate!")).toHaveClass("lg:text-[32px]", "lg:leading-[36.48px]");
+    expect(screen.getByText(/fingers crossed/i)).toHaveClass("lg:w-auto", "lg:text-[27.19px]", "lg:leading-[35.69px]");
+  });
 });

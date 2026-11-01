@@ -1,7 +1,10 @@
 "use client";
 
 import { useCampaignRouter } from "@/lib/campaign/nav";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+
+import logo from "@/app/user-campaign/_assets/logo.png";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { CircleButton, FieldError, PillButton } from "@/components/campaign/ui";
@@ -35,7 +38,10 @@ function saveFile({ file, url }: CanImage) {
   a.click();
 }
 
-/** Preview — Figma 243:826. Download and share never submit an entry (PRD 7). */
+/**
+ * Preview — Figma 243:826, and 356:1288 from 1024px up. Download and share never submit an
+ * entry (PRD 7). Web adds a back circle above them, as phones have, so the design can be edited.
+ */
 export default function PreviewPage() {
   const router = useCampaignRouter();
   const { ready, session, designId, text, approvedText, pendingEntry, update } = useCampaign();
@@ -149,13 +155,26 @@ export default function PreviewPage() {
 
   return (
     <main className="relative h-dvh overflow-hidden bg-white px-5 pt-4">
-      <div className="flex items-center justify-between">
+      {/* Web: the 720px grey panel behind the can, with the small logo. */}
+      <div
+        data-web-panel
+        className="absolute inset-y-0 left-0 hidden w-1/2 bg-[linear-gradient(to_bottom,#E8E8EA,#CECFD2)] lg:block"
+        aria-hidden="true"
+      >
+        <Image src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
+      </div>
+
+      {/* Web: the round buttons stack 130px down, 50px in, 16px apart. */}
+      <div
+        data-actions
+        className="relative flex items-center justify-between lg:absolute lg:top-[130px] lg:left-[50px] lg:flex-col lg:gap-4"
+      >
         <CircleButton label="Back to editing" onClick={() => router.push("/user-campaign/create")}>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14.5 6.5L9 12l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </CircleButton>
-        <div className="flex gap-4">
+        <div className="flex gap-4 lg:flex-col">
           <CircleButton label={downloaded ? "Downloaded" : "Download My Can"} onClick={download} disabled={!image}>
             <svg
               width="24"
@@ -189,21 +208,12 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      <div className="mx-auto mt-4 flex max-w-[316px] flex-col gap-2 text-center">
-        {/* Figma's box is 33px: the DM Serif ascent overflows the 28.8px line height. */}
-        <h1 className="font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-[#F40009]">
-          It’s giving <em>iconic!</em>
-        </h1>
-        <p className="text-base leading-[1.2] text-[#8A8A8A]">
-          Your main character moment won’t wait forever. Don’t let it slip!
-        </p>
-      </div>
-
       {/*
         Figma: 191×473 at 179px, ending 123px above the screen's foot (32px above the button).
         The can fills that space: exactly 473px on the 775px design screen, larger on taller phones.
+        Web: 640px tall from 130px down on the 900px screen, centred in the left half.
       */}
-      <div className="absolute top-[179px] left-1/2 h-[calc(100dvh-302px)] -translate-x-1/2">
+      <div className="absolute top-[179px] left-1/2 h-[calc(100dvh-302px)] -translate-x-1/2 lg:top-[14.44dvh] lg:left-1/4 lg:h-[71.11dvh]">
         {image ? (
           // A blob URL, so next/image's optimiser has nothing to fetch; a plain img is right here.
           <img
@@ -216,18 +226,39 @@ export default function PreviewPage() {
         )}
       </div>
 
-      {/* Figma: the button's bottom edge sits 43px above the screen's. */}
-      <div className="absolute inset-x-5 bottom-[max(43px,env(safe-area-inset-bottom))] flex flex-col gap-2">
-        <p aria-live="polite" className="text-center text-[11px] text-[#8A8A8A] empty:hidden">
-          {imageFailed ? "Couldn’t prepare your can image. Take a screenshot to keep it." : notice}
-        </p>
-        {closed && !error && <p className="text-center text-xs text-[#494949]">{WINDOW_MESSAGE[windowState]}</p>}
-        <div className="text-center">
-          <FieldError>{error}</FieldError>
+      {/*
+        On phones the headline sits at the top and the button at the foot. On web they are one
+        352px block centred in the right half: headline, copy, then the button 32px below.
+      */}
+      <div
+        data-copy
+        className="contents lg:absolute lg:top-1/2 lg:left-3/4 lg:flex lg:w-[352px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:flex-col lg:gap-8"
+      >
+        <div className="mx-auto mt-4 flex max-w-[316px] flex-col gap-2 text-center lg:mt-0 lg:max-w-none lg:gap-4">
+          {/* Figma's box is 33px: the DM Serif ascent overflows the 28.8px line height. */}
+          <h1 className="font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-[#F40009] lg:text-[40px] lg:leading-[48px]">
+            It’s giving <em>iconic!</em>
+          </h1>
+          <p className="text-base leading-[1.2] text-[#8A8A8A]">
+            Your main character moment won’t wait forever. Don’t let it slip!
+          </p>
         </div>
-        <PillButton type="button" onClick={submit} busy={submitting} disabled={closed}>
-          Make It Happen
-        </PillButton>
+
+        {/* Figma: the button's bottom edge sits 43px above the screen's. */}
+        <div className="absolute inset-x-5 bottom-[max(43px,env(safe-area-inset-bottom))] flex flex-col gap-2 lg:static">
+          <p aria-live="polite" className="text-center text-[11px] text-[#8A8A8A] empty:hidden">
+            {imageFailed ? "Couldn’t prepare your can image. Take a screenshot to keep it." : notice}
+          </p>
+          {closed && !error && <p className="text-center text-xs text-[#494949]">{WINDOW_MESSAGE[windowState]}</p>}
+          {error && (
+            <div className="text-center">
+              <FieldError className="justify-center">{error}</FieldError>
+            </div>
+          )}
+          <PillButton type="button" onClick={submit} busy={submitting} disabled={closed} className="lg:mx-auto lg:w-[280px]">
+            Make It Happen
+          </PillButton>
+        </div>
       </div>
     </main>
   );

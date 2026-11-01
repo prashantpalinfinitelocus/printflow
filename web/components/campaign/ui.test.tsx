@@ -50,13 +50,25 @@ describe("Modal", () => {
 
   it("keeps its Figma top as an offset from the centre by default", () => {
     render(<Modal figmaTop={209}>{(id) => <h2 id={id}>Heads up</h2>}</Modal>);
-    expect(screen.getByRole("dialog").style.top).toBe("calc(50% - 178.5px)");
+    expect(screen.getByRole("dialog").style.getPropertyValue("--dc-top")).toBe("calc(50% - 178.5px)");
   });
 
   it("keeps its Figma top as a distance from the foot when anchored to the bottom", () => {
     // 775 − 186 = 589: on the 874px Figma frame that puts the card at 285, as designed.
     render(<Modal figmaTop={186} anchor="bottom">{(id) => <h2 id={id}>Login</h2>}</Modal>);
-    expect(screen.getByRole("dialog").style.top).toContain("calc(100% - 589px)");
+    expect(screen.getByRole("dialog").style.getPropertyValue("--dc-top")).toContain("calc(100% - 589px)");
+  });
+
+  it("is Figma's 480px web popup, centred on screen, from 1024px up", () => {
+    render(<Modal figmaTop={186} anchor="bottom">{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    expect(screen.getByRole("dialog")).toHaveClass(
+      "top-(--dc-top)",
+      "lg:top-1/2",
+      "lg:-translate-y-1/2",
+      "lg:w-[480px]",
+      "lg:max-w-[480px]",
+      "lg:rounded-3xl",
+    );
   });
 
   it("has no close button when it must be answered", () => {
@@ -81,6 +93,20 @@ describe("FieldError", () => {
   it("announces the message", () => {
     render(<FieldError>Enter a valid email</FieldError>);
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid email");
+  });
+
+  it("is Figma's error line: a red alert icon, 8px gap, 12/16 red text", () => {
+    render(<FieldError>Enter a valid email</FieldError>);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveClass("flex", "gap-2", "text-xs", "leading-4", "text-[#F40009]");
+    const icon = alert.querySelector("svg[data-icon='alert']");
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(icon).toHaveAttribute("width", "16");
+  });
+
+  it("takes the popup's font and alignment", () => {
+    render(<FieldError className="justify-center">Incorrect code</FieldError>);
+    expect(screen.getByRole("alert")).toHaveClass("justify-center");
   });
 
   it("renders nothing without a message", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 
 /** The black 48px pill every Figma screen uses for its primary action. */
 export function PillButton({
@@ -49,6 +49,7 @@ const FIGMA_VIEWPORT_H = 775;
  * as an offset from the vertical centre, so taller or shorter phones shift it
  * evenly. `anchor="bottom"` keeps it as a distance from the foot instead, for
  * popups over a screen whose content is pinned to the bottom.
+ * From 1024px up it is Figma's web popup: 480px wide, 24px corners, centred.
  */
 export function Modal({
   onClose,
@@ -82,8 +83,8 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        style={{ top }}
-        className={`animate-rise absolute left-1/2 w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] ${className}`}
+        style={{ "--dc-top": top } as CSSProperties}
+        className={`animate-rise absolute top-(--dc-top) left-1/2 w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] lg:top-1/2 lg:w-[480px] lg:max-w-[480px] lg:-translate-y-1/2 lg:rounded-3xl ${className}`}
       >
         {onClose && (
           <button
@@ -101,7 +102,7 @@ export function Modal({
   );
 }
 
-/** 40px outlined circle used for back / download / share on the preview screen. */
+/** 40px outlined circle used for back / download / share on the preview screen; 48px and borderless on web. */
 export function CircleButton({
   label,
   children,
@@ -113,7 +114,7 @@ export function CircleButton({
       aria-label={label}
       title={label}
       {...props}
-      className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E5E5E5] bg-white text-black transition active:scale-95 disabled:opacity-50"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E5E5E5] bg-white text-black transition active:scale-95 disabled:opacity-50 lg:h-12 lg:w-12 lg:border-0"
     >
       {children}
     </button>
@@ -138,11 +139,30 @@ export function LiveCheck({ status }: { status: "idle" | "checking" | "approved"
   );
 }
 
-export function FieldError({ children }: { children: ReactNode }) {
+/** Figma "Alert Icon": a 16px red circle with a white exclamation mark. */
+function AlertIcon() {
+  return (
+    <svg data-icon="alert" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
+      <circle cx="8" cy="8" r="8" fill="#F40009" />
+      <rect x="7" y="3.5" width="2" height="6" rx="1" fill="#fff" />
+      <circle cx="8" cy="12" r="1" fill="#fff" />
+    </svg>
+  );
+}
+
+/**
+ * Figma "Error Message": alert icon, 8px gap, 12/16 red text. Montserrat Medium by
+ * default (the login popup); `className` sets another face or centres it.
+ */
+export function FieldError({ children, className = "" }: { children: ReactNode; className?: string }) {
   if (!children) return null;
   return (
-    <p role="alert" className="text-[11px] leading-snug font-medium text-[#F40009]">
-      {children}
+    <p
+      role="alert"
+      className={`flex gap-2 font-[family-name:var(--dc-sans)] text-xs leading-4 font-medium text-[#F40009] ${className}`}
+    >
+      <AlertIcon />
+      <span>{children}</span>
     </p>
   );
 }

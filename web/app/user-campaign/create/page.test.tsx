@@ -311,3 +311,81 @@ describe("live check while typing", () => {
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", designId: "DISCO_BALL" });
   });
 });
+
+describe("web layout (1024px and up, Figma 356:1111)", () => {
+  it("filters the designs with category chips, starting on All", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    const chips = await screen.findByRole("group", { name: "Design categories" });
+    expect(chips).toHaveClass("hidden", "lg:flex");
+    const all = screen.getByRole("button", { name: "All" });
+    expect(all).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByRole("radio")).toHaveLength(9);
+
+    await userEvent.click(screen.getByRole("button", { name: "Travel" }));
+    expect(screen.getByRole("button", { name: "Travel" })).toHaveAttribute("aria-pressed", "true");
+    expect(all).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual([
+      "Surfing polar bear",
+      "Polar bear chill",
+      "Beach vibes",
+    ]);
+  });
+
+  it("offers every category Figma shows, once each", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    const chips = await screen.findByRole("group", { name: "Design categories" });
+    expect([...chips.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["All", "Fun", "Travel", "Love", "Celebration"]);
+  });
+
+  it("keeps the chosen design on the can when a chip hides it", async () => {
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, designId: "DISCO_BALL" });
+    await userEvent.click(await screen.findByRole("button", { name: "Love" }));
+    expect(screen.queryByRole("radio", { name: "Disco ball" })).not.toBeInTheDocument();
+    expect(savedJourney().designId).toBe("DISCO_BALL");
+  });
+
+  it("checks the text from the arrow in the web text card, like Check my vibe", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockResolvedValue("APPROVED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    const arrow = screen.getByRole("button", { name: "Check my text" });
+    expect(arrow).toHaveClass("hidden", "lg:flex");
+    await userEvent.click(arrow);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/preview"));
+  });
+
+  it("shows the web character count under the card", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    expect(screen.getByText("Max character allowed 5/12")).toHaveClass("hidden", "lg:block");
+  });
+
+  it("splits into Figma's left panel (can and text) and right panel (vibes)", async () => {
+    const { container } = renderCampaign(<CreatePage />, LOGGED_IN);
+    await textField();
+    expect(container.querySelector("[data-web-panel]")).toHaveClass("hidden", "lg:block", "w-[53.33%]");
+    expect(container.querySelector("[data-vibes]")).toHaveClass("lg:absolute", "lg:left-[calc(53.33%+80px)]", "lg:right-20");
+    expect(screen.getByText("Pick your vibe")).toHaveClass("lg:text-[32px]", "lg:leading-[38.4px]");
+    expect(screen.getByRole("button", { name: "Check my vibe" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    for (const card of screen.getAllByRole("radio")) expect(card).toHaveClass("lg:h-[140px]");
+  });
+});
+
+describe("web popups (Figma 356:1183, 356:1233)", () => {
+  it("spaces the heads-up as the web design does", async () => {
+    renderCampaign(<CreatePage />, { session: SESSION });
+    const dialog = await screen.findByRole("dialog", { name: "Quick Heads-Up!" });
+    // Important, to beat the phone popup's !pt-6.
+    expect(dialog).toHaveClass("lg:!py-8");
+    expect(dialog.firstElementChild?.nextElementSibling ?? dialog.querySelector("div")).toHaveClass("lg:gap-4");
+    expect(screen.getByRole("button", { name: "Let’s Do This" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+  });
+
+  it("spaces the friendly-content popup as the web design does", async () => {
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, textRejected: true });
+    const dialog = await screen.findByRole("dialog", { name: "Let’s keep it friendly" });
+    expect(dialog).toHaveClass("lg:pt-[54px]", "lg:pb-6");
+    expect(screen.getByText(/didn’t make the cut/).parentElement).toHaveClass("lg:gap-4");
+    expect(screen.getByRole("button", { name: "Edit Text" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+  });
+});

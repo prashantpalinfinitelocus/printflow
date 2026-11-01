@@ -20,6 +20,25 @@ describe("Landing", () => {
     expect(screen.getByText(/only a lucky few dc paglus score one/i)).toBeInTheDocument();
   });
 
+  it("adds Figma's web backdrop and can photo from 1024px, hidden on phones", async () => {
+    const { container } = renderCampaign(await landing());
+    await screen.findByRole("heading", { name: "Make it yours" });
+    const web = container.querySelector("[data-web-backdrop]");
+    expect(web).toHaveClass("hidden", "lg:block");
+    expect(web?.querySelectorAll("img")).toHaveLength(2);
+    // The phone hero and its white fade give way to the web backdrop.
+    expect(container.querySelector("[data-mobile-hero]")).toHaveClass("lg:hidden");
+  });
+
+  it("places the copy and legal links where the web design does", async () => {
+    renderCampaign(await landing());
+    const heading = await screen.findByRole("heading", { name: "Make it yours" });
+    expect(heading.closest("[data-copy]")).toHaveClass("lg:absolute", "lg:left-[57.08%]", "lg:top-[37%]", "lg:w-[466px]", "lg:gap-11");
+    expect(screen.getByRole("navigation", { name: "Legal" })).toHaveClass("lg:absolute", "lg:bottom-8", "lg:left-[65.28%]");
+    expect(screen.getByRole("button", { name: /set the vibes/i })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(screen.getByText("Your DC. Your Vibe")).toHaveClass("lg:text-base", "lg:tracking-normal");
+  });
+
   it("links to the terms and privacy policy", async () => {
     renderCampaign(await landing());
     expect(await screen.findByRole("link", { name: "Terms & Conditions" })).toHaveAttribute("href", "/user-campaign/terms");

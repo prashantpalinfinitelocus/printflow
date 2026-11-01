@@ -31,3 +31,23 @@ html:has(.dc-fonts) body {
     animation: none;
   }
 }
+
+/*
+ * A design's sticker inside its picker card. --x/--y place its centre relative to the card
+ * centre and --w/--h size it, in Figma px on the 115 × 80 phone card; the web card
+ * (160 × 140) shows the same art 1.2× larger around the same centre.
+ */
+.dc-thumb {
+  --k: 1;
+  position: absolute;
+  max-width: none;
+  width: calc(var(--w) * var(--k) * 1px);
+  height: calc(var(--h) * var(--k) * 1px);
+  left: calc(50% + (var(--x) * var(--k) - var(--w) * var(--k) / 2) * 1px);
+  top: calc(50% + (var(--y) * var(--k) - var(--h) * var(--k) / 2) * 1px);
+}
+@media (min-width: 1024px) {
+  .dc-thumb {
+    --k: 1.2;
+  }
+}

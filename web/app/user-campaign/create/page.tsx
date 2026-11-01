@@ -2,25 +2,32 @@
 
 import Image from "next/image";
 import { useCampaignRouter } from "@/lib/campaign/nav";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+
+import logo from "@/app/user-campaign/_assets/logo.png";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { FieldError, LiveCheck, Modal, PillButton } from "@/components/campaign/ui";
 import { errorMessage, isUnauthorized } from "@/lib/campaign/api";
-import { DESIGNS } from "@/lib/campaign/designs";
+import { CATEGORIES, DESIGNS, type Category } from "@/lib/campaign/designs";
 import { useLiveModeration } from "@/lib/campaign/liveModeration";
 import { useCampaign } from "@/lib/campaign/store";
 import { MAX_TEXT_LENGTH, textLength, validateText } from "@/lib/campaign/text";
 
 const CHECKER_DOWN = "Our message checker needs a moment. Your design is still here — please try again.";
 
-/** Customising tool — Figma 243:872, with popups 243:936 (heads-up) and 243:1013 (rejected). */
+/**
+ * Customising tool — Figma 243:872, with popups 243:936 (heads-up) and 243:1013 (rejected).
+ * From 1024px up it is the web layout (356:1111): can and text card on a grey left panel,
+ * category chips and a larger design grid on the right.
+ */
 export default function CreatePage() {
   const router = useCampaignRouter();
   const { ready, session, designId, text, approvedText, headsUpSeen, textRejected, update } = useCampaign();
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [rejected, setRejected] = useState(false);
+  const [category, setCategory] = useState<Category | "All">("All");
   const inputRef = useRef<HTMLInputElement>(null);
   // Dropping the session triggers the login redirect below; design and text stay saved.
   const live = useLiveModeration(text, { approvedText, onUnauthorized: () => update({ session: null }) });
@@ -70,29 +77,45 @@ export default function CreatePage() {
     setChecking(false);
   }
 
+  const shown = category === "All" ? DESIGNS : DESIGNS.filter((d) => d.category === category);
+
   return (
     <main className="relative h-dvh overflow-hidden bg-white">
-      <p className="pt-4 text-center text-[10px] leading-3 font-semibold tracking-[1.6px] text-[#F40009] uppercase">
+      {/* Web: the 768px grey panel behind the can and text card, with the small logo. */}
+      <div
+        data-web-panel
+        className="absolute inset-y-0 left-0 hidden w-[53.33%] bg-[linear-gradient(to_bottom,#E8E8EA,#CECFD2)] lg:block"
+        aria-hidden="true"
+      >
+        <Image src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
+      </div>
+
+      <p className="relative pt-4 text-center text-[10px] leading-3 font-semibold tracking-[1.6px] text-[#F40009] uppercase lg:absolute lg:top-12 lg:left-0 lg:w-[53.33%] lg:pt-0">
         Diet Coke &nbsp;·&nbsp; Custom Edition
       </p>
 
       {/*
         Figma: 149×367 at 52px, leaving 16px above the 340px panel. The can fills that space,
         so it is exactly 367px tall on the 775px design screen and grows on taller phones.
+        Web: 614px tall from 93px down on the 900px screen, centred in the left panel.
       */}
-      <div className="absolute top-[52px] left-1/2 h-[calc(100dvh-408px)] -translate-x-1/2">
+      <div className="absolute top-[52px] left-1/2 h-[calc(100dvh-408px)] -translate-x-1/2 lg:top-[10.33dvh] lg:left-[26.67%] lg:h-[68.22dvh]">
         <CanPreview designId={designId} text={text.trim()} priority className="h-full" />
       </div>
 
+      {/* On web the panel's two halves are placed on the screen separately, so the form steps aside. */}
       <form
         onSubmit={check}
         noValidate
-        className="absolute inset-x-0 bottom-0 flex h-[340px] flex-col gap-3 rounded-t-[28px] border border-[#EDEDED] bg-white px-[19px] pt-5 pb-2 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
+        className="absolute inset-x-0 bottom-0 flex h-[340px] flex-col gap-3 rounded-t-[28px] border border-[#EDEDED] bg-white px-[19px] pt-5 pb-2 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] lg:contents"
       >
-        <div className="flex flex-col gap-1">
-          <label className="flex h-[59px] items-center gap-2 rounded-[14px] border-[0.5px] border-[#E8E8E8] px-4 py-3 focus-within:border-[#8A8A8A]">
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-[11px] leading-[13.2px] font-semibold text-[#F40009]">Enter Text</span>
+        {/* Web: Figma "Frame 110", the 420px text card 739px down, centred under the can. */}
+        <div className="flex flex-col gap-1 lg:absolute lg:top-[82.11dvh] lg:left-[26.67%] lg:w-[420px] lg:-translate-x-1/2 lg:gap-2">
+          <label className="flex h-[59px] items-center gap-2 rounded-[14px] border-[0.5px] border-[#E8E8E8] px-4 py-3 focus-within:border-[#8A8A8A] lg:h-[87px] lg:gap-8 lg:rounded-2xl lg:border-0 lg:bg-white lg:px-6 lg:py-5">
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5 lg:gap-1">
+              <span className="text-[11px] leading-[13.2px] font-semibold text-[#F40009] lg:text-xs lg:leading-[14.4px] lg:font-normal">
+                Enter Text
+              </span>
               <input
                 ref={inputRef}
                 value={text}
@@ -105,28 +128,73 @@ export default function CreatePage() {
                 autoComplete="off"
                 enterKeyHint="done"
                 aria-invalid={Boolean(error) || live.status === "rejected"}
-                className="w-full bg-transparent text-base leading-[19.2px] text-[#111111] outline-none placeholder:text-[#B5B5B5]"
+                className="w-full bg-transparent text-base leading-[19.2px] text-[#111111] outline-none placeholder:text-[#B5B5B5] lg:text-2xl lg:leading-[28.8px]"
               />
             </span>
-            <span className="text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums" aria-live="polite">
+            <span className="text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:hidden" aria-live="polite">
               {textLength(text)}/{MAX_TEXT_LENGTH}
             </span>
+            <button
+              type="submit"
+              aria-label="Check my text"
+              disabled={checking}
+              className="hidden h-[47px] w-[51px] shrink-0 items-center justify-center rounded-full bg-black text-white transition active:scale-95 disabled:opacity-50 lg:flex"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 16L16 8M9.5 8H16v6.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </label>
+          <p className="hidden text-right text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:block">
+            Max character allowed {textLength(text)}/{MAX_TEXT_LENGTH}
+          </p>
           {error ? <FieldError>{error}</FieldError> : <LiveCheck status={live.status} />}
         </div>
 
-        {/* Figma "Frame 27": the grid and the button sit 8px apart, not the panel's 12px. */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-2">
-            <p id="dc-vibe" className="font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-bold text-[#111111]">
-              Pick your vibe
-            </p>
+        {/*
+          Figma "Frame 27": the grid and the button sit 8px apart, not the panel's 12px.
+          Web ("Frame 90"): 80px in from the left panel and the right edge, 48px down, the
+          button 56px off the foot; the grid scrolls in between.
+        */}
+        <div
+          data-vibes
+          className="flex flex-col gap-2 lg:absolute lg:top-12 lg:right-20 lg:bottom-14 lg:left-[calc(53.33%+80px)] lg:gap-4"
+        >
+          <div className="flex flex-col gap-2 lg:min-h-0 lg:flex-1 lg:gap-10">
+            <div className="flex flex-col gap-2 lg:gap-6">
+              <p
+                id="dc-vibe"
+                className="font-[family-name:var(--dc-headline)] text-xs leading-[14.4px] font-bold text-[#111111] lg:text-[32px] lg:leading-[38.4px]"
+              >
+                Pick your vibe
+              </p>
+              <div
+                role="group"
+                aria-label="Design categories"
+                className="hidden gap-4 overflow-x-auto [scrollbar-width:none] lg:flex"
+              >
+                {(["All", ...CATEGORIES] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-pressed={c === category}
+                    onClick={() => setCategory(c)}
+                    // Figma draws the 1px outline inside the 54 × 39 chip; the padding gives that pixel back.
+                    className={`shrink-0 rounded-[20px] border px-[15px] py-[9px] text-base leading-[19.2px] transition ${
+                      c === category ? "border-black bg-black text-white" : "border-[#8A8A8A] text-black"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div
               role="radiogroup"
               aria-labelledby="dc-vibe"
-              className="grid h-[132px] grid-cols-[repeat(3,minmax(0,115px))] justify-between gap-x-2 gap-y-2 overflow-y-auto [scrollbar-width:none]"
+              className="grid h-[132px] grid-cols-[repeat(3,minmax(0,115px))] justify-between gap-x-2 gap-y-2 overflow-y-auto [scrollbar-width:none] lg:h-auto lg:min-h-0 lg:grid-cols-[repeat(3,minmax(0,160px))] lg:content-start lg:justify-start lg:gap-x-4 lg:gap-y-[15px]"
             >
-              {DESIGNS.map((d) => {
+              {shown.map((d) => {
                 const selected = d.id === designId;
                 return (
                   <button
@@ -136,8 +204,10 @@ export default function CreatePage() {
                     aria-checked={selected}
                     aria-label={d.name}
                     onClick={() => update({ designId: d.id })}
-                    className={`relative h-20 overflow-hidden rounded-lg border bg-white transition ${
-                      selected ? "border-black shadow-[0_3px_12px_rgba(0,0,0,0.08)]" : "border-[#E8E8E8]"
+                    className={`relative h-20 overflow-hidden rounded-lg border bg-white transition lg:h-[140px] ${
+                      selected
+                        ? "border-black shadow-[0_3px_12px_rgba(0,0,0,0.08)] lg:shadow-[0_3.6px_14.4px_rgba(0,0,0,0.08)]"
+                        : "border-[#E8E8E8]"
                     }`}
                   >
                     <Image
@@ -145,10 +215,17 @@ export default function CreatePage() {
                       alt=""
                       width={d.thumb.w}
                       height={d.thumb.h}
-                      sizes="120px"
-                      className="absolute max-w-none object-fill"
-                      // Offsets are from Figma's 115px card; anchoring to the centre keeps them right when cards narrow.
-                      style={{ left: `calc(50% + ${d.thumb.x - 57.5}px)`, top: d.thumb.y - 1, width: d.thumb.w, height: d.thumb.h }}
+                      sizes="(min-width: 1024px) 160px, 120px"
+                      className="dc-thumb object-fill"
+                      // Placed by its centre on Figma's 115 × 80 card, so it stays right when cards narrow or grow.
+                      style={
+                        {
+                          "--x": d.thumb.x + d.thumb.w / 2 - 57.5,
+                          "--y": d.thumb.y + d.thumb.h / 2 - 40,
+                          "--w": d.thumb.w,
+                          "--h": d.thumb.h,
+                        } as CSSProperties
+                      }
                     />
                   </button>
                 );
@@ -156,7 +233,7 @@ export default function CreatePage() {
             </div>
           </div>
 
-          <PillButton type="submit" busy={checking}>
+          <PillButton type="submit" busy={checking} className="lg:mx-auto lg:w-[280px] lg:shrink-0">
             Check my vibe
           </PillButton>
         </div>
@@ -178,9 +255,10 @@ export default function CreatePage() {
 
 function HeadsUp({ onDone }: { onDone: () => void }) {
   return (
-    <Modal onClose={onDone} figmaTop={209} className="max-w-[334px] !pt-6">
+    // Web: 32px above and below, 16px between title, list and button.
+    <Modal onClose={onDone} figmaTop={209} className="max-w-[334px] !pt-6 lg:!py-8">
       {(titleId) => (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8 lg:gap-4">
           <div className="flex flex-col gap-4">
             <h2 id={titleId} className="pr-8 font-[family-name:var(--dc-headline)] text-xl leading-6 font-bold">
               Quick Heads-Up!
@@ -191,7 +269,7 @@ function HeadsUp({ onDone }: { onDone: () => void }) {
               <li>If you win you receive an email soon.</li>
             </ol>
           </div>
-          <PillButton type="button" onClick={onDone}>
+          <PillButton type="button" onClick={onDone} className="lg:mx-auto lg:w-[280px]">
             Let’s Do This
           </PillButton>
         </div>
@@ -202,9 +280,10 @@ function HeadsUp({ onDone }: { onDone: () => void }) {
 
 function Rejected({ onEdit }: { onEdit: () => void }) {
   return (
-    <Modal onClose={onEdit} figmaTop={209}>
+    // Web: the icon 54px from the top, 16px between every piece.
+    <Modal onClose={onEdit} figmaTop={209} className="lg:pt-[54px] lg:pb-6">
       {(titleId) => (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8 lg:gap-4">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-[#F40009]/12">
               <div className="flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[#F40009] shadow-[0_0_12px_rgba(245,0,9,0.35)]">
@@ -214,7 +293,7 @@ function Rejected({ onEdit }: { onEdit: () => void }) {
                 </svg>
               </div>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 lg:gap-4">
               <h2 id={titleId} className="font-[family-name:var(--dc-headline)] text-xl leading-6 font-bold">
                 Let’s keep it friendly
               </h2>
@@ -223,7 +302,7 @@ function Rejected({ onEdit }: { onEdit: () => void }) {
               </p>
             </div>
           </div>
-          <PillButton type="button" onClick={onEdit}>
+          <PillButton type="button" onClick={onEdit} className="lg:mx-auto lg:w-[280px]">
             Edit Text
           </PillButton>
         </div>

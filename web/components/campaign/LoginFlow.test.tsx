@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CampaignServerError, MOCK_OTP, createMockCampaignApi, type CampaignApi } from "@/lib/campaign/api";
+import { CampaignError, CampaignServerError, MOCK_OTP, createMockCampaignApi, type CampaignApi } from "@/lib/campaign/api";
 
 import { LoginFlow } from "./LoginFlow";
 
@@ -49,6 +49,37 @@ describe("details step", () => {
       expect.stringMatching(/agree to the terms/i),
     ]);
     expect(sendOtp).not.toHaveBeenCalled();
+  });
+
+  it("words the field errors as Figma does, each with the alert icon", async () => {
+    renderFlow();
+    await user.type(screen.getByLabelText("Your mobile number"), "98765432");
+    await user.type(screen.getByLabelText("your email ID"), "aanya@gail");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    const [phoneError, emailError] = screen.getAllByRole("alert");
+    expect(phoneError).toHaveTextContent(/^Enter a valid mobile number$/);
+    expect(emailError).toHaveTextContent(/^Enter a valid email address$/);
+    for (const alert of [phoneError, emailError]) expect(alert.querySelector("svg[data-icon='alert']")).not.toBeNull();
+  });
+
+  it("keeps the phone field's grey border on a phone error but turns the email border red, as in Figma", async () => {
+    renderFlow();
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(screen.getByLabelText("Your mobile number").parentElement).toHaveClass("border-[#E5E5E5]");
+    expect(screen.getByLabelText("your email ID")).toHaveClass("border-[#F40009]");
+  });
+
+  it("sets typed text in TCCC-UnityText and only the placeholder in UnityHeadline Light", () => {
+    renderFlow();
+    for (const input of [screen.getByLabelText("Your mobile number"), screen.getByLabelText("your email ID")]) {
+      expect(input).toHaveClass(
+        "font-[family-name:var(--dc-text)]",
+        "font-normal",
+        "placeholder:font-[family-name:var(--dc-headline)]",
+        "placeholder:font-light",
+      );
+    }
   });
 
   it("blocks submission until the terms are ticked", async () => {
@@ -121,14 +152,20 @@ describe("details step", () => {
 
   it("sits where Figma puts it over the landing page, measured from the foot", () => {
     renderFlow();
-    expect(screen.getByRole("dialog", { name: "Login" }).style.top).toContain("calc(100% - 589px)");
+    expect(screen.getByRole("dialog", { name: "Login" }).style.getPropertyValue("--dc-top")).toContain("calc(100% - 589px)");
   });
 
-  it("sets both inputs in TCCC-UnityHeadline Light, as Figma does", () => {
+  it("switches to Figma's web login popup from 1024px up", () => {
     renderFlow();
-    for (const input of [screen.getByLabelText("Your mobile number"), screen.getByLabelText("your email ID")]) {
-      expect(input).toHaveClass("font-[family-name:var(--dc-headline)]", "font-light");
-    }
+    const dialog = screen.getByRole("dialog", { name: "Login" });
+    expect(dialog).toHaveClass("lg:p-8");
+    expect(dialog.querySelector("form")).toHaveClass("lg:gap-6");
+    expect(screen.getByRole("heading", { name: "Login" })).toHaveClass("lg:text-left", "lg:font-[family-name:var(--dc-text)]");
+    expect(screen.getByText("Your mobile number")).toHaveClass("lg:font-[family-name:var(--dc-text)]");
+    expect(screen.getByRole("button", { name: "Submit" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    // Web sets only the phone placeholder in UnityText Regular; the email one stays UnityHeadline Light.
+    expect(screen.getByLabelText("Your mobile number")).toHaveClass("lg:placeholder:font-[family-name:var(--dc-text)]", "lg:placeholder:font-normal");
+    expect(screen.getByLabelText("your email ID")).not.toHaveClass("lg:placeholder:font-normal");
   });
 
   it("draws the agreement box at Figma's 12px inside a 16px slot", () => {
@@ -145,6 +182,7 @@ describe("details step", () => {
 
 describe("OTP step", () => {
   const codeInput = () => screen.getByLabelText("6-digit code");
+  const boxes = (dialog: HTMLElement) => [...dialog.querySelectorAll<HTMLElement>("div[data-otp-box]")];
 
   it("logs in with the right code", async () => {
     await reachOtp();
@@ -157,13 +195,58 @@ describe("OTP step", () => {
     );
   });
 
-  it("explains a wrong code and clears the boxes for another try", async () => {
-    await reachOtp();
-    await user.type(codeInput(), "000000");
+  it("keeps a wrong code in red boxes with Figma's message, in place of the resend line", async () => {
+    const dialog = await reachOtp();
+    await user.type(codeInput(), "482196");
     await user.click(screen.getByRole("button", { name: "Verify" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/doesn.t match/i);
-    expect(codeInput()).toHaveValue("");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/^Incorrect code\. Please try again\.$/);
+    expect(codeInput()).toHaveValue("482196");
+    for (const box of boxes(dialog)) expect(box).toHaveClass("border-[1.5px]", "border-[#F40009]");
+    expect(screen.queryByText(/didn.t get the code/i)).not.toBeInTheDocument();
     expect(onVerified).not.toHaveBeenCalled();
+    // Centred under the boxes on phones; on web Figma lines it up with the first box.
+    expect(screen.getByRole("alert")).toHaveClass("justify-center", "lg:justify-start");
+    expect(screen.getByRole("alert").parentElement).toHaveClass("mx-auto", "w-full", "max-w-[268px]");
+  });
+
+  it("starts a fresh code when the user types after a wrong one", async () => {
+    await reachOtp();
+    await user.type(codeInput(), "482196");
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+    await screen.findByRole("alert");
+    await user.type(codeInput(), "1");
+    expect(codeInput()).toHaveValue("1");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText(/didn.t get the code/i)).toBeInTheDocument();
+  });
+
+  it("greys out an expired code and offers Resend OTP as the main button", async () => {
+    const dialog = await reachOtp();
+    vi.spyOn(api, "verifyOtp").mockRejectedValueOnce(new CampaignError("OTP_EXPIRED", "That code has expired."));
+    await user.type(codeInput(), "482196");
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/^This code has expired\.$/);
+    expect(screen.getByText("Request a new code to continue.")).toBeInTheDocument();
+    for (const box of boxes(dialog)) expect(box).toHaveClass("bg-[#F7F7F7]", "border-[#E5E5E5]", "text-[#8A8A8A]");
+    expect(codeInput()).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Verify" })).not.toBeInTheDocument();
+
+    const sendOtp = vi.spyOn(api, "sendOtp");
+    await user.click(screen.getByRole("button", { name: "Resend OTP" }));
+    expect(sendOtp).toHaveBeenCalledWith("9876543210", "aanya@example.com");
+    expect(await screen.findByRole("button", { name: "Verify" })).toBeInTheDocument();
+    expect(codeInput()).toHaveValue("");
+    expect(codeInput()).toBeEnabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("greys out Verify until a digit is typed", async () => {
+    await reachOtp();
+    const verify = screen.getByRole("button", { name: "Verify" });
+    expect(verify).toBeDisabled();
+    expect(verify).toHaveClass("disabled:bg-[#E5E5E5]", "disabled:text-[#8A8A8A]");
+    await user.type(codeInput(), "4");
+    expect(verify).toBeEnabled();
   });
 
   it("asks for all six digits before calling the server", async () => {
@@ -178,15 +261,19 @@ describe("OTP step", () => {
   it("counts down before allowing a resend, then sends a fresh code", async () => {
     await reachOtp();
     expect(screen.getByText("00:30")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Resend code" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Resend OTP" })).not.toBeInTheDocument();
 
     // Time passes as a whole, like a backgrounded tab whose timers were throttled.
     await act(() => vi.advanceTimersByTimeAsync(30_000));
     const sendOtp = vi.spyOn(api, "sendOtp");
-    await user.click(screen.getByRole("button", { name: "Resend code" }));
+    const link = screen.getByRole("button", { name: "Resend OTP" });
+    // Figma: red, bold TCCC-UnityText, underlined.
+    expect(link).toHaveClass("text-[#F40009]", "font-bold", "underline", "font-[family-name:var(--dc-text)]");
+    await user.click(link);
     expect(sendOtp).toHaveBeenCalledWith("9876543210", "aanya@example.com");
-    expect(await screen.findByText(/new code is on its way/i)).toBeInTheDocument();
-    expect(screen.getByText("00:30")).toBeInTheDocument();
+    expect(await screen.findByText("00:30")).toBeInTheDocument();
+    // The restarted countdown is the confirmation; Figma has no extra message.
+    expect(screen.queryByText(/on its way/i)).not.toBeInTheDocument();
   });
 
   it("sets the Verify button in TCCC-UnityText like every other button, not the popup's Montserrat", async () => {
@@ -196,16 +283,27 @@ describe("OTP step", () => {
 
   it("lets the code boxes shrink on narrow phones instead of spilling out of the popup", async () => {
     const dialog = await reachOtp();
-    const boxes = dialog.querySelectorAll<HTMLElement>("div[aria-hidden='true']");
-    expect(boxes).toHaveLength(6);
+    const all = boxes(dialog);
+    expect(all).toHaveLength(6);
     // Six equal columns: Figma's 38px squares with 8px gaps at 268px across, narrower when the popup is.
-    expect(boxes[0].parentElement).toHaveClass("grid", "grid-cols-6", "w-full", "max-w-[268px]", "gap-2");
-    for (const box of boxes) expect(box).toHaveClass("aspect-square");
+    expect(all[0].parentElement).toHaveClass("grid", "grid-cols-6", "w-full", "gap-2");
+    expect(all[0].parentElement?.parentElement).toHaveClass("w-full", "max-w-[268px]");
+    for (const box of all) expect(box).toHaveClass("aspect-square");
+  });
+
+  it("switches to Figma's web OTP popup from 1024px up", async () => {
+    const dialog = await reachOtp();
+    // Figma's web OTP popup is 373px tall with its content centred in it.
+    expect(dialog).toHaveClass("lg:font-[family-name:var(--dc-text)]", "lg:min-h-[373px]", "lg:flex", "lg:flex-col", "lg:justify-center");
+    expect(screen.getByRole("heading", { name: "Verify OTP" })).toHaveClass("lg:leading-[25.2px]");
+    expect(screen.getByText(/sent a 6-digit code/)).toHaveClass("lg:font-[family-name:var(--dc-sans)]", "lg:text-xs");
+    expect(screen.getByRole("button", { name: "Verify" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(screen.getByRole("button", { name: "Change number" })).toHaveClass("lg:text-xs", "lg:leading-[14.4px]");
   });
 
   it("opens in the same place as the login popup", async () => {
     const dialog = await reachOtp();
-    expect(dialog.style.top).toContain("calc(100% - 589px)");
+    expect(dialog.style.getPropertyValue("--dc-top")).toContain("calc(100% - 589px)");
   });
 
   it("goes back to the form with the details kept when changing number", async () => {
