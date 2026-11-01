@@ -23,6 +23,10 @@ vi.mock("@/lib/campaign/nav", () => ({ useCampaignRouter: () => router }));
 vi.mock("next/image", () => ({
   default: ({ src, alt, fill: _fill, priority: _priority, sizes: _sizes, ...rest }: Record<string, unknown>) =>
     createElement("img", { src: (src as { src?: string })?.src ?? src, alt, ...rest }),
+  getImageProps: ({ src, sizes }: { src: { src?: string } | string; sizes?: string }) => {
+    const url = typeof src === "string" ? src : (src.src ?? "");
+    return { props: { src: url, srcSet: `${url} 1x`, sizes } };
+  },
 }));
 
 /* next/font is compiled by Next's SWC plugin and cannot run under Vitest. */

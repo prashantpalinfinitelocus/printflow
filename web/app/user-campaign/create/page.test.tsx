@@ -324,11 +324,8 @@ describe("web layout (1024px and up, Figma 356:1111)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Travel" }));
     expect(screen.getByRole("button", { name: "Travel" })).toHaveAttribute("aria-pressed", "true");
     expect(all).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual([
-      "Surfing polar bear",
-      "Polar bear chill",
-      "Beach vibes",
-    ]);
+    const visible = screen.getAllByRole("radio").filter((r) => !r.classList.contains("lg:hidden"));
+    expect(visible.map((r) => r.getAttribute("aria-label"))).toEqual(["Surfing polar bear", "Polar bear chill", "Beach vibes"]);
   });
 
   it("offers every category Figma shows, once each", async () => {
@@ -337,11 +334,18 @@ describe("web layout (1024px and up, Figma 356:1111)", () => {
     expect([...chips.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["All", "Fun", "Travel", "Love", "Celebration"]);
   });
 
-  it("keeps the chosen design on the can when a chip hides it", async () => {
+  it("hides other categories on web only, so the phone layout always shows every design", async () => {
     renderCampaign(<CreatePage />, { ...LOGGED_IN, designId: "DISCO_BALL" });
     await userEvent.click(await screen.findByRole("button", { name: "Love" }));
-    expect(screen.queryByRole("radio", { name: "Disco ball" })).not.toBeInTheDocument();
-    expect(savedJourney().designId).toBe("DISCO_BALL");
+    // Still in the page (and on the can) below 1024px, where there are no chips to undo the filter.
+    const disco = screen.getByRole("radio", { name: "Disco ball" });
+    expect(disco).toHaveClass("lg:hidden");
+    expect(screen.getByRole("radio", { name: "Polar bears heart" })).not.toHaveClass("lg:hidden");
+  });
+
+  it("keeps the arrow button out of the text field's label, so the field's name stays 'Enter Text'", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    expect(await textField()).toHaveAccessibleName("Enter Text");
   });
 
   it("checks the text from the arrow in the web text card, like Check my vibe", async () => {

@@ -220,6 +220,33 @@ describe("OTP step", () => {
     expect(screen.getByText(/didn.t get the code/i)).toBeInTheDocument();
   });
 
+  it("won't resend a code it already knows is wrong", async () => {
+    await reachOtp();
+    await user.type(codeInput(), "482196");
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+    await screen.findByText(/Incorrect code/);
+    expect(screen.getByRole("button", { name: "Verify" })).toBeDisabled();
+  });
+
+  it("starts fresh after a wrong code even when typing with the cursor at the start", async () => {
+    await reachOtp();
+    await user.type(codeInput(), "482196");
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+    await screen.findByText(/Incorrect code/);
+    (codeInput() as HTMLInputElement).setSelectionRange(0, 0);
+    await user.keyboard("7");
+    expect(codeInput()).toHaveValue("7");
+  });
+
+  it("clears the boxes when Backspace is pressed after a wrong code", async () => {
+    await reachOtp();
+    await user.type(codeInput(), "482196");
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+    await screen.findByText(/Incorrect code/);
+    await user.type(codeInput(), "{Backspace}");
+    expect(codeInput()).toHaveValue("");
+  });
+
   it("greys out an expired code and offers Resend OTP as the main button", async () => {
     const dialog = await reachOtp();
     vi.spyOn(api, "verifyOtp").mockRejectedValueOnce(new CampaignError("OTP_EXPIRED", "That code has expired."));
@@ -230,6 +257,8 @@ describe("OTP step", () => {
     for (const box of boxes(dialog)) expect(box).toHaveClass("bg-[#F7F7F7]", "border-[#E5E5E5]", "text-[#8A8A8A]");
     expect(codeInput()).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Verify" })).not.toBeInTheDocument();
+    // Focus moves to the new main action rather than falling out of the popup.
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Resend OTP" })).toHaveFocus());
 
     const sendOtp = vi.spyOn(api, "sendOtp");
     await user.click(screen.getByRole("button", { name: "Resend OTP" }));
@@ -237,6 +266,7 @@ describe("OTP step", () => {
     expect(await screen.findByRole("button", { name: "Verify" })).toBeInTheDocument();
     expect(codeInput()).toHaveValue("");
     expect(codeInput()).toBeEnabled();
+    await vi.waitFor(() => expect(codeInput()).toHaveFocus());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

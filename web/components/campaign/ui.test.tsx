@@ -68,6 +68,9 @@ describe("Modal", () => {
       "lg:w-[480px]",
       "lg:max-w-[480px]",
       "lg:rounded-3xl",
+      // A short laptop window scrolls the popup instead of cutting it off.
+      "lg:max-h-[calc(100dvh-32px)]",
+      "lg:overflow-y-auto",
     );
   });
 

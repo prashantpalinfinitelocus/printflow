@@ -3,6 +3,9 @@ import Image from "next/image";
 import logo from "@/app/user-campaign/_assets/logo.png";
 import successBg from "@/app/user-campaign/_assets/success-bg.png";
 import webSuccessBg from "@/app/user-campaign/_assets/web-success-bg.jpg";
+import { ImagePreload } from "@/components/campaign/ImagePreload";
+
+const BG_SIZES = "(max-width: 480px) 115vw, 552px";
 
 /**
  * Thank-you — Figma 243:1094, and 356:1102 from 1024px up. Confirms the entry without implying a win
@@ -14,12 +17,15 @@ export default function SuccessPage() {
     <main className="relative min-h-dvh overflow-hidden text-center">
       {/* The design crops the photo tighter than the screen: 458px wide, top 99px under the browser bar. */}
       <div className="absolute inset-x-[-7%] top-[-12.8%] bottom-0 lg:hidden" aria-hidden="true">
-        <Image src={successBg} alt="" fill priority sizes="(max-width: 480px) 115vw, 552px" className="object-cover" />
+        <Image src={successBg} alt="" fill sizes={BG_SIZES} className="object-cover" />
       </div>
       {/*
         Web: the photo is 1672 × 941 from 116px left and 20px above the 1440 × 900 screen. Figma
         shows two logos, a small one top left and the landing's large one top right over the glass.
       */}
+      {/* Each size preloads only its own photo; the images stay lazy, so a hidden one is never fetched. */}
+      <ImagePreload src={successBg} sizes={BG_SIZES} media="(max-width: 1023px)" />
+      <ImagePreload src={webSuccessBg} sizes="116vw" media="(min-width: 1024px)" />
       <div data-web-logos className="absolute inset-0 hidden lg:block" aria-hidden="true">
         <div className="absolute top-[-2.22%] left-[-8.06%] h-[104.56%] w-[116.11%]">
           <Image src={webSuccessBg} alt="" fill sizes="116vw" className="object-cover" />

@@ -239,8 +239,17 @@ function OtpModal({
   const [now, setNow] = useState(() => Date.now());
   const secondsLeft = Math.max(0, Math.ceil((resendAt - now) / 1000));
   const inputRef = useRef<HTMLInputElement>(null);
+  const resendRef = useRef<HTMLButtonElement>(null);
+  const wasExpired = useRef(false);
   const wrong = error === "wrong";
   const expired = error === "expired";
+
+  // Expiry disables the input, so focus moves to "Resend OTP"; once a new code is sent it goes back to the boxes.
+  useEffect(() => {
+    if (expired) resendRef.current?.focus();
+    else if (wasExpired.current) inputRef.current?.focus();
+    wasExpired.current = expired;
+  }, [expired]);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -250,11 +259,16 @@ function OtpModal({
 
   useEffect(() => inputRef.current?.focus(), []);
 
-  function onType(value: string) {
-    let digits = value.replace(/\D/g, "");
-    // After a wrong code the old digits stay on show; typing starts a fresh code.
-    if (wrong && digits.length > code.length) digits = digits.slice(code.length);
-    setCode(digits.slice(0, OTP_LENGTH));
+  function onType(input: HTMLInputElement) {
+    let value = input.value;
+    // After a wrong code the old digits stay on show: typing starts a fresh code with what was
+    // just entered (wherever the cursor was), and deleting clears it.
+    if (wrong) {
+      const added = value.length - code.length;
+      const end = input.selectionStart ?? value.length;
+      value = added > 0 ? value.slice(end - added, end) : "";
+    }
+    setCode(value.replace(/\D/g, "").slice(0, OTP_LENGTH));
     setError(null);
   }
 
@@ -284,8 +298,6 @@ function OtpModal({
       setNow(Date.now());
       setCode("");
       setError(null);
-      // The input was disabled while expired; focus once it is enabled again.
-      setTimeout(() => inputRef.current?.focus());
     } catch (err) {
       setError(errorMessage(err, TECH_ERROR));
     } finally {
@@ -350,7 +362,7 @@ function OtpModal({
                 aria-label={`${OTP_LENGTH}-digit code`}
                 value={code}
                 disabled={expired}
-                onChange={(e) => onType(e.target.value)}
+                onChange={(e) => onType(e.target)}
                 className="absolute inset-0 h-full w-full cursor-text text-transparent caret-transparent opacity-0 disabled:cursor-default"
               />
             </div>
@@ -388,6 +400,7 @@ function OtpModal({
           <div className="flex flex-col gap-4">
             {expired ? (
               <PillButton
+                ref={resendRef}
                 type="button"
                 onClick={resend}
                 busy={resending}
@@ -401,7 +414,8 @@ function OtpModal({
               <PillButton
                 type="submit"
                 busy={busy}
-                disabled={!code}
+                // Greyed out with no code, and for a code the server has just turned down.
+                disabled={!code || wrong}
                 className="font-[family-name:var(--dc-text)] disabled:bg-[#E5E5E5] disabled:text-[#8A8A8A] disabled:opacity-100 lg:mx-auto lg:w-[280px]"
               >
                 Verify

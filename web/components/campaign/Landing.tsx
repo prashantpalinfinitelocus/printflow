@@ -8,10 +8,13 @@ import hero from "@/app/user-campaign/_assets/hero.png";
 import logo from "@/app/user-campaign/_assets/logo.png";
 import webBg from "@/app/user-campaign/_assets/web-bg.jpg";
 import webHands from "@/app/user-campaign/_assets/web-hands.png";
+import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { LoginFlow } from "@/components/campaign/LoginFlow";
 import { PillButton } from "@/components/campaign/ui";
 import { useCampaign } from "@/lib/campaign/store";
 
+
+const HERO_SIZES = "(max-width: 480px) 120vw, 576px";
 
 /** On hover or keyboard focus the text darkens to black and a 2px black underline grows out from the middle. */
 const LEGAL_LINK =
@@ -42,7 +45,7 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
       */}
       <div data-mobile-hero className="lg:hidden" aria-hidden="true">
         <div className="absolute inset-x-0 top-[-78px] bottom-[141px]">
-          <Image src={hero} alt="" fill priority sizes="(max-width: 480px) 120vw, 576px" className="object-cover" />
+          <Image src={hero} alt="" fill sizes={HERO_SIZES} className="object-cover" />
         </div>
         {/* Figma "Rectangle 3": 354px tall at the foot, clear until 8% then white by 33.5%. */}
         <div className="absolute inset-x-0 bottom-0 h-[356px] bg-[linear-gradient(to_bottom,rgb(255_255_255/0)_28px,#fff_119px)]" />
@@ -51,8 +54,11 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         Web (1440 × 900): the sunlight photo is 2167 × 1220 from 148px above the top, and the
         can-in-hands cut-out is 1045px tall at x 82, y −4. Sizes are kept as shares of the screen,
         the cut-out capped by width too so it can't run into the copy on a narrow desktop.
-        Not preloaded: phones never show them.
+        Each size preloads only its own photos; the images stay lazy, so a hidden one is never fetched.
       */}
+      <ImagePreload src={hero} sizes={HERO_SIZES} media="(max-width: 1023px)" />
+      <ImagePreload src={webBg} sizes="150vw" media="(min-width: 1024px)" />
+      <ImagePreload src={webHands} sizes="60vw" media="(min-width: 1024px)" />
       <div data-web-backdrop className="absolute inset-0 hidden lg:block" aria-hidden="true">
         <div className="absolute top-[-16.44%] left-0 h-[135.56%] w-[150.49%]">
           <Image src={webBg} alt="" fill sizes="150vw" className="object-cover" />

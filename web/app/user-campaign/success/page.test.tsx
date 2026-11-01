@@ -26,4 +26,12 @@ describe("Success", () => {
     expect(screen.getByText("You ate!")).toHaveClass("lg:text-[32px]", "lg:leading-[36.48px]");
     expect(screen.getByText(/fingers crossed/i)).toHaveClass("lg:w-auto", "lg:text-[27.19px]", "lg:leading-[35.69px]");
   });
+
+  it("preloads only the photo each screen size shows", () => {
+    render(<SuccessPage />);
+    const preloads = [...document.head.querySelectorAll<HTMLLinkElement>('link[rel="preload"][as="image"]')];
+    expect(preloads.find((l) => l.media === "(max-width: 1023px)")?.getAttribute("imagesrcset")).toMatch(/success-bg/);
+    expect(preloads.find((l) => l.media === "(min-width: 1024px)")?.getAttribute("imagesrcset")).toMatch(/web-success-bg/);
+    expect(preloads.filter((l) => !l.media)).toHaveLength(0);
+  });
 });

@@ -30,6 +30,19 @@ describe("Landing", () => {
     expect(container.querySelector("[data-mobile-hero]")).toHaveClass("lg:hidden");
   });
 
+  it("preloads only the photos each screen size shows, so phones never fetch the web backdrop and vice versa", async () => {
+    renderCampaign(await landing());
+    await screen.findByRole("heading", { name: "Make it yours" });
+    const preloads = [...document.head.querySelectorAll<HTMLLinkElement>('link[rel="preload"][as="image"]')];
+    const phone = preloads.filter((l) => l.media === "(max-width: 1023px)");
+    const web = preloads.filter((l) => l.media === "(min-width: 1024px)");
+    expect(phone.map((l) => l.getAttribute("imagesrcset") ?? l.href).join()).toMatch(/hero/);
+    expect(web.map((l) => l.getAttribute("imagesrcset") ?? l.href).join()).toMatch(/web-bg/);
+    expect(web.map((l) => l.getAttribute("imagesrcset") ?? l.href).join()).toMatch(/web-hands/);
+    // No unscoped preload: that would make every device download every photo.
+    expect(preloads.filter((l) => !l.media)).toHaveLength(0);
+  });
+
   it("places the copy and legal links where the web design does", async () => {
     renderCampaign(await landing());
     const heading = await screen.findByRole("heading", { name: "Make it yours" });

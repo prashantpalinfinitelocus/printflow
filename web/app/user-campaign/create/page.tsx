@@ -77,8 +77,6 @@ export default function CreatePage() {
     setChecking(false);
   }
 
-  const shown = category === "All" ? DESIGNS : DESIGNS.filter((d) => d.category === category);
-
   return (
     <main className="relative h-dvh overflow-hidden bg-white">
       {/* Web: the 768px grey panel behind the can and text card, with the small logo. */}
@@ -111,8 +109,8 @@ export default function CreatePage() {
       >
         {/* Web: Figma "Frame 110", the 420px text card 739px down, centred under the can. */}
         <div className="flex flex-col gap-1 lg:absolute lg:top-[82.11dvh] lg:left-[26.67%] lg:w-[420px] lg:-translate-x-1/2 lg:gap-2">
-          <label className="flex h-[59px] items-center gap-2 rounded-[14px] border-[0.5px] border-[#E8E8E8] px-4 py-3 focus-within:border-[#8A8A8A] lg:h-[87px] lg:gap-8 lg:rounded-2xl lg:border-0 lg:bg-white lg:px-6 lg:py-5">
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5 lg:gap-1">
+          <div className="flex h-[59px] items-center gap-2 rounded-[14px] border-[0.5px] border-[#E8E8E8] px-4 py-3 focus-within:border-[#8A8A8A] lg:h-[87px] lg:gap-8 lg:rounded-2xl lg:border-0 lg:bg-white lg:px-6 lg:py-5">
+            <label className="flex min-w-0 flex-1 flex-col gap-0.5 lg:gap-1">
               <span className="text-[11px] leading-[13.2px] font-semibold text-[#F40009] lg:text-xs lg:leading-[14.4px] lg:font-normal">
                 Enter Text
               </span>
@@ -130,7 +128,7 @@ export default function CreatePage() {
                 aria-invalid={Boolean(error) || live.status === "rejected"}
                 className="w-full bg-transparent text-base leading-[19.2px] text-[#111111] outline-none placeholder:text-[#B5B5B5] lg:text-2xl lg:leading-[28.8px]"
               />
-            </span>
+            </label>
             <span className="text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:hidden" aria-live="polite">
               {textLength(text)}/{MAX_TEXT_LENGTH}
             </span>
@@ -144,8 +142,8 @@ export default function CreatePage() {
                 <path d="M8 16L16 8M9.5 8H16v6.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-          </label>
-          <p className="hidden text-right text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:block">
+          </div>
+          <p className="hidden text-right text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:block" aria-live="polite">
             Max character allowed {textLength(text)}/{MAX_TEXT_LENGTH}
           </p>
           {error ? <FieldError>{error}</FieldError> : <LiveCheck status={live.status} />}
@@ -194,8 +192,10 @@ export default function CreatePage() {
               aria-labelledby="dc-vibe"
               className="grid h-[132px] grid-cols-[repeat(3,minmax(0,115px))] justify-between gap-x-2 gap-y-2 overflow-y-auto [scrollbar-width:none] lg:h-auto lg:min-h-0 lg:grid-cols-[repeat(3,minmax(0,160px))] lg:content-start lg:justify-start lg:gap-x-4 lg:gap-y-[15px]"
             >
-              {shown.map((d) => {
+              {DESIGNS.map((d) => {
                 const selected = d.id === designId;
+                // The filter only exists on web: phones have no chips to undo it, so they always see every design.
+                const filteredOut = category !== "All" && d.category !== category;
                 return (
                   <button
                     key={d.id}
@@ -204,7 +204,7 @@ export default function CreatePage() {
                     aria-checked={selected}
                     aria-label={d.name}
                     onClick={() => update({ designId: d.id })}
-                    className={`relative h-20 overflow-hidden rounded-lg border bg-white transition lg:h-[140px] ${
+                    className={`relative h-20 overflow-hidden rounded-lg border bg-white transition lg:h-[140px] ${filteredOut ? "lg:hidden" : ""} ${
                       selected
                         ? "border-black shadow-[0_3px_12px_rgba(0,0,0,0.08)] lg:shadow-[0_3.6px_14.4px_rgba(0,0,0,0.08)]"
                         : "border-[#E8E8E8]"

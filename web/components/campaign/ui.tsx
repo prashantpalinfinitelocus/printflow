@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, type ButtonHTMLAttributes, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 
 /** The black 48px pill every Figma screen uses for its primary action. */
 export function PillButton({
@@ -8,7 +8,7 @@ export function PillButton({
   children,
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean }) {
+}: ComponentProps<"button"> & { busy?: boolean }) {
   return (
     <button
       {...props}
@@ -84,7 +84,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         style={{ "--dc-top": top } as CSSProperties}
-        className={`animate-rise absolute top-(--dc-top) left-1/2 w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] lg:top-1/2 lg:w-[480px] lg:max-w-[480px] lg:-translate-y-1/2 lg:rounded-3xl ${className}`}
+        className={`animate-rise absolute top-(--dc-top) left-1/2 w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] lg:top-1/2 lg:max-h-[calc(100dvh-32px)] lg:w-[480px] lg:max-w-[480px] lg:-translate-y-1/2 lg:overflow-y-auto lg:rounded-3xl ${className}`}
       >
         {onClose && (
           <button
