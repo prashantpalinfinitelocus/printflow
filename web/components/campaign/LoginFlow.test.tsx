@@ -136,6 +136,11 @@ describe("details step", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Login is not available right now.");
   });
 
+  it("spells the brand name right in the agreement", () => {
+    renderFlow();
+    expect(screen.getByRole("checkbox")).toHaveAccessibleName("I agree to Diet Coke’s terms of usage");
+  });
+
   it("links \"terms of usage\" to the Terms page", () => {
     renderFlow();
     expect(screen.getByRole("link", { name: "terms of usage" })).toHaveAttribute("href", "/user-campaign/terms");

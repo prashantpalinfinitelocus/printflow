@@ -189,7 +189,7 @@ function DetailsModal({
                   className="m-0.5 h-3 w-3 accent-[#1C1B1F]"
                 />
                 <span>
-                  I Agree to Diet cokes’{" "}
+                  I agree to Diet Coke’s{" "}
                   <a href="/user-campaign/terms" className="underline underline-offset-2">
                     terms of usage
                   </a>

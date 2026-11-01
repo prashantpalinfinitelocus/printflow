@@ -100,7 +100,13 @@ export default function CreatePage() {
         laptop it shrinks to stay 32px above the text card, as in Figma, rather than overlap it.
       */}
       <div className="absolute top-[52px] left-1/2 h-[calc(100dvh-408px)] -translate-x-1/2 lg:top-[10.33dvh] lg:left-[26.67%] lg:h-[min(68.22dvh,calc(89.67dvh-208px))]">
-        <CanPreview designId={designId} text={text.trim()} priority className="h-full" />
+        {/* Text the checker turned down never shows on the can, so it can't be screenshotted on the product. */}
+        <CanPreview
+          designId={designId}
+          text={live.status === "rejected" || rejected || textRejected ? "" : text.trim()}
+          priority
+          className="h-full"
+        />
       </div>
 
       {/* On web the panel's two halves are placed on the screen separately, so the form steps aside. */}
@@ -129,7 +135,8 @@ export default function CreatePage() {
                 autoComplete="off"
                 enterKeyHint="done"
                 aria-invalid={Boolean(error) || live.status === "rejected"}
-                className="w-full bg-transparent text-base leading-[19.2px] text-[#111111] outline-none placeholder:text-[#B5B5B5] lg:text-2xl lg:leading-[28.8px]"
+                // At 24px the web placeholder ran under the arrow button ("Your name or a short r"); 16px fits.
+                className="w-full bg-transparent text-base leading-[19.2px] text-[#111111] outline-none placeholder:text-[#B5B5B5] lg:text-2xl lg:leading-[28.8px] lg:placeholder:text-base"
               />
             </label>
             <span className="text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:hidden" aria-live="polite">
@@ -147,7 +154,7 @@ export default function CreatePage() {
             </button>
           </div>
           <p className="hidden text-right text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:block" aria-live="polite">
-            Max character allowed {textLength(text)}/{MAX_TEXT_LENGTH}
+            Max characters allowed {textLength(text)}/{MAX_TEXT_LENGTH}
           </p>
           {error ? <FieldError>{error}</FieldError> : <LiveCheck status={live.status} />}
         </div>
@@ -269,7 +276,7 @@ function HeadsUp({ onDone }: { onDone: () => void }) {
             <ol className="list-decimal pl-5 text-xs leading-[18px] text-[#8A8A8A]">
               <li>Your main-character moment starts at 10AM and ends at 10PM</li>
               <li>Not every entry makes the cut. Only a few DC Paglus win the daily draw.</li>
-              <li>If you win you receive an email soon.</li>
+              <li>If you win, you’ll receive an email soon.</li>
             </ol>
           </div>
           <PillButton type="button" onClick={onDone} className="lg:mx-auto lg:w-[280px]">

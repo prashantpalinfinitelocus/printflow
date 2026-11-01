@@ -27,6 +27,7 @@ describe("heads-up popup", () => {
     expect(dialog).toHaveTextContent("Your main-character moment starts at 10AM and ends at 10PM")
     expect(dialog).not.toHaveTextContent("IST");
     expect(dialog).toHaveTextContent(/not every entry makes the cut/i);
+    expect(dialog).toHaveTextContent("If you win, you’ll receive an email soon.");
   });
 
   it("stays dismissed once acknowledged", async () => {
@@ -224,6 +225,22 @@ describe("live check while typing", () => {
     expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
   });
 
+  it("keeps flagged text off the can, so it can't be screenshotted on the product", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockResolvedValue("REJECTED");
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "stupid");
+
+    await screen.findByText(FRIENDLY, {}, { timeout: 3000 });
+    expect(screen.getByRole("img", { name: /^Diet Coke can/ })).not.toHaveAccessibleName(/stupid/i);
+    expect(screen.queryByText("STUPID")).not.toBeInTheDocument();
+  });
+
+  it("keeps text the server turned down off the can when coming back from the preview", async () => {
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "stupid", textRejected: true });
+    await screen.findByRole("dialog", { name: "Let’s keep it friendly" });
+    expect(screen.queryByText("STUPID")).not.toBeInTheDocument();
+  });
+
   it("opens the friendly-content popup on submit from the flagged verdict, without asking again", async () => {
     const moderate = vi.spyOn(campaignApi, "moderateText").mockResolvedValue("REJECTED");
     renderCampaign(<CreatePage />, LOGGED_IN);
@@ -381,6 +398,11 @@ describe("web layout (1024px and up, Figma 356:1111)", () => {
     expect(screen.getByRole("radio", { name: "Polar bears heart" })).not.toHaveClass("lg:hidden");
   });
 
+  it("sets the web placeholder at 16px so it fits beside the arrow instead of being cut off", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    expect(await textField()).toHaveClass("lg:text-2xl", "lg:placeholder:text-base");
+  });
+
   it("keeps the arrow button out of the text field's label, so the field's name stays 'Enter Text'", async () => {
     renderCampaign(<CreatePage />, LOGGED_IN);
     expect(await textField()).toHaveAccessibleName("Enter Text");
@@ -399,7 +421,7 @@ describe("web layout (1024px and up, Figma 356:1111)", () => {
   it("shows the web character count under the card", async () => {
     renderCampaign(<CreatePage />, LOGGED_IN);
     await userEvent.type(await textField(), "Aanya");
-    expect(screen.getByText("Max character allowed 5/12")).toHaveClass("hidden", "lg:block");
+    expect(screen.getByText("Max characters allowed 5/12")).toHaveClass("hidden", "lg:block");
   });
 
   it("splits into Figma's left panel (can and text) and right panel (vibes)", async () => {
