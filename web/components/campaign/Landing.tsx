@@ -8,6 +8,8 @@ import hero from "@/app/user-campaign/_assets/hero.png";
 import logo from "@/app/user-campaign/_assets/logo.png";
 import webBg from "@/app/user-campaign/_assets/web-bg.jpg";
 import webHands from "@/app/user-campaign/_assets/web-hands.png";
+import webLandingCan from "@/app/user-campaign/_assets/web-landing-can.png";
+import webLandingHands from "@/app/user-campaign/_assets/web-landing-hands.png";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { LoginFlow } from "@/components/campaign/LoginFlow";
 import { PillButton } from "@/components/campaign/ui";
@@ -16,7 +18,9 @@ import { useCampaign } from "@/lib/campaign/store";
 
 
 const HERO_SIZES = "120vw";
-const HANDS_SIZES = "(max-width: 1023px) 100vw, 60vw";
+const HANDS_SIZES = "100vw";
+const WEB_HANDS_SIZES = "86vh";
+const WEB_CAN_SIZES = "25vh";
 
 /** On hover or keyboard focus the text darkens to black and a 2px black underline grows out from the middle. */
 const LEGAL_LINK =
@@ -51,28 +55,41 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         </div>
       </div>
       {/*
-        Web (1440 × 900): the sunlight photo is 2167 × 1220 from 148px above the top, and the
-        can-in-hands cut-out is 1045px tall at x 82, y −4. The cut-out is always 116.11dvh tall so
-        its cut wrist stays below the screen; on a narrow desktop it slides left rather than shrink,
-        its right edge held at 65.28% where Figma's ends, clear of the copy.
+        Web (1440 × 900, Figma 369:59): the sunlight photo is 2167 × 1220 from 148px above the top.
+        The hands photo is 771 × 1032 at x 149, y −31.5 (its top-left cut just off the screen), and the can, a separate photo, is 218 × 540,
+        tilted 9° and centred at (388, 423) between them, behind the fingers. Sized in dvh so both cut
+        edges of the hands photo stay off the screen; on a narrow desktop the group slides left rather
+        than shrink, its right edge held at 63.89%, clear of the copy.
         Tablets have no Figma design: cropping the phone photo to a wide screen cut the can, so they
-        use the same backdrop with the cut-out centred and filling the height above the copy, its wrist
-        under the fade; on a narrow tablet its sides run off the screen so no cut edge shows.
+        use the same backdrop with the flattened can-in-hands cut-out centred and filling the height
+        above the copy, its wrist under the fade; on a narrow tablet its sides run off the screen.
         Each size preloads only its own photos; the images stay lazy, so a hidden one is never fetched.
       */}
       <ImagePreload src={hero} sizes={HERO_SIZES} media="(max-width: 480px)" />
       <ImagePreload src={webBg} sizes="150vw" media="(min-width: 481px)" />
-      <ImagePreload src={webHands} sizes={HANDS_SIZES} media="(min-width: 481px)" />
+      <ImagePreload src={webHands} sizes={HANDS_SIZES} media="(min-width: 481px) and (max-width: 1023px)" />
+      <ImagePreload src={webLandingHands} sizes={WEB_HANDS_SIZES} media="(min-width: 1024px)" />
+      <ImagePreload src={webLandingCan} sizes={WEB_CAN_SIZES} media="(min-width: 1024px)" />
       <div data-web-backdrop className="absolute inset-0 hidden min-[481px]:block" aria-hidden="true">
         <div className="absolute top-[-16.44%] left-0 h-[135.56%] w-[150.49%]">
           <Image quality={IMAGE_QUALITY} src={webBg} alt="" fill sizes="150vw" className="object-cover" />
         </div>
         <Image quality={IMAGE_QUALITY}
+          data-tablet-hands
           src={webHands}
           alt=""
           sizes={HANDS_SIZES}
-          className="absolute top-0 left-1/2 h-[calc(100dvh-200px)] w-auto max-w-none -translate-x-1/2 lg:top-[-0.44%] lg:left-[min(5.69%,calc(65.28%-95.3dvh))] lg:h-[116.11dvh] lg:translate-x-0"
+          className="absolute top-0 left-1/2 h-[calc(100dvh-200px)] w-auto max-w-none -translate-x-1/2 lg:hidden"
         />
+        <div
+          data-web-hands
+          className="absolute hidden aspect-[896/1200] lg:top-[-3.5dvh] lg:left-[min(10.35%,calc(63.89%-85.67dvh))] lg:block lg:h-[114.67dvh]"
+        >
+          <div className="absolute top-[17.87%] left-[16.87%] h-[52.33%] w-[28.27%] rotate-[9deg]">
+            <Image quality={IMAGE_QUALITY} src={webLandingCan} alt="" fill sizes={WEB_CAN_SIZES} className="object-contain" />
+          </div>
+          <Image quality={IMAGE_QUALITY} src={webLandingHands} alt="" fill sizes={WEB_HANDS_SIZES} className="object-contain" />
+        </div>
       </div>
       {/* Figma "Rectangle 3": 354px tall at the foot, clear until 8% then white by 33.5%. */}
       <div

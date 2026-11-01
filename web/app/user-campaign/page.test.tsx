@@ -25,7 +25,6 @@ describe("Landing", () => {
     await screen.findByRole("heading", { name: "Make it yours" });
     const web = container.querySelector("[data-web-backdrop]");
     expect(web).toHaveClass("hidden", "min-[481px]:block");
-    expect(web?.querySelectorAll("img")).toHaveLength(2);
     expect(container.querySelector("[data-mobile-hero]")).toHaveClass("min-[481px]:hidden");
     // Phones and tablets fade the photo into the white behind the copy; the web design has no fade.
     expect(container.querySelector("[data-fade]")).toHaveClass("lg:hidden");
@@ -34,30 +33,47 @@ describe("Landing", () => {
   it("on tablets fits the whole can-in-hands cut-out above the copy, centred", async () => {
     const { container } = renderCampaign(await landing());
     await screen.findByRole("heading", { name: "Make it yours" });
-    const hands = container.querySelectorAll("[data-web-backdrop] img")[1];
+    const hands = container.querySelector("[data-tablet-hands]");
     // Always the full height above the copy, so the cut wrist sits under the white fade; on a
     // narrow tablet the sides run off the screen rather than the photo shrinking and showing its edges.
-    expect(hands).toHaveClass("top-0", "left-1/2", "-translate-x-1/2", "h-[calc(100dvh-200px)]");
+    expect(hands).toHaveClass("top-0", "left-1/2", "-translate-x-1/2", "h-[calc(100dvh-200px)]", "lg:hidden");
   });
 
-  it("on web always runs the cut-out off the foot of the screen, sliding it left on narrow screens rather than shrinking it", async () => {
+  it("on web builds Figma 369:59 from the hands and the separate can, the can tilted between them", async () => {
     const { container } = renderCampaign(await landing());
     await screen.findByRole("heading", { name: "Make it yours" });
-    const hands = container.querySelectorAll("[data-web-backdrop] img")[1];
-    // 116.11dvh tall (Figma 1045 of 900), so the cut wrist is always below the screen; its right
-    // edge stays left of 65.28%, where Figma's ends, so the hand never runs into the copy.
-    expect(hands).toHaveClass("lg:h-[116.11dvh]", "lg:top-[-0.44%]", "lg:left-[min(5.69%,calc(65.28%-95.3dvh))]", "lg:translate-x-0");
+    const group = container.querySelector("[data-web-hands]");
+    expect(group).toHaveClass("hidden", "lg:block");
+    const [can, hands] = [...group!.querySelectorAll("img")];
+    // The can sits behind the hands, so the fingers stay in front of it.
+    expect(decodeURIComponent(can.getAttribute("src")!)).toMatch(/web-landing-can/);
+    expect(decodeURIComponent(hands.getAttribute("src")!)).toMatch(/web-landing-hands/);
+    expect(can.parentElement).toHaveClass("rotate-[9deg]");
+  });
+
+  it("on web runs the hands off the top and foot of the screen and slides them left on narrow screens rather than shrinking them", async () => {
+    const { container } = renderCampaign(await landing());
+    await screen.findByRole("heading", { name: "Make it yours" });
+    // 114.67dvh tall from 3.5dvh above the top, so both cut edges of the hands photo stay off screen;
+    // the group's right edge stays left of 63.89% of the width, clear of the copy.
+    expect(container.querySelector("[data-web-hands]")).toHaveClass(
+      "lg:top-[-3.5dvh]",
+      "lg:h-[114.67dvh]",
+      "lg:left-[min(10.35%,calc(63.89%-85.67dvh))]",
+    );
   });
 
   it("preloads only the photos each screen size shows, so phones never fetch the web backdrop and vice versa", async () => {
     renderCampaign(await landing());
     await screen.findByRole("heading", { name: "Make it yours" });
     const preloads = [...document.head.querySelectorAll<HTMLLinkElement>('link[rel="preload"][as="image"]')];
-    const phone = preloads.filter((l) => l.media === "(max-width: 480px)");
-    const web = preloads.filter((l) => l.media === "(min-width: 481px)");
-    expect(phone.map((l) => l.getAttribute("imagesrcset") ?? l.href).join()).toMatch(/hero/);
-    expect(web.map((l) => l.getAttribute("imagesrcset") ?? l.href).join()).toMatch(/web-bg/);
-    expect(web.map((l) => l.getAttribute("imagesrcset") ?? l.href).join()).toMatch(/web-hands/);
+    const srcs = (media: string) =>
+      preloads.filter((l) => l.media === media).map((l) => l.getAttribute("imagesrcset") ?? l.href).join();
+    expect(srcs("(max-width: 480px)")).toMatch(/hero/);
+    expect(srcs("(min-width: 481px)")).toMatch(/web-bg/);
+    expect(srcs("(min-width: 481px) and (max-width: 1023px)")).toMatch(/web-hands/);
+    expect(srcs("(min-width: 1024px)")).toMatch(/web-landing-hands/);
+    expect(srcs("(min-width: 1024px)")).toMatch(/web-landing-can/);
     // No unscoped preload: that would make every device download every photo.
     expect(preloads.filter((l) => !l.media)).toHaveLength(0);
   });
