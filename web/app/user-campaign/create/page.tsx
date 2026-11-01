@@ -99,7 +99,7 @@ export default function CreatePage() {
         Web: 614px tall from 93px down on the 900px screen, centred in the left panel. On a shorter
         laptop it shrinks to stay 32px above the text card, as in Figma, rather than overlap it.
       */}
-      <div className="absolute top-[52px] left-1/2 h-[calc(100dvh-408px)] -translate-x-1/2 lg:top-[10.33dvh] lg:left-[26.67%] lg:h-[min(68.22dvh,calc(89.67dvh-193px))]">
+      <div className="absolute top-[52px] left-1/2 h-[calc(100dvh-408px)] -translate-x-1/2 lg:top-[10.33dvh] lg:left-[26.67%] lg:h-[min(68.22dvh,calc(89.67dvh-208px))]">
         <CanPreview designId={designId} text={text.trim()} priority className="h-full" />
       </div>
 
@@ -110,8 +110,8 @@ export default function CreatePage() {
         className="absolute inset-x-0 bottom-0 flex h-[340px] flex-col gap-3 rounded-t-[28px] border border-[#EDEDED] bg-white px-[max(19px,calc(50%-221px))] pt-5 pb-2 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] lg:contents"
       >
         {/* Web: Figma "Frame 110", the 420px text card 739px down, centred under the can; never closer than
-            161px to the foot, so its status line stays on a short laptop screen. */}
-        <div className="flex flex-col gap-1 lg:absolute lg:top-[min(82.11dvh,calc(100dvh-161px))] lg:left-[26.67%] lg:w-[420px] lg:-translate-x-1/2 lg:gap-2">
+            176px to the foot, so even the two-line rejection message stays 28px clear of it. */}
+        <div className="flex flex-col gap-1 lg:absolute lg:top-[min(82.11dvh,calc(100dvh-176px))] lg:left-[26.67%] lg:w-[420px] lg:-translate-x-1/2 lg:gap-2">
           <div className="flex h-[59px] items-center gap-2 rounded-[14px] border-[0.5px] border-[#E8E8E8] px-4 py-3 focus-within:border-[#8A8A8A] lg:h-[87px] lg:gap-8 lg:rounded-2xl lg:border-0 lg:bg-white lg:px-6 lg:py-5">
             <label className="flex min-w-0 flex-1 flex-col gap-0.5 lg:gap-1">
               <span className="text-[11px] leading-[13.2px] font-semibold text-[#F40009] lg:text-xs lg:leading-[14.4px] lg:font-normal">

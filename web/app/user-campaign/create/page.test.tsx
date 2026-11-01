@@ -52,14 +52,15 @@ describe("tablet layout (481px to 1023px)", () => {
 });
 
 describe("short laptop screens (under 900px tall)", () => {
-  it("keeps the text card and its status line on screen, with the can 32px above the card as in Figma", async () => {
+  it("keeps the text card and a two-line status message on screen, with the can 32px above the card as in Figma", async () => {
     const { container } = renderCampaign(<CreatePage />, LOGGED_IN);
     const card = (await textField()).closest("label")!.parentElement!.parentElement!;
-    // Figma 900 tall: the card starts 739px down, 161px above the foot; never lower than that.
-    expect(card).toHaveClass("lg:top-[min(82.11dvh,calc(100dvh-161px))]");
+    // Card, counter and the two-line rejection message take 148px; 176px keeps them 28px off the foot,
+    // the room Figma leaves under its one-line message.
+    expect(card).toHaveClass("lg:top-[min(82.11dvh,calc(100dvh-176px))]");
     // The can (from 10.33dvh) ends 32px above the card, so it shrinks with the screen rather than overlap.
     const can = container.querySelector('[role="img"]')!.parentElement!;
-    expect(can).toHaveClass("lg:top-[10.33dvh]", "lg:h-[min(68.22dvh,calc(89.67dvh-193px))]");
+    expect(can).toHaveClass("lg:top-[10.33dvh]", "lg:h-[min(68.22dvh,calc(89.67dvh-208px))]");
   });
 });
 
