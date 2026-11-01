@@ -131,6 +131,14 @@ export default function CreatePage() {
                   update({ text: Array.from(e.target.value).slice(0, MAX_TEXT_LENGTH).join("") });
                   setError(null);
                 }}
+                onKeyDown={(e) => {
+                  // On phones the keypad's Done only closes the keypad, so the text can be seen on the can;
+                  // "Check my vibe" stays the way to the preview. Web (lg) keeps Enter as submit.
+                  if (e.key === "Enter" && !window.matchMedia("(min-width: 1024px)").matches) {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  }
+                }}
                 placeholder="Your name or a short message"
                 autoComplete="off"
                 enterKeyHint="done"
