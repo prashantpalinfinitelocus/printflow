@@ -88,11 +88,11 @@ else
   gcloud secrets add-iam-policy-binding "$SECRET" --project "$PROJECT" --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
 fi
 
-# 3. A one-off job from the API image. The data directories point at /tmp: this job mounts no bucket and writes nothing there.
+# 3. A one-off job from the API image. (--args needs the = form: a value starting with "-m" is otherwise read as a flag.) The data directories point at /tmp: this job mounts no bucket and writes nothing there.
 Q=1 g run jobs delete "$JOB" --project "$PROJECT" --region "$REGION" --quiet || true
 g run jobs create "$JOB" --project "$PROJECT" --region "$REGION" \
   --image "${IMAGE:-}" --service-account "${SA:-}" \
-  --command python --args "-m,scripts.create_campaign_admin,$USER_ID" \
+  --command python "--args=-m,scripts.create_campaign_admin,$USER_ID" \
   --set-secrets "PRINTFLOW_DATABASE_URL=PRINTFLOW_DATABASE_URL:latest,PRINTFLOW_JWT_SECRET=PRINTFLOW_JWT_SECRET:latest,CAMPAIGN_ADMIN_PASSWORD=$SECRET:latest" \
   --set-env-vars "PRINTFLOW_DATA_DIR=/tmp/pf,PRINTFLOW_INBOX_DIR=/tmp/pf/inbox,PRINTFLOW_PSD_DIR=/tmp/pf/psd,PRINTFLOW_OUTPUT_DIR=/tmp/pf/output,PRINTFLOW_FONTS_DIR=/tmp/pf/fonts" \
   "${NETWORK_ARGS[@]}" --max-retries 0 --task-timeout 300

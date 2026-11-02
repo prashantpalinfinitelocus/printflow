@@ -34,6 +34,13 @@ SERVICE_JSON = {
 
 FAKE_GCLOUD = r"""#!/usr/bin/env bash
 echo "$*" >> "$FAKE_LOG"
+# Like the real gcloud's argument parser: a value starting with "-" after a bare flag is taken as another flag.
+args=("$@")
+for i in "${!args[@]}"; do
+  if [[ "${args[$i]}" == "--args" && "${args[$((i+1))]:-}" == -* ]]; then
+    echo "ERROR: argument --args: expected one argument" >&2; exit 2
+  fi
+done
 case "$*" in
   "run services describe"*) cat "$FAKE_SERVICE_JSON" ;;
   "secrets create"*) cat > "$FAKE_STDIN" ;;
@@ -100,7 +107,7 @@ def test_the_job_copies_the_api_services_image_account_and_network(sandbox):
     assert "--service-account runtime-sa@p.iam.gserviceaccount.com" in create
     assert "--network projects/p/global/networks/vpc1" in create
     assert "--subnet projects/p/regions/r/subnetworks/sub1" in create
-    assert "--args -m,scripts.create_campaign_admin,campaign-admin" in create
+    assert "--args=-m,scripts.create_campaign_admin,campaign-admin" in create
     assert "PRINTFLOW_DATABASE_URL=PRINTFLOW_DATABASE_URL:latest" in create
     assert "CAMPAIGN_ADMIN_PASSWORD=PRINTFLOW_CAMPAIGN_ADMIN_PASSWORD_BOOTSTRAP:latest" in create
 
