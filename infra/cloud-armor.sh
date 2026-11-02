@@ -29,7 +29,8 @@ LOGIN_RE='^(/offline-store/api/auth/login|/backend/auth/login|/user-campaign/api
 OTP_RE='^(/offline-store/api/campaign|/backend/campaign)/otp/(send|verify)$'
 # Consumer campaign text checks and entries: the calls a script would hammer (each check is a paid Gemini call).
 CAMPAIGN_RE='^(/offline-store/api/campaign|/backend/campaign)/(moderate|entries)$'
-UPLOAD_RE='^(/offline-store/api/proxy|/backend)/(print-formats/upload-psd|print-formats/upload-font|csv/upload)$'
+# PrintFlow's uploads, and the campaign admin's (a design's sticker and its PSD), through the web app or direct.
+UPLOAD_RE='^((/offline-store/api/proxy|/backend)/(print-formats/upload-psd|print-formats/upload-font|csv/upload)|(/user-campaign/api/admin|/backend/campaign-admin)/(catalog|catalog/[A-Z0-9_]+/sticker|designs/[A-Z0-9_]+/psd))$'
 
 WAF_SETS=(sqli-v33-stable xss-v33-stable lfi-v33-stable rfi-v33-stable rce-v33-stable
           protocolattack-v33-stable scannerdetection-v33-stable)

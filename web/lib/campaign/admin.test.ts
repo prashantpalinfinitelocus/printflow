@@ -36,6 +36,14 @@ describe("campaign admin API client", () => {
     );
   });
 
+  it("explains an upload the site's firewall blocked before it reached the server", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<title>403</title>403 Forbidden", { status: 403, headers: { "content-type": "text/html" } })));
+
+    await expect(adminUpload("/catalog", new File(["x"], "s.png"))).rejects.toEqual(
+      new AdminApiError("The site's firewall blocked this upload before it reached the server. Ask whoever manages the site to allow campaign admin uploads.", 403),
+    );
+  });
+
   it("uploads a file as a form", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: 1 }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

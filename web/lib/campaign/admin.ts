@@ -40,6 +40,10 @@ function describe(data: { detail?: unknown } | null, status: number): string {
     const field = first.loc?.filter((part) => part !== "body").join(".");
     return field ? `${field}: ${first.msg}` : first.msg;
   }
+  // Cloud Armor answers a blocked request itself, with an HTML page rather than the API's JSON.
+  if (status === 403) {
+    return "The site's firewall blocked this upload before it reached the server. Ask whoever manages the site to allow campaign admin uploads.";
+  }
   return `Request failed (${status})`;
 }
 
