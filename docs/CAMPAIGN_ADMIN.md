@@ -10,13 +10,27 @@ The campaign's admin is its own system, apart from PrintFlow (the offline-store 
 
 ## Creating an admin
 
-On the API host (Cloud Run job or a shell with the API's environment):
+**On a deployed environment (test):** run the runbook from a machine where you are signed in with `gcloud auth login`:
+
+```
+infra/create-campaign-admin.sh                    # user ID "campaign-admin", generated password
+USER_ID=ankit infra/create-campaign-admin.sh      # another user ID
+DRY_RUN=1 infra/create-campaign-admin.sh          # show the steps, change nothing
+```
+
+The database is on a private IP, so the script runs a short-lived Cloud Run job from the API's own image. The password
+reaches the job through a temporary Secret Manager secret (never a command line), only a bcrypt hash is stored in
+`campaign_admins`, and the job and the secret are deleted afterwards even if the run fails. The password is printed once
+at the end: hand it over through a password manager. Running it again for the same user ID sets a new password.
+
+**Locally, or in any shell with the API's environment:**
 
 ```
 python -m scripts.create_campaign_admin <user-id>
 ```
 
 - It asks for the password twice. Passwords must be at least 10 characters, and user IDs at most 64.
+- With no terminal (a job), set `CAMPAIGN_ADMIN_PASSWORD` instead and it will not prompt.
 - Running it again for an existing user ID sets a new password and signs out that admin's existing sessions.
 - After `PRINTFLOW_CAMPAIGN_ADMIN_MAX_FAILED_LOGINS` wrong passwords in a row (default 5), the account is locked for `PRINTFLOW_CAMPAIGN_ADMIN_LOCK_MINUTES` (default 15).
 

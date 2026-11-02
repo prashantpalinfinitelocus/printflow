@@ -6,11 +6,16 @@ the other's pages.
 
 Run:  python -m scripts.create_campaign_admin <user-id>
       (asks for the password, so it never lands in shell history)
+
+A deployed job has no terminal, so it can pass the password in the CAMPAIGN_ADMIN_PASSWORD
+environment variable instead (from Secret Manager, never on a command line). Either way only a
+bcrypt hash is stored; the password itself is never written anywhere by this script.
 """
 
 from __future__ import annotations
 
 import getpass
+import os
 import sys
 from pathlib import Path
 
@@ -21,6 +26,8 @@ from app.models import CampaignAdmin  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 MIN_PASSWORD = 10
+#: Where a job without a terminal gets the password.
+PASSWORD_ENV = "CAMPAIGN_ADMIN_PASSWORD"
 #: The username column's length.
 MAX_USER_ID = 64
 
@@ -33,13 +40,19 @@ def main(argv: list[str]) -> int:
     if len(username) > MAX_USER_ID:
         print(f"The user ID must be at most {MAX_USER_ID} characters.", file=sys.stderr)
         return 2
-    password = getpass.getpass(f"Password for {username}: ")
-    if len(password) < MIN_PASSWORD:
-        print(f"The password must be at least {MIN_PASSWORD} characters.", file=sys.stderr)
-        return 1
-    if getpass.getpass("Type it again: ") != password:
-        print("The passwords did not match.", file=sys.stderr)
-        return 1
+    password = os.environ.get(PASSWORD_ENV, "")
+    if password:
+        if len(password) < MIN_PASSWORD:
+            print(f"The password must be at least {MIN_PASSWORD} characters.", file=sys.stderr)
+            return 1
+    else:
+        password = getpass.getpass(f"Password for {username}: ")
+        if len(password) < MIN_PASSWORD:
+            print(f"The password must be at least {MIN_PASSWORD} characters.", file=sys.stderr)
+            return 1
+        if getpass.getpass("Type it again: ") != password:
+            print("The passwords did not match.", file=sys.stderr)
+            return 1
 
     db = SessionLocal()
     try:
