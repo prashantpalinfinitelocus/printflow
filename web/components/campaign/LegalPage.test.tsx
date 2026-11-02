@@ -12,7 +12,7 @@ describe("LegalPage", () => {
     const header = screen.getByRole("banner");
     expect(header).toHaveClass("sticky", "top-0");
     expect(header).not.toHaveClass("border-b");
-    expect(within(header).getByRole("link", { name: "Back" })).toHaveAttribute("href", "/user-campaign");
+    expect(within(header).getByRole("link", { name: "Back" })).toHaveAttribute("href", "/");
     expect(within(header).getByRole("link", { name: "Back" }).className).not.toMatch(/hover:/);
     expect(within(header).getByRole("img", { name: "Diet Coke" })).toBeInTheDocument();
   });

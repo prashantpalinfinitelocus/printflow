@@ -1,20 +1,19 @@
 # Consumer campaign: configuration and routing
 
-The consumer journey is served at **`/user-campaign`** on the domain root. The staff app stays under
-**`/offline-store`**. They are separate URL spaces served by the same web container.
+The consumer campaign is served at the **domain root** (`/`, with the rest of the journey under `/user-campaign/*`). The
+staff app stays under **`/offline-store`**. They are separate URL spaces served by the same web container.
 
 ## Routing
 
 | URL | What | Notes |
 |---|---|---|
-| `/user-campaign`, `/user-campaign/*` | Consumer journey | `web/next.config.ts` proxies it to the server's own `/offline-store/user-campaign/*` (Next refuses an internal rewrite out of a basePath). In-journey navigation is a full page load (`web/lib/campaign/nav.ts`) so the address bar stays on the root URL. |
-| `/offline-store/*` | Staff app, static files (`/offline-store/_next/*`), the campaign proxy (`/offline-store/api/campaign/*`) | Unchanged. |
+| `/` | Consumer landing (the campaign) | The bare domain. `web/next.config.ts` proxies it to the server's own `/offline-store/user-campaign` (Next refuses an internal rewrite out of a basePath). `/?login=1` opens the login. |
+| `/user-campaign` | Old landing address | Redirects (307) to `/`, keeping the query. |
+| `/user-campaign/*` | Rest of the journey: `create`, `preview`, `success`, `terms`, `privacy`, `admin` | Proxied the same way. In-journey navigation is a full page load (`web/lib/campaign/nav.ts`) so the address bar stays on the root domain. |
+| `/offline-store/*` | Staff app, static files (`/offline-store/_next/*`), the campaign proxy (`/offline-store/api/campaign/*`) | Unchanged. Staff now open `/offline-store` directly: the bare domain used to redirect there and no longer does. |
 | `/campaign/*` | Old URL | No longer served (404). |
 
-**Load balancer (action needed, not applied from this repo):** add a path rule sending `/user-campaign/*` to the web
-backend service, next to the existing `/offline-store/*` rule. Until it exists, `/user-campaign` is only reachable
-as `/offline-store/user-campaign`. The rewrite target assumes the container listens on port 3000 (the Dockerfile sets
-`PORT=3000`); it is fixed when the image is built.
+**Load balancer:** on the test domain no new rule was needed (unknown paths already reach the web service). Verify the same on production before launch, including that `/` itself reaches the web service. The rewrite target assumes the container listens on port 3000 (the Dockerfile sets `PORT=3000`); it is fixed when the image is built.
 
 ## OTP behaviour
 

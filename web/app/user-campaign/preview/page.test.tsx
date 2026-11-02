@@ -54,7 +54,7 @@ async function imageReady(name: "Download My Can" | "Share My Look") {
 describe("access", () => {
   it("sends a visitor without a session back to log in", async () => {
     renderCampaign(<PreviewPage />);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?login=1"));
   });
 
   it("sends text that moderation has not approved back to the customiser", async () => {
@@ -221,7 +221,7 @@ describe("entry", () => {
     vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("UNAUTHORIZED", "expired"));
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await makeItHappen());
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?login=1"));
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", approvedText: "Aanya" });
   });
 });

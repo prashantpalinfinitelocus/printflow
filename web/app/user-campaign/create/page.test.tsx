@@ -16,7 +16,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("access", () => {
   it("sends a visitor without a session back to log in", async () => {
     renderCampaign(<CreatePage />);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?login=1"));
   });
 });
 
@@ -163,7 +163,7 @@ describe("Check my vibe", () => {
     renderCampaign(<CreatePage />, { ...LOGGED_IN, designId: "DISCO_BALL" });
     await userEvent.type(await textField(), "Aanya");
     await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?login=1"));
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", designId: "DISCO_BALL" });
   });
 
@@ -355,7 +355,7 @@ describe("live check while typing", () => {
     renderCampaign(<CreatePage />, { ...LOGGED_IN, designId: "DISCO_BALL" });
     await userEvent.type(await textField(), "Aanya");
 
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign?login=1"), { timeout: 3000 });
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?login=1"), { timeout: 3000 });
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", designId: "DISCO_BALL" });
   });
 });

@@ -23,19 +23,22 @@ const config: NextConfig = {
   },
   // Every page lives under /offline-store (see lib/basePath.ts).
   basePath: BASE_PATH,
-  // The bare domain sends every visitor, signed in or not, into the app.
-  // basePath: false matches "/" itself rather than "/offline-store/".
+  // The consumer campaign owns the bare domain: "/" shows its landing, and the old
+  // /user-campaign landing address sends visitors there (the query, such as ?login=1, is kept).
+  // basePath: false matches the root URLs themselves rather than paths under /offline-store.
+  // Staff reach their app at /offline-store, which none of these rules touch.
   async redirects() {
-    return [{ source: "/", destination: BASE_PATH, basePath: false, permanent: false }];
+    return [{ source: "/user-campaign", destination: "/", basePath: false, permanent: false }];
   },
-  // The consumer campaign answers at /user-campaign on the domain root, separate from the
-  // /offline-store staff app. Next serves every route under the basePath and refuses an internal
-  // rewrite out of it, so the root URL is proxied to this same server's /offline-store URL. The
-  // journey then navigates with full page loads (lib/campaign/nav.ts) so the address bar never
-  // drifts into /offline-store. Static files load from /offline-store/_next, which the load
-  // balancer already sends to this service; /user-campaign/* needs the same route (docs/CAMPAIGN_CONFIG.md).
+  // The campaign is served from the domain root, separate from the /offline-store staff app.
+  // Next serves every route under the basePath and refuses an internal rewrite out of it, so the
+  // root URLs are proxied to this same server's /offline-store URLs. The journey then navigates
+  // with full page loads (lib/campaign/nav.ts) so the address bar never drifts into /offline-store.
+  // Static files load from /offline-store/_next, which the load balancer already sends to this
+  // service; /, /user-campaign and /user-campaign/* need the same route (docs/CAMPAIGN_CONFIG.md).
   async rewrites() {
     return [
+      { source: "/", destination: `${SELF_ORIGIN}${BASE_PATH}/user-campaign`, basePath: false },
       {
         source: "/user-campaign/:path*",
         destination: `${SELF_ORIGIN}${BASE_PATH}/user-campaign/:path*`,

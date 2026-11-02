@@ -34,7 +34,7 @@ export default function CreatePage() {
   const live = useLiveModeration(text, { approvedText, onUnauthorized: () => update({ session: null }) });
 
   useEffect(() => {
-    if (ready && !session) router.replace("/user-campaign?login=1");
+    if (ready && !session) router.replace("/?login=1");
   }, [ready, session, router]);
 
   if (!ready || !session) return null;

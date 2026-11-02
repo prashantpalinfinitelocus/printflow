@@ -20,7 +20,19 @@ describe("useCampaignRouter", () => {
     expect(assign).toHaveBeenCalledWith("/user-campaign/create");
   });
 
-  it("replaces the history entry for guard redirects", () => {
+  it("replaces the history entry for guard redirects, back to the landing at the domain root", () => {
+    mountedRouter().replace("/?login=1");
+
+    expect(replace).toHaveBeenCalledWith("/?login=1");
+  });
+
+  it("can go to the landing at the domain root", () => {
+    mountedRouter().push("/");
+
+    expect(assign).toHaveBeenCalledWith("/");
+  });
+
+  it("still accepts the old landing address, which the server sends on to the root", () => {
     mountedRouter().replace("/user-campaign?login=1");
 
     expect(replace).toHaveBeenCalledWith("/user-campaign?login=1");
@@ -32,6 +44,14 @@ describe("useCampaignRouter", () => {
 
     expect(() => router.push("/offline-store/queue")).toThrow();
     expect(() => router.push("//evil.example")).toThrow();
+    expect(() => router.push("/offline-store")).toThrow();
+    expect(() => router.push("/user-campaigns")).toThrow();
+    expect(() => router.push("/login")).toThrow();
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("allows a query on the landing, since it stays on this site", () => {
+    expect(() => mountedRouter().push("/?next=//evil.example")).not.toThrow();
+    expect(assign).toHaveBeenCalledWith("/?next=//evil.example");
   });
 });

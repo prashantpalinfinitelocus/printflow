@@ -62,7 +62,7 @@ export default function PreviewPage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (!session) router.replace("/user-campaign?login=1");
+    if (!session) router.replace("/?login=1");
     else if (!approved) router.replace("/user-campaign/create");
   }, [ready, session, approved, router]);
 

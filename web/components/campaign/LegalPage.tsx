@@ -16,7 +16,7 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
       <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
         <div className="flex h-[72px] w-full items-center justify-between px-6 lg:h-[130px] lg:px-10">
           <a
-            href="/user-campaign"
+            href="/"
             className="flex items-center gap-1.5 text-sm leading-4 font-semibold text-black lg:text-base"
           >
             <span aria-hidden="true">←</span>
