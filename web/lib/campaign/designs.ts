@@ -1,5 +1,7 @@
 import type { StaticImageData } from "next/image";
 
+import { withBasePath } from "@/lib/basePath";
+
 import arcticFriends from "@/app/user-campaign/_assets/stickers/arctic-friends.png";
 import beachVibes from "@/app/user-campaign/_assets/stickers/beach-vibes.png";
 import clinkingBottles from "@/app/user-campaign/_assets/stickers/clinking-bottles.png";
@@ -21,9 +23,11 @@ export interface CanDesign {
   id: string;
   name: string;
   category: Category;
-  sticker: StaticImageData;
-  /** Where Figma places the sticker inside its 115×80 picker card, in px (it may overflow and is clipped). */
-  thumb: { x: number; y: number; w: number; h: number };
+  /** A built-in design's bundled image, or the URL of a sticker an admin uploaded. */
+  sticker: StaticImageData | string;
+  /** Where Figma places the sticker inside its 115×80 picker card, in px (it may overflow and is clipped).
+   *  Added designs have none: their sticker is fitted inside the card. */
+  thumb?: { x: number; y: number; w: number; h: number };
 }
 
 /** In the order the Figma "Pick your vibe" grid shows them (frame 243:872). */
@@ -41,6 +45,24 @@ export const DESIGNS: CanDesign[] = [
 
 export const DEFAULT_DESIGN_ID = "CLINKING_BOTTLES";
 
-/** Unknown ids (stale session, retired design) fall back to the default rather than crash. */
-export const designById = (id: string) =>
-  DESIGNS.find((d) => d.id === id) ?? DESIGNS.find((d) => d.id === DEFAULT_DESIGN_ID)!;
+/** A design an admin added, with its sticker through the campaign's own API route. */
+export const addedDesign = (d: { designId: string; name: string; category: Category; version: number }): CanDesign => ({
+  id: d.designId,
+  name: d.name,
+  category: d.category,
+  sticker: withBasePath(`/api/campaign/designs/${d.designId}/sticker?v=${d.version}`),
+});
+
+/** The sticker's URL, whether it is bundled or uploaded. */
+export const stickerSrc = (design: CanDesign) => (typeof design.sticker === "string" ? design.sticker : design.sticker.src);
+
+/**
+ * The design with this id among those users can pick (`shown`: the built-in ones by default).
+ * An unknown, retired or hidden id falls back to the default design, or the first one still
+ * shown if the default is hidden, rather than crash.
+ */
+export const designById = (id: string, shown: CanDesign[] = DESIGNS) =>
+  shown.find((d) => d.id === id) ??
+  shown.find((d) => d.id === DEFAULT_DESIGN_ID) ??
+  shown[0] ??
+  DESIGNS.find((d) => d.id === DEFAULT_DESIGN_ID)!;

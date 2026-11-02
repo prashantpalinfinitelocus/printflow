@@ -22,6 +22,15 @@ def ist(hh: int, mm: int = 0) -> datetime:
     return datetime(2026, 10, 30, hh, mm, tzinfo=UTC) - timedelta(hours=5, minutes=30)
 
 
+@pytest.fixture(autouse=True)
+def _no_daily_cap(monkeypatch):
+    """These tests share one phone across the session, so its entries would pile up past the
+    5-a-day cap; that cap has its own tests in test_campaign_limits.py."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "campaign_max_entries_per_day", 0)
+
+
 @pytest.fixture
 def clock(monkeypatch):
     """Pins the campaign clock; set `clock.now` to move it."""
@@ -335,7 +344,7 @@ def test_a_retry_after_10pm_still_returns_the_entry_it_made(client, participant,
     assert retry.json()["entry_id"] == first.json()["entry_id"]
 
 
-def test_entries_are_unlimited_with_new_keys(client, participant, clock):
+def test_new_keys_make_new_entries(client, participant, clock):
     a = client.post("/campaign/entries", json=_entry(idempotency_key="many-1"), headers=participant)
     b = client.post("/campaign/entries", json=_entry(idempotency_key="many-2"), headers=participant)
     assert a.json()["entry_id"] != b.json()["entry_id"]

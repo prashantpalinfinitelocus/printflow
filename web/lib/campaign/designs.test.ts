@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_DESIGN_ID, DESIGNS, designById } from "./designs";
+import { DEFAULT_DESIGN_ID, DESIGNS, designById, stickerSrc } from "./designs";
 
 describe("DESIGNS", () => {
   it("lists the nine Figma stickers in grid order", () => {
@@ -18,7 +18,7 @@ describe("DESIGNS", () => {
   });
 
   it("gives every design its own sticker image", () => {
-    const srcs = new Set(DESIGNS.map((d) => d.sticker.src));
+    const srcs = new Set(DESIGNS.map(stickerSrc));
     expect(srcs.size).toBe(9);
   });
 

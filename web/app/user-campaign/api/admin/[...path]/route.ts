@@ -99,3 +99,6 @@ export async function POST(request: NextRequest, ctx: Ctx) {
 export async function PATCH(request: NextRequest, ctx: Ctx) {
   return forward(request, (await ctx.params).path);
 }
+export async function DELETE(request: NextRequest, ctx: Ctx) {
+  return forward(request, (await ctx.params).path);
+}

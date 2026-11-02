@@ -17,7 +17,7 @@ import {
   type WindowState,
 } from "@/lib/campaign/api";
 import { renderCanPng } from "@/lib/campaign/canImage";
-import { designById } from "@/lib/campaign/designs";
+import { useDesigns } from "@/lib/campaign/useDesigns";
 import { canFont } from "@/lib/campaign/fonts";
 import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useCampaign } from "@/lib/campaign/store";
@@ -46,6 +46,7 @@ function saveFile({ file, url }: CanImage) {
 export default function PreviewPage() {
   const router = useCampaignRouter();
   const { ready, session, designId, text, approvedText, pendingEntry, update } = useCampaign();
+  const { find } = useDesigns();
   const [windowState, setWindowState] = useState<WindowState | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -219,7 +220,7 @@ export default function PreviewPage() {
           // A blob URL, so next/image's optimiser has nothing to fetch; a plain img is right here.
           <img
             src={image.url}
-            alt={`Your personalised Diet Coke can with ${designById(designId).name} art and the text ${clean}`}
+            alt={`Your personalised Diet Coke can with ${find(designId).name} art and the text ${clean}`}
             className="h-full w-auto max-w-none"
           />
         ) : (

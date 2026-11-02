@@ -7,7 +7,13 @@ import { DESIGNS } from "@/lib/campaign/designs";
 
 import { CampaignDesigns } from "./CampaignDesigns";
 
-const api = vi.hoisted(() => ({ adminGet: vi.fn(), adminPost: vi.fn(), adminPatch: vi.fn(), adminUpload: vi.fn() }));
+const api = vi.hoisted(() => ({
+  adminGet: vi.fn(),
+  adminPost: vi.fn(),
+  adminPatch: vi.fn(),
+  adminUpload: vi.fn(),
+  adminDelete: vi.fn(),
+}));
 vi.mock("@/lib/campaign/admin", async (actual) => ({ ...(await actual<typeof import("@/lib/campaign/admin")>()), ...api }));
 
 const FONTS = [{ filename: "You2013 Regular.ttf", family: "You2013" }, { filename: "TCCC-UnityText-Bold.ttf", family: null }];
@@ -24,13 +30,34 @@ const discoBall: DesignFormat = {
   placeholder_color: null,
 };
 
-const designs = (): CampaignDesign[] =>
-  DESIGNS.map((d) => ({ design_id: d.id, format: d.id === "DISCO_BALL" ? discoBall : null }));
+const builtin = (id: string, over: Partial<CampaignDesign> = {}): CampaignDesign => ({
+  design_id: id,
+  name: null,
+  category: null,
+  builtin: true,
+  active: true,
+  version: 0,
+  format: id === "DISCO_BALL" ? discoBall : null,
+  ...over,
+});
+const summer = (over: Partial<CampaignDesign> = {}): CampaignDesign => ({
+  design_id: "SUMMER_SPLASH",
+  name: "Summer splash",
+  category: "Travel",
+  builtin: false,
+  active: true,
+  version: 2,
+  format: null,
+  ...over,
+});
+let list: CampaignDesign[] = [];
+const designs = () => list;
 
 const psd = (name = "beach.psd") => new File(["8BPS"], name, { type: "image/vnd.adobe.photoshop" });
 const row = (name: string) => screen.getByRole("listitem", { name });
 
 beforeEach(() => {
+  list = DESIGNS.map((d) => builtin(d.id));
   api.adminGet.mockImplementation(async (path: string) => (path === "/fonts" ? FONTS : designs()));
 });
 
@@ -135,5 +162,101 @@ describe("CampaignDesigns", () => {
     await userEvent.upload(within(row("Beach vibes")).getByLabelText("Upload PSD for Beach vibes"), psd());
 
     expect(await within(row("Beach vibes")).findByText("File is not a readable PSD: bad header")).toBeInTheDocument();
+  });
+});
+
+
+describe("adding, hiding and deleting designs", () => {
+  it("adds a design with a name, category and sticker, and lists it with its sticker", async () => {
+    const onSaved = vi.fn();
+    api.adminUpload.mockResolvedValue({ design_id: "SUMMER_SPLASH", name: "Summer splash", category: "Travel", active: true, version: 1 });
+    render(<CampaignDesigns onSaved={onSaved} />);
+    await screen.findByText("campaign-DISCO_BALL.psd");
+
+    const form = screen.getByRole("form", { name: "Add a design" });
+    await userEvent.type(within(form).getByLabelText("Name"), "Summer splash");
+    await userEvent.selectOptions(within(form).getByLabelText("Category"), "Travel");
+    await userEvent.upload(within(form).getByLabelText("Sticker image"), new File(["png"], "s.png", { type: "image/png" }));
+    list = [...list, summer({ version: 1 })];
+    await userEvent.click(within(form).getByRole("button", { name: "Add design" }));
+
+    expect(api.adminUpload).toHaveBeenCalledWith("/catalog", expect.any(File), { name: "Summer splash", category: "Travel" });
+    const added = await screen.findByRole("listitem", { name: "Summer splash" });
+    expect(within(added).getByRole("img")).toHaveAttribute("src", "/user-campaign/api/admin/catalog/SUMMER_SPLASH/sticker?v=1");
+    expect(onSaved).toHaveBeenCalled();
+  });
+
+  it("asks for a name and a sticker before adding", async () => {
+    render(<CampaignDesigns />);
+    await screen.findByText("campaign-DISCO_BALL.psd");
+    await userEvent.click(screen.getByRole("button", { name: "Add design" }));
+
+    expect(screen.getByRole("form", { name: "Add a design" })).toHaveTextContent("Give the design a name and choose its sticker image.");
+    expect(api.adminUpload).not.toHaveBeenCalled();
+  });
+
+  it("hides a built-in design from users and shows it again", async () => {
+    api.adminPatch.mockImplementation(async (_: string, body: { active: boolean }) => builtin("DISCO_BALL", { active: body.active }));
+    render(<CampaignDesigns />);
+    await screen.findByText("campaign-DISCO_BALL.psd");
+
+    await userEvent.click(within(row("Disco ball")).getByRole("button", { name: "Hide from users" }));
+    expect(api.adminPatch).toHaveBeenCalledWith("/designs/DISCO_BALL/visibility", { active: false });
+    expect(await within(row("Disco ball")).findByText("Hidden")).toBeInTheDocument();
+
+    await userEvent.click(within(row("Disco ball")).getByRole("button", { name: "Show to users" }));
+    expect(api.adminPatch).toHaveBeenLastCalledWith("/designs/DISCO_BALL/visibility", { active: true });
+  });
+
+  it("deletes an added design after asking", async () => {
+    list = [...list, summer()];
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    api.adminDelete.mockResolvedValue(undefined);
+    render(<CampaignDesigns />);
+    await screen.findByRole("listitem", { name: "Summer splash" });
+
+    list = list.filter((d) => d.design_id !== "SUMMER_SPLASH");
+    await userEvent.click(within(row("Summer splash")).getByRole("button", { name: "Delete" }));
+
+    expect(window.confirm).toHaveBeenCalledWith("Delete Summer splash? This cannot be undone.");
+    expect(api.adminDelete).toHaveBeenCalledWith("/catalog/SUMMER_SPLASH");
+    await waitFor(() => expect(screen.queryByRole("listitem", { name: "Summer splash" })).not.toBeInTheDocument());
+  });
+
+  it("explains why a design people entered with can only be hidden", async () => {
+    list = [...list, summer()];
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    api.adminDelete.mockRejectedValue(new AdminApiError("People have entered with this design, so it can't be deleted. Hide it instead.", 409));
+    render(<CampaignDesigns />);
+    await screen.findByRole("listitem", { name: "Summer splash" });
+
+    await userEvent.click(within(row("Summer splash")).getByRole("button", { name: "Delete" }));
+
+    expect(await within(row("Summer splash")).findByText(/Hide it instead/)).toBeInTheDocument();
+  });
+
+  it("offers Delete and Replace sticker only on added designs", async () => {
+    list = [...list, summer()];
+    render(<CampaignDesigns />);
+    await screen.findByRole("listitem", { name: "Summer splash" });
+
+    expect(within(row("Disco ball")).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    expect(within(row("Disco ball")).queryByLabelText(/Replace sticker/)).not.toBeInTheDocument();
+    expect(within(row("Summer splash")).getByLabelText("Replace sticker for Summer splash")).toBeInTheDocument();
+  });
+
+  it("replaces an added design's sticker", async () => {
+    list = [...list, summer()];
+    api.adminUpload.mockResolvedValue({ design_id: "SUMMER_SPLASH", name: "Summer splash", category: "Travel", active: true, version: 3 });
+    render(<CampaignDesigns />);
+    await screen.findByRole("listitem", { name: "Summer splash" });
+
+    list = [...list.slice(0, -1), summer({ version: 3 })];
+    await userEvent.upload(within(row("Summer splash")).getByLabelText("Replace sticker for Summer splash"), new File(["png"], "n.png", { type: "image/png" }));
+
+    expect(api.adminUpload).toHaveBeenCalledWith("/catalog/SUMMER_SPLASH/sticker", expect.any(File));
+    await waitFor(() =>
+      expect(within(row("Summer splash")).getByRole("img")).toHaveAttribute("src", "/user-campaign/api/admin/catalog/SUMMER_SPLASH/sticker?v=3"),
+    );
   });
 });

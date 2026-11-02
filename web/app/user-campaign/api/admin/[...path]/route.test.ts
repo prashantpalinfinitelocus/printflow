@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { GET, PATCH, POST } from "./route";
+import { DELETE, GET, PATCH, POST } from "./route";
 
 const upstream = vi.fn();
 
@@ -137,6 +137,16 @@ describe("campaign admin route", () => {
     const { readFileSync } = await import("node:fs");
     const source = readFileSync("app/user-campaign/api/admin/[...path]/route.ts", "utf8");
     expect(source).not.toMatch(/@\/lib\/session|@\/lib\/client|basePath/);
+  });
+
+  it("forwards deletes, such as removing an added design", async () => {
+    upstream.mockResolvedValue(new Response(null, { status: 204 }));
+
+    const res = await DELETE(request("catalog/SUMMER_SPLASH", { method: "DELETE", cookie: "dc_admin=tok" }), ctx("catalog/SUMMER_SPLASH"));
+
+    expect(upstream.mock.calls[0][0]).toBe("http://api.test/campaign-admin/catalog/SUMMER_SPLASH");
+    expect(upstream.mock.calls[0][1].method).toBe("DELETE");
+    expect(res.status).toBe(204);
   });
 
   it("forwards edits, such as a design's text settings", async () => {

@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 import type { Session } from "@/lib/campaign/api";
 import { DEFAULT_DESIGN_ID, designById } from "@/lib/campaign/designs";
+import { loadDesigns } from "@/lib/campaign/useDesigns";
 
 interface CampaignState {
   session: Session | null;
@@ -54,8 +55,13 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
         const restored: CampaignState = { ...INITIAL, ...JSON.parse(saved) };
-        // A design retired since the tab was opened falls back to one we can still print.
-        setState({ ...restored, designId: designById(restored.designId).id });
+        setState(restored);
+        // A design retired or hidden since the tab was opened falls back to one we can still print.
+        // Added designs count as current, so this waits for the designs before deciding.
+        void loadDesigns().then((shown) => {
+          const known = designById(restored.designId, shown).id;
+          if (known !== restored.designId) setState((s) => (s.designId === restored.designId ? { ...s, designId: known } : s));
+        });
       }
     } catch {
       /* storage blocked or corrupt — start fresh */

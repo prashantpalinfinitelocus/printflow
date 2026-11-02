@@ -40,6 +40,23 @@ describe("campaign proxy", () => {
     },
   );
 
+  it("passes a design's sticker image through, cacheable, instead of reading it as JSON", async () => {
+    upstream.mockResolvedValue(
+      new Response(new Uint8Array([137, 80, 78, 71]), {
+        headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" },
+      }),
+    );
+    const req = new NextRequest("https://site.test/offline-store/api/campaign/designs/SUMMER_SPLASH/sticker?v=2");
+
+    const res = await GET(req, ctx("designs/SUMMER_SPLASH/sticker"));
+
+    expect(upstream.mock.calls[0][0]).toBe("http://api.test/campaign/designs/SUMMER_SPLASH/sticker");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    expect(res.headers.get("cache-control")).toBe("public, max-age=86400");
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
+  });
+
   it("forwards to the API's /campaign routes with the session cookie as a bearer token", async () => {
     upstream.mockResolvedValue(json({ result: "APPROVED" }));
     const res = await POST(request("moderate", { body: { text: "Aanya" }, cookie: "dc_token=abc" }), ctx("moderate"));

@@ -23,9 +23,12 @@ PROJECT="${PROJECT:-$(gcloud config get-value project)}"
 # Paths as seen by the load balancer. The web app lives under /offline-store, so the browser only calls
 # /offline-store/api/proxy/<api path>.
 # Web app routes (browser -> web) and API routes (direct, under the load balancer's /backend prefix).
-LOGIN_RE='^(/offline-store/api/auth/login|/backend/auth/login)$'
-# Consumer campaign OTP endpoints, reached through the web app's campaign proxy.
-OTP_RE='^/offline-store/api/campaign/otp/(send|verify)$'
+# Staff login, and the campaign admin's own login (through the web app at /user-campaign/api/admin, or direct).
+LOGIN_RE='^(/offline-store/api/auth/login|/backend/auth/login|/user-campaign/api/admin/auth/login|/backend/campaign-admin/auth/login)$'
+# Consumer campaign OTP endpoints, through the web app's campaign proxy or direct under /backend.
+OTP_RE='^(/offline-store/api/campaign|/backend/campaign)/otp/(send|verify)$'
+# Consumer campaign text checks and entries: the calls a script would hammer (each check is a paid Gemini call).
+CAMPAIGN_RE='^(/offline-store/api/campaign|/backend/campaign)/(moderate|entries)$'
 UPLOAD_RE='^(/offline-store/api/proxy|/backend)/(print-formats/upload-psd|print-formats/upload-font|csv/upload)$'
 
 WAF_SETS=(sqli-v33-stable xss-v33-stable lfi-v33-stable rfi-v33-stable rce-v33-stable
@@ -58,6 +61,15 @@ gcloud compute security-policies rules create 1050 --security-policy "$POLICY" -
   --description "Throttle campaign OTP" \
   --expression "request.method == 'POST' && request.path.matches('${OTP_RE}')" \
   --action throttle --rate-limit-threshold-count 30 --rate-limit-threshold-interval-sec 60 \
+  --conform-action allow --exceed-action deny-429 --enforce-on-key IP
+
+# 1060: campaign text checks and entries. 60 POSTs per minute per IP, then 429. Loose for the same
+# reason as 1050; the API also throttles each signed-in phone (30 checks and 10 entries a minute)
+# and caps entries at 5 a day, which a script cannot get round by changing IP.
+gcloud compute security-policies rules create 1060 --security-policy "$POLICY" --project "$PROJECT" \
+  --description "Throttle campaign text checks and entries" \
+  --expression "request.method == 'POST' && request.path.matches('${CAMPAIGN_RE}')" \
+  --action throttle --rate-limit-threshold-count 60 --rate-limit-threshold-interval-sec 60 \
   --conform-action allow --exceed-action deny-429 --enforce-on-key IP
 
 # 1100: uploads of PSD, font and CSV. Throttled, then allowed without managed WAF inspection.

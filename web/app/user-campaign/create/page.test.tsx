@@ -44,6 +44,37 @@ describe("heads-up popup", () => {
   });
 });
 
+describe("designs an admin added", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("leaves out a built-in design an admin hid", async () => {
+    vi.spyOn(campaignApi, "listDesigns").mockResolvedValue({ added: [], hidden: ["DISCO_BALL"] });
+    renderCampaign(<CreatePage />, LOGGED_IN);
+
+    await waitFor(() => expect(screen.getAllByRole("radio")).toHaveLength(8));
+    expect(screen.queryByRole("radio", { name: "Disco ball" })).not.toBeInTheDocument();
+  });
+
+  it("shows them after the built-in designs, with their sticker, in their category", async () => {
+    vi.spyOn(campaignApi, "listDesigns").mockResolvedValue({
+      added: [{ designId: "SUMMER_SPLASH", name: "Summer splash", category: "Travel", version: 4 }],
+      hidden: [],
+    });
+    renderCampaign(<CreatePage />, LOGGED_IN);
+
+    const summer = await screen.findByRole("radio", { name: "Summer splash" });
+    expect(screen.getAllByRole("radio").at(-1)).toBe(summer);
+    expect(summer.querySelector("img")).toHaveAttribute("src", "/offline-store/api/campaign/designs/SUMMER_SPLASH/sticker?v=4");
+
+    await userEvent.click(summer);
+    expect(summer).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Fun" }));
+    expect(summer).toHaveClass("lg:hidden");
+    await userEvent.click(screen.getByRole("button", { name: "Travel" }));
+    expect(summer).not.toHaveClass("lg:hidden");
+  });
+});
+
 describe("tablet layout (481px to 1023px)", () => {
   it("runs the white sheet edge to edge with the field, designs and button in a centred phone-width column", async () => {
     const { container } = renderCampaign(<CreatePage />, LOGGED_IN);

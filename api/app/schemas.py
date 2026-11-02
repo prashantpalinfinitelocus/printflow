@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from .models import JobKind, JobStatus, ModerationStatus, OrderStatus, Role
-from .services.campaign import DESIGN_IDS
+from .services.campaign import CATEGORIES
 
 #: A database row id. Postgres ids are 32-bit; anything larger would reach the
 #: database as an out-of-range integer and come back as an unhandled 500.
@@ -475,12 +475,6 @@ TokenResponse.model_rebuild()
 CampaignPhone = Annotated[str, Field(pattern=r"^[6-9][0-9]{9}$")]
 
 
-def _known_design(value: str) -> str:
-    if value not in DESIGN_IDS:
-        raise ValueError("not a campaign design")
-    return value
-
-
 class OtpRequest(BaseModel):
     phone: CampaignPhone
     email: EmailStr
@@ -515,7 +509,8 @@ class CampaignWindow(BaseModel):
 
 
 class EntryCreate(BaseModel):
-    design_id: Annotated[str, AfterValidator(_known_design)]
+    #: A built-in design or an added one shown to users; the route checks which ids exist.
+    design_id: str = Field(pattern=r"^[A-Z0-9_]{1,64}$")
     text: str = Field(max_length=200)
     idempotency_key: str = Field(min_length=1, max_length=64)
 
@@ -593,6 +588,14 @@ class CampaignDesignSetup(BaseModel):
 
 class CampaignDesignOut(BaseModel):
     design_id: str
+    #: Name and category of an added design; built-in designs carry theirs in the web app.
+    name: str | None = None
+    category: str | None = None
+    builtin: bool = True
+    #: Shown to users. Built-in designs always are.
+    active: bool = True
+    #: The added design's sticker version, for its URL; 0 for built-in designs.
+    version: int = 0
     #: What the design's TIFFs render from; empty until its PSD is uploaded.
     format: CampaignDesignSetup | None
 
@@ -622,3 +625,50 @@ class CampaignFindPlaceholder(BaseModel):
     color: str = Field(default="#ED1C24", pattern=r"^#[0-9A-Fa-f]{6}$")
     expected_w: int | None = Field(default=None, ge=1)
     expected_h: int | None = Field(default=None, ge=1)
+
+
+def _category(value: str) -> str:
+    if value not in CATEGORIES:
+        raise ValueError(f"must be one of {', '.join(CATEGORIES)}")
+    return value
+
+
+DesignName = Annotated[str, Field(min_length=1, max_length=40)]
+DesignCategory = Annotated[str, AfterValidator(_category)]
+
+
+class CatalogDesignOut(BaseModel):
+    """A design a campaign admin added."""
+
+    design_id: str
+    name: str
+    category: str
+    active: bool
+    version: int
+
+
+class CatalogDesignUpdate(BaseModel):
+    # A field left out keeps its value; a sent null is refused (a default is not validated).
+    name: DesignName = None  # type: ignore[assignment]
+    category: DesignCategory = None  # type: ignore[assignment]
+    active: bool = None  # type: ignore[assignment]
+
+
+class PublicDesignOut(BaseModel):
+    """An added design as users see it; its sticker is at /campaign/designs/<id>/sticker."""
+
+    design_id: str
+    name: str
+    category: str
+    version: int
+
+
+class PublicDesignsOut(BaseModel):
+    """What users can pick beyond the defaults: added designs shown, and built-in ones hidden."""
+
+    added: list[PublicDesignOut]
+    hidden: list[str]
+
+
+class DesignVisibility(BaseModel):
+    active: bool

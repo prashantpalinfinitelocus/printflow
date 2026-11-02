@@ -6,6 +6,7 @@
  */
 
 import { withBasePath } from "@/lib/basePath";
+import type { Category } from "@/lib/campaign/designs";
 
 /**
  * UNAUTHORIZED: the session expired or was revoked — log in again.
@@ -63,12 +64,29 @@ export interface Session {
 
 export type ModerationResult = "APPROVED" | "REJECTED";
 
+/** A design a campaign admin added; its sticker is served at designs/<id>/sticker. */
+export interface AddedDesign {
+  designId: string;
+  name: string;
+  category: Category;
+  /** Bumped when the sticker is replaced, so the sticker's URL changes with it. */
+  version: number;
+}
+
+export interface DesignChanges {
+  added: AddedDesign[];
+  /** Ids of built-in designs taken away from users. */
+  hidden: string[];
+}
+
 export interface CampaignApi {
   /** Sends an OTP; resolves to the seconds until a resend is allowed. */
   sendOtp(phone: string, email: string): Promise<{ resendAfter: number }>;
   verifyOtp(phone: string, email: string, code: string): Promise<Session>;
   moderateText(text: string): Promise<ModerationResult>;
   getWindowState(): Promise<WindowState>;
+  /** How an admin changed the nine built-in designs: designs added and shown, and built-in ones hidden. */
+  listDesigns(): Promise<DesignChanges>;
   /** `idempotencyKey` makes a retried or double-tapped submit create one entry. */
   submitEntry(entry: { designId: string; text: string; idempotencyKey: string }): Promise<{ entryId: string }>;
 }
@@ -136,6 +154,11 @@ export function createMockCampaignApi(): CampaignApi {
 
     getWindowState,
 
+    // The mock campaign has only the built-in designs.
+    async listDesigns() {
+      return { added: [], hidden: [] };
+    },
+
     async submitEntry({ idempotencyKey }) {
       await delay(700);
       const state = await getWindowState();
@@ -179,6 +202,8 @@ export function createHttpCampaignApi(): CampaignApi {
     const { code, message, retry_after } = data?.detail ?? {};
     if (KNOWN_CODES.has(code)) throw new CampaignError(code, message, retry_after);
     if (typeof message === "string" && message) throw new CampaignServerError(message);
+    // The site's firewall turns away requests that come too fast with a bare 429 and no message.
+    if (res.status === 429) throw new CampaignServerError("Too many tries in a short time. Please wait a minute and try again.");
     throw new Error(`Campaign request failed (${res.status})`);
   }
 
@@ -193,6 +218,13 @@ export function createHttpCampaignApi(): CampaignApi {
     },
     async getWindowState() {
       return (await call<{ state: WindowState }>("window")).state;
+    },
+    async listDesigns() {
+      const { added, hidden } = await call<{
+        added: { design_id: string; name: string; category: Category; version: number }[];
+        hidden: string[];
+      }>("designs");
+      return { added: added.map(({ design_id, ...rest }) => ({ designId: design_id, ...rest })), hidden };
     },
     async submitEntry({ designId, text, idempotencyKey }) {
       const { entry_id } = await call<{ entry_id: string }>("entries", {

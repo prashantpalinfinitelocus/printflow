@@ -4,11 +4,15 @@ import { cleanup } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, vi } from "vitest";
 
+import { resetDesigns } from "@/lib/campaign/useDesigns";
+
 import { router } from "./navigation";
 
 afterEach(() => {
   cleanup();
   sessionStorage.clear();
+  // The designs are loaded once per page; each test is a fresh page.
+  resetDesigns();
   router.push.mockReset();
   router.replace.mockReset();
 });

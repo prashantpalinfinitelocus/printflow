@@ -142,6 +142,14 @@ class Settings(BaseSettings):
 
     #: Entries one phone may submit in total (PRD 2: 50). 0 = no cap.
     campaign_max_entries_per_participant: int = 50
+    #: Entries one phone may submit in one campaign day (client-approved 5). 0 = no daily cap.
+    campaign_max_entries_per_day: int = 5
+    #: Per signed-in phone throttles, so a script cannot hammer the API; the load balancer
+    #: also throttles per network address (infra/cloud-armor.sh). 0 = no throttle.
+    campaign_moderate_per_minute: int = 30
+    campaign_entries_per_minute: int = 10
+    #: How long a text Gemini approved is remembered, so Make It Happen does not check it twice.
+    campaign_approved_text_ttl_seconds: int = 30 * 60
     #: Most winners one day's draw picks (PRD 2: 100). Internal; never shown to consumers.
     campaign_daily_winners: int = 100
     #: Wins one phone may have in a calendar month (PRD 2: 5); the draw skips them after that.
@@ -159,6 +167,10 @@ class Settings(BaseSettings):
     #: data_dir/campaign/psd and data_dir/campaign/output.
     campaign_psd_dir: Path | None = None
     campaign_output_dir: Path | None = None
+    #: Sticker images of designs a campaign admin adds; empty means data_dir/campaign/stickers.
+    campaign_sticker_dir: Path | None = None
+    #: Largest sticker upload accepted, in bytes.
+    campaign_max_sticker_bytes: int = 5 * 1024 * 1024
 
     @model_validator(mode="after")
     def _campaign_dirs(self) -> "Settings":
@@ -166,6 +178,8 @@ class Settings(BaseSettings):
             self.campaign_psd_dir = self.data_dir / "campaign" / "psd"
         if self.campaign_output_dir is None:
             self.campaign_output_dir = self.data_dir / "campaign" / "output"
+        if self.campaign_sticker_dir is None:
+            self.campaign_sticker_dir = self.data_dir / "campaign" / "stickers"
         return self
 
     bootstrap_admin_email: str = "admin@printflow.local"
@@ -190,6 +204,7 @@ class Settings(BaseSettings):
             self.fonts_dir,
             self.campaign_psd_dir,
             self.campaign_output_dir,
+            self.campaign_sticker_dir,
         ):
             d.mkdir(parents=True, exist_ok=True)
 

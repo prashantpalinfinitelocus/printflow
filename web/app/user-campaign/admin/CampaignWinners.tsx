@@ -8,6 +8,7 @@ import {
   adminPost as post,
   sheetUrl,
   tiffUrl,
+  todayInIndia,
   type CampaignDay,
   type CampaignWinner,
 } from "@/lib/campaign/admin";
@@ -16,8 +17,14 @@ import { dateTime } from "@/lib/format";
 
 import { CampaignDesigns } from "./CampaignDesigns";
 
-/** The consumer-facing name of a design id, falling back to the id for a retired design. */
-const designName = (id: string) => DESIGNS.find((d) => d.id === id)?.name ?? id;
+/** The consumer-facing name of a design id: a built-in design's own name, or an added one's read from its id. */
+const designName = (id: string) => {
+  const builtin = DESIGNS.find((d) => d.id === id)?.name;
+  if (builtin) return builtin;
+  // An added design's id is its name in capitals (SUMMER_SPLASH), so read it back as words.
+  const words = id.toLowerCase().replace(/_\d+$/, "").replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
 
 export function CampaignWinners({ initialDay }: { initialDay: string }) {
   const [day, setDay] = useState(initialDay);
@@ -107,12 +114,14 @@ export function CampaignWinners({ initialDay }: { initialDay: string }) {
       <div className={`${CARD} flex flex-wrap items-end gap-3 px-5 py-4`}>
         <label className="flex flex-col gap-1">
           <span className="text-[11px] leading-[13.2px] font-semibold text-[#F40009]">Draw day</span>
+          {/* No future days: nothing has been entered for them yet. A typed one is ignored. */}
           <input
             type="date"
             className="h-11 rounded-[14px] border border-[#E8E8E8] px-4 text-base text-[#111111] outline-none focus:border-[#8A8A8A] disabled:opacity-50"
             value={day}
+            max={todayInIndia()}
             disabled={busy}
-            onChange={(e) => e.target.value && setDay(e.target.value)}
+            onChange={(e) => e.target.value && e.target.value <= todayInIndia() && setDay(e.target.value)}
           />
         </label>
         <div className="ml-auto flex flex-wrap items-center gap-2">

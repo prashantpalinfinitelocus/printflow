@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AdminApiError, adminGet, adminUpload, LOGIN_PATH, sheetUrl, tiffUrl, yesterdayInIndia } from "./admin";
+import { AdminApiError, adminGet, adminUpload, LOGIN_PATH, sheetUrl, tiffUrl, todayInIndia, yesterdayInIndia } from "./admin";
 
 const assign = vi.fn();
 
@@ -51,6 +51,13 @@ describe("campaign admin API client", () => {
     const sheet = new URL(sheetUrl("2026-10-30"), "http://x.test");
     expect(sheet.pathname).toBe("/user-campaign/api/admin/days/2026-10-30/winners.csv");
     expect(sheet.searchParams.get("link_base")).toBe(`${window.location.origin}/user-campaign/api/admin`);
+  });
+});
+
+describe("todayInIndia", () => {
+  it("is today's date in India time, already the next day after midnight IST", () => {
+    expect(todayInIndia(new Date("2026-10-31T12:00:00Z"))).toBe("2026-10-31");
+    expect(todayInIndia(new Date("2026-10-31T19:00:00Z"))).toBe("2026-11-01");
   });
 });
 

@@ -9,7 +9,8 @@ import logo from "@/app/user-campaign/_assets/logo.png";
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { FieldError, LiveCheck, Modal, PillButton } from "@/components/campaign/ui";
 import { errorMessage, isUnauthorized } from "@/lib/campaign/api";
-import { CATEGORIES, DESIGNS, type Category } from "@/lib/campaign/designs";
+import { CATEGORIES, type Category } from "@/lib/campaign/designs";
+import { useDesigns } from "@/lib/campaign/useDesigns";
 import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useLiveModeration } from "@/lib/campaign/liveModeration";
 import { useCampaign } from "@/lib/campaign/store";
@@ -25,6 +26,7 @@ const CHECKER_DOWN = "Our message checker needs a moment. Your design is still h
 export default function CreatePage() {
   const router = useCampaignRouter();
   const { ready, session, designId, text, approvedText, headsUpSeen, textRejected, update } = useCampaign();
+  const { designs } = useDesigns();
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [rejected, setRejected] = useState(false);
@@ -210,7 +212,7 @@ export default function CreatePage() {
               aria-labelledby="dc-vibe"
               className="grid h-[132px] grid-cols-[repeat(3,minmax(0,115px))] justify-between gap-x-2 gap-y-2 overflow-y-auto [scrollbar-width:none] lg:h-auto lg:min-h-0 lg:grid-cols-[repeat(3,minmax(0,160px))] lg:content-start lg:justify-start lg:gap-x-4 lg:gap-y-[15px]"
             >
-              {DESIGNS.map((d) => {
+              {designs.map((d) => {
                 const selected = d.id === designId;
                 // The filter only exists on web: phones have no chips to undo it, so they always see every design.
                 const filteredOut = category !== "All" && d.category !== category;
@@ -228,23 +230,29 @@ export default function CreatePage() {
                         : "border-[#E8E8E8]"
                     }`}
                   >
-                    <Image quality={IMAGE_QUALITY}
-                      src={d.sticker}
-                      alt=""
-                      width={d.thumb.w}
-                      height={d.thumb.h}
-                      sizes="(min-width: 1024px) 160px, 120px"
-                      className="dc-thumb object-fill"
-                      // Placed by its centre on Figma's 115 × 80 card, so it stays right when cards narrow or grow.
-                      style={
-                        {
-                          "--x": d.thumb.x + d.thumb.w / 2 - 57.5,
-                          "--y": d.thumb.y + d.thumb.h / 2 - 40,
-                          "--w": d.thumb.w,
-                          "--h": d.thumb.h,
-                        } as CSSProperties
-                      }
-                    />
+                    {d.thumb && typeof d.sticker !== "string" ? (
+                      <Image quality={IMAGE_QUALITY}
+                        src={d.sticker}
+                        alt=""
+                        width={d.thumb.w}
+                        height={d.thumb.h}
+                        sizes="(min-width: 1024px) 160px, 120px"
+                        className="dc-thumb object-fill"
+                        // Placed by its centre on Figma's 115 × 80 card, so it stays right when cards narrow or grow.
+                        style={
+                          {
+                            "--x": d.thumb.x + d.thumb.w / 2 - 57.5,
+                            "--y": d.thumb.y + d.thumb.h / 2 - 40,
+                            "--w": d.thumb.w,
+                            "--h": d.thumb.h,
+                          } as CSSProperties
+                        }
+                      />
+                    ) : (
+                      // A design an admin added has no hand-placed position: its sticker is fitted in the card.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={typeof d.sticker === "string" ? d.sticker : d.sticker.src} alt="" className="absolute inset-[8%] h-[84%] w-[84%] object-contain" />
+                    )}
                   </button>
                 );
               })}

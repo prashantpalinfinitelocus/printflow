@@ -81,10 +81,14 @@ The script `infra/cloud-armor.sh` creates the policy and attaches it to the load
 
 | Priority | Match | Action | Why |
 |---|---|---|---|
-| 1000 | `POST /api/auth/login` and `POST /backend/auth/login` | Throttle 10 per minute per IP, then 429 | Brute-force protection |
+| 1000 | `POST` staff login (`/offline-store/api/auth/login`, `/backend/auth/login`) and campaign admin login (`/user-campaign/api/admin/auth/login`, `/backend/campaign-admin/auth/login`) | Throttle 10 per minute per IP, then 429 | Brute-force protection |
+| 1050 | `POST` campaign OTP send/verify (`/offline-store/api/campaign/otp/...`, `/backend/campaign/otp/...`) | Throttle 30 per minute per IP, then 429 | Coarse edge limit; the API's per-phone OTP limits do the real work |
+| 1060 | `POST` campaign text check and entries (`/offline-store/api/campaign/(moderate\|entries)`, `/backend/campaign/(moderate\|entries)`) | Throttle 60 per minute per IP, then 429 | Stops scripts hammering the paid text checker; the API also throttles each signed-in phone and caps entries at 5 a day |
 | 1100 | `POST` to `/api/proxy/` or `/backend/` followed by `print-formats/upload-psd`, `print-formats/upload-font` or `csv/upload` | Throttle 30 per minute per IP, then 429. Allowed without managed WAF inspection. | PSD and font files are binary and CSVs contain quotes and symbols, which trigger managed WAF false positives |
 | 3000 to 3060 | everything else | OWASP managed sets (sqli, xss, lfi, rfi, rce, protocol attack, scanner detection) at sensitivity 1, deny 403 | Standard attack protection |
 | default | any | Allow | |
+
+Updating an existing policy: `cloud-armor.sh` creates rules, so on a policy made before 1060 existed, update 1000 and 1050 to the new expressions with `gcloud compute security-policies rules update <priority> --expression ...` and create 1060 with the command from the script.
 
 Why the upload exemption is safe: every proxied route needs a valid JWT, PSD and font files are parsed and never executed, CSV rows are validated and moderated, and the throttle still limits abuse.
 

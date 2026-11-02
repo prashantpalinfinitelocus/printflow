@@ -201,6 +201,28 @@ describe("CampaignWinners", () => {
     expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
   });
 
+  it("names a winner's added design in words, not by its code", async () => {
+    client.get.mockResolvedValue(day({ winners: [winner({ design_id: "SUMMER_SPLASH" })] }));
+    render(<CampaignWinners initialDay={DAY} />);
+    expect(await within(await screen.findByRole("table")).findByText("Summer splash")).toBeInTheDocument();
+  });
+
+  it("offers no day after today, India time, and ignores one typed in anyway", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-31T09:00:00Z"));
+    render(<CampaignWinners initialDay={DAY} />);
+    await screen.findByRole("table");
+
+    const picker = screen.getByLabelText("Draw day");
+    expect(picker).toHaveAttribute("max", "2026-10-31");
+    client.get.mockClear();
+    fireEvent.change(picker, { target: { value: "2026-11-05" } });
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(client.get).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it("loads another day when the date changes", async () => {
     render(<CampaignWinners initialDay={DAY} />);
     await screen.findByRole("table");

@@ -52,6 +52,14 @@ async function forward(request: NextRequest, path: string[]) {
     );
   }
 
+  // A design's sticker is an image: pass it through as it is, with its caching headers.
+  if (upstream.ok && upstream.headers.get("content-type")?.startsWith("image/")) {
+    const headers = new Headers({ "content-type": upstream.headers.get("content-type")! });
+    const cache = upstream.headers.get("cache-control");
+    if (cache) headers.set("cache-control", cache);
+    return new NextResponse(upstream.body, { status: upstream.status, headers });
+  }
+
   const data = await upstream.json().catch(() => null);
   if (path.join("/") !== "otp/verify" || !upstream.ok) {
     return NextResponse.json(data, { status: upstream.status });

@@ -1,5 +1,6 @@
 import canBlank from "@/app/user-campaign/_assets/can-blank.png";
-import { designById } from "@/lib/campaign/designs";
+import { designById, stickerSrc } from "@/lib/campaign/designs";
+import { loadDesigns } from "@/lib/campaign/useDesigns";
 
 export interface Rect {
   x: number;
@@ -74,7 +75,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
  * artwork and the approved text — no phone, email or IDs (PRD 7).
  */
 export async function renderCanPng(designId: string, text: string, fontFamily: string): Promise<Blob> {
-  const [can, sticker] = await Promise.all([loadImage(canBlank.src), loadImage(designById(designId).sticker.src)]);
+  // An added design's sticker is known only once the designs have loaded.
+  const design = designById(designId, await loadDesigns());
+  const [can, sticker] = await Promise.all([loadImage(canBlank.src), loadImage(stickerSrc(design))]);
   const canvas = document.createElement("canvas");
   canvas.width = can.naturalWidth;
   canvas.height = can.naturalHeight;

@@ -31,6 +31,9 @@ DESIGN_IDS = frozenset(
     }
 )
 
+#: The categories users filter designs by (web/lib/campaign/designs.ts CATEGORIES).
+CATEGORIES = ("Fun", "Travel", "Love", "Celebration")
+
 #: Fits the can's print area at the You2013 size the design uses.
 MAX_TEXT_LENGTH = 12
 
@@ -41,6 +44,11 @@ def _hour_label(hour: int) -> str:
 
 def _zone_label() -> str:
     return "IST" if settings.campaign_timezone == "Asia/Kolkata" else settings.campaign_timezone
+
+
+def opening_label() -> str:
+    """When the entry window opens, e.g. "10 AM IST"."""
+    return f"{_hour_label(settings.campaign_open_hour)} {_zone_label()}"
 
 
 def closing_label() -> str:

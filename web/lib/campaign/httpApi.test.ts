@@ -61,6 +61,29 @@ describe("http campaign api", () => {
     expect(error.code).toBe(code);
   });
 
+  it("explains a request the site's firewall turned away for coming too fast", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("Too Many Requests", { status: 429 }));
+    const error = await api.moderateText("Aanya").catch((e) => e);
+    expect(error).toBeInstanceOf(CampaignServerError);
+    expect(error.message).toBe("Too many tries in a short time. Please wait a minute and try again.");
+  });
+
+  it("shows the API's own message when it throttles a phone", async () => {
+    fail(429, "RATE_LIMITED", "Too many tries in a short time. Please wait a minute and try again.");
+    const error = await api.submitEntry({ designId: "DISCO_BALL", text: "Aanya", idempotencyKey: "k" }).catch((e) => e);
+    expect(error).toBeInstanceOf(CampaignServerError);
+    expect(error.message).toMatch(/wait a minute/);
+  });
+
+  it("lists the designs an admin added", async () => {
+    reply({ added: [{ design_id: "SUMMER_SPLASH", name: "Summer splash", category: "Travel", version: 2 }], hidden: ["DISCO_BALL"] });
+    expect(await api.listDesigns()).toEqual({
+      added: [{ designId: "SUMMER_SPLASH", name: "Summer splash", category: "Travel", version: 2 }],
+      hidden: ["DISCO_BALL"],
+    });
+    expect(sent()).toMatchObject({ url: "/offline-store/api/campaign/designs", method: "GET" });
+  });
+
   it("reports the text check's verdict", async () => {
     reply({ result: "REJECTED" });
     expect(await api.moderateText("stupid")).toBe("REJECTED");

@@ -148,3 +148,27 @@ CREATE TABLE public.campaign_designs (
 );
 ALTER TABLE ONLY public.campaign_designs
     ADD CONSTRAINT campaign_designs_pkey PRIMARY KEY (design_id);
+CREATE TABLE public.campaign_rate_limits (
+    key character varying(128) NOT NULL,
+    window_start timestamp with time zone NOT NULL,
+    hits integer NOT NULL
+);
+ALTER TABLE ONLY public.campaign_rate_limits
+    ADD CONSTRAINT campaign_rate_limits_pkey PRIMARY KEY (key, window_start);
+CREATE TABLE public.campaign_catalog_designs (
+    design_id character varying(64) NOT NULL,
+    name character varying(40) NOT NULL,
+    category character varying(32) NOT NULL,
+    sticker_path character varying(128) NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE ONLY public.campaign_catalog_designs
+    ADD CONSTRAINT campaign_catalog_designs_pkey PRIMARY KEY (design_id);
+CREATE TABLE public.campaign_hidden_designs (
+    design_id character varying(64) NOT NULL,
+    hidden_at timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE ONLY public.campaign_hidden_designs
+    ADD CONSTRAINT campaign_hidden_designs_pkey PRIMARY KEY (design_id);

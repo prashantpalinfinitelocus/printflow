@@ -1,9 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { campaignApi } from "./api";
 import { DEFAULT_DESIGN_ID } from "./designs";
 import { CampaignProvider, useCampaign } from "./store";
+afterEach(() => vi.restoreAllMocks());
 
 const KEY = "dc-campaign";
 const wrapper = ({ children }: { children: ReactNode }) => <CampaignProvider>{children}</CampaignProvider>;
@@ -46,8 +48,19 @@ describe("CampaignProvider", () => {
   it("replaces a retired design id, so what is submitted matches what is shown", async () => {
     sessionStorage.setItem(KEY, JSON.stringify({ designId: "RETIRED_DESIGN" }));
     const { result } = renderHook(useCampaign, { wrapper });
+    await waitFor(() => expect(result.current.designId).toBe(DEFAULT_DESIGN_ID));
+  });
+
+  it("keeps a design an admin added across a reload", async () => {
+    vi.spyOn(campaignApi, "listDesigns").mockResolvedValue({
+      added: [{ designId: "SUMMER_SPLASH", name: "Summer splash", category: "Travel", version: 1 }],
+      hidden: [],
+    });
+    sessionStorage.setItem(KEY, JSON.stringify({ designId: "SUMMER_SPLASH" }));
+    const { result } = renderHook(useCampaign, { wrapper });
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.designId).toBe(DEFAULT_DESIGN_ID);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(result.current.designId).toBe("SUMMER_SPLASH");
   });
 
   it("starts fresh when the saved journey is corrupt", async () => {

@@ -273,6 +273,20 @@ class FakeGemini:
 
 
 @pytest.fixture(autouse=True)
+def _fresh_campaign_limits(app_modules):
+    """No remembered text approvals and no throttle counts carry from one test into the next."""
+    from app.db import SessionLocal
+    from app.models import CampaignRateLimit
+    from app.routers import campaign as campaign_router
+
+    campaign_router.APPROVED_TEXTS.clear()
+    db = SessionLocal()
+    db.query(CampaignRateLimit).delete()
+    db.commit()
+    db.close()
+
+
+@pytest.fixture(autouse=True)
 def fake_gemini(app_modules, monkeypatch) -> FakeGemini:
     from app.config import settings
     from app.services import moderation

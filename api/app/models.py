@@ -481,3 +481,44 @@ class CampaignDesign(Base):
     #: Colour of a placeholder baked into the art (the red XXXXXXXX), erased before the text is drawn.
     placeholder_color: Mapped[str | None] = mapped_column(String(16), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class CampaignRateLimit(Base):
+    """One throttle counter: requests under `key` (an action and a phone) in the minute from
+    `window_start`. Kept in the database so the limit holds across every API instance."""
+
+    __tablename__ = "campaign_rate_limits"
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    hits: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class CampaignCatalogDesign(Base):
+    """A design a campaign admin added, beyond the nine built into the site.
+
+    Users see it (in its category) only while `active`; its sticker is served from the
+    campaign's sticker folder. Its PSD and text settings live in CampaignDesign like a built-in's.
+    """
+
+    __tablename__ = "campaign_catalog_designs"
+
+    design_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(40))
+    category: Mapped[str] = mapped_column(String(32))
+    #: File name in the sticker folder (<design_id>.png).
+    sticker_path: Mapped[str] = mapped_column(String(128))
+    #: Bumped when the sticker is replaced, so browsers fetch the new one instead of a cached copy.
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CampaignHiddenDesign(Base):
+    """A built-in design a campaign admin took away from users. Its art stays in the site, so
+    it can be shown again; entries already made with it keep it."""
+
+    __tablename__ = "campaign_hidden_designs"
+
+    design_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    hidden_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

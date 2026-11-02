@@ -18,7 +18,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from PIL import ImageFont
 from sqlalchemy import func, select
@@ -26,7 +26,15 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..config import settings
 from ..deps import CampaignAdminUser, DbSession
-from ..models import CampaignAdmin, CampaignDesign, CampaignDraw, CampaignEntry, CampaignWinner
+from ..models import (
+    CampaignAdmin,
+    CampaignCatalogDesign,
+    CampaignDesign,
+    CampaignDraw,
+    CampaignEntry,
+    CampaignHiddenDesign,
+    CampaignWinner,
+)
 from ..schemas import (
     CampaignAdminLogin,
     CampaignAdminOut,
@@ -38,13 +46,17 @@ from ..schemas import (
     CampaignFindPlaceholder,
     CampaignDesignSetup,
     CampaignWinnerOut,
+    CatalogDesignOut,
+    CatalogDesignUpdate,
+    DesignVisibility,
     DetectPlaceholderResponse,
     FontOut,
     TextBox,
 )
 from ..security import create_campaign_admin_token, hash_password, verify_password
 from ..services import campaign
-from ..services.campaign import DESIGN_IDS
+from ..services.campaign import CATEGORIES, DESIGN_IDS
+from ..services.campaign_catalog import StickerError, hidden_builtins, new_design_id, store_sticker
 from ..services.campaign_draw import DrawNotReady, can_draw, run_draw
 from ..services.placeholder import PlaceholderError, detect_in_psd
 from ..services.renderer import RenderError, psd_dimensions, render_order
@@ -161,6 +173,8 @@ def _day_out(db: Session, day: date) -> CampaignDayOut:
 
 @router.get("/days/{day}", response_model=CampaignDayOut)
 def get_day(day: date, db: DbSession, _: CampaignAdminUser):
+    if day > campaign.campaign_day(campaign.now()):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That day is in the future; pick today or an earlier day.")
     return _day_out(db, day)
 
 
@@ -318,8 +332,9 @@ def winners_sheet(
 CAN_FONT = "You2013 Regular.ttf"
 
 
-def _design_id(design_id: str) -> str:
-    if design_id not in DESIGN_IDS:
+def _design_id(design_id: str, db: Session) -> str:
+    """A built-in design, or one a campaign admin added (shown or hidden)."""
+    if design_id not in DESIGN_IDS and db.get(CampaignCatalogDesign, design_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not a campaign design")
     return design_id
 
@@ -339,14 +354,43 @@ def default_text_setup(width: int, height: int) -> dict:
     }
 
 
-def _design_out(design_id: str, setup: CampaignDesign | None) -> CampaignDesignOut:
-    return CampaignDesignOut(design_id=design_id, format=CampaignDesignSetup.model_validate(setup) if setup else None)
+def _design_out(design_id: str, setup: CampaignDesign | None, added: CampaignCatalogDesign | None = None) -> CampaignDesignOut:
+    extra = (
+        {"name": added.name, "category": added.category, "builtin": False, "active": added.is_active, "version": added.version}
+        if added
+        else {}
+    )
+    return CampaignDesignOut(
+        design_id=design_id, format=CampaignDesignSetup.model_validate(setup) if setup else None, **extra
+    )
 
 
 @router.get("/designs", response_model=list[CampaignDesignOut])
 def list_designs(db: DbSession, _: CampaignAdminUser):
-    setups = _designs(db, set(DESIGN_IDS))
-    return [_design_out(d, setups.get(d)) for d in sorted(DESIGN_IDS)]
+    """The nine built-in designs, then the added ones in the order they were added."""
+    added = list(db.scalars(select(CampaignCatalogDesign).order_by(CampaignCatalogDesign.created_at)))
+    setups = _designs(db, set(DESIGN_IDS) | {a.design_id for a in added})
+    hidden = set(hidden_builtins(db))
+    builtin = [_design_out(d, setups.get(d)).model_copy(update={"active": d not in hidden}) for d in sorted(DESIGN_IDS)]
+    return builtin + [_design_out(a.design_id, setups.get(a.design_id), a) for a in added]
+
+
+@router.patch("/designs/{design_id}/visibility", response_model=CampaignDesignOut)
+def set_visibility(design_id: str, payload: DesignVisibility, db: DbSession, _: CampaignAdminUser):
+    """Hides a design from users, or shows it again. Works for built-in and added designs;
+    entries already made with it, and their winners, keep it."""
+    design_id = _design_id(design_id, db)
+    added = db.get(CampaignCatalogDesign, design_id)
+    if added is not None:
+        added.is_active = payload.active
+    else:
+        hidden = db.get(CampaignHiddenDesign, design_id)
+        if payload.active and hidden is not None:
+            db.delete(hidden)
+        elif not payload.active and hidden is None:
+            db.add(CampaignHiddenDesign(design_id=design_id))
+    db.commit()
+    return next(d for d in list_designs(db, _) if d.design_id == design_id)
 
 
 @router.get("/fonts", response_model=list[FontOut])
@@ -368,7 +412,7 @@ def list_fonts(_: CampaignAdminUser):
 def upload_design_psd(design_id: str, db: DbSession, _: CampaignAdminUser, file: UploadFile = File(...)):
     """Stores the design's PSD in the campaign's own folder. A new design gets the can's
     name-line text setup; a replaced PSD keeps the text settings already made."""
-    design_id = _design_id(design_id)
+    design_id = _design_id(design_id, db)
     folder = settings.campaign_psd_dir
     # One file per design, whatever the upload was called, so designs never overwrite each other.
     name = f"campaign-{design_id}.psd"
@@ -401,7 +445,7 @@ def upload_design_psd(design_id: str, db: DbSession, _: CampaignAdminUser, file:
 
 @router.patch("/designs/{design_id}", response_model=CampaignDesignOut)
 def update_design(design_id: str, payload: CampaignDesignUpdate, db: DbSession, _: CampaignAdminUser):
-    setup = db.get(CampaignDesign, _design_id(design_id))
+    setup = db.get(CampaignDesign, _design_id(design_id, db))
     if setup is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload this design's PSD first")
     data = payload.model_dump(exclude_unset=True)
@@ -417,7 +461,7 @@ def update_design(design_id: str, payload: CampaignDesignUpdate, db: DbSession, 
 @router.post("/designs/{design_id}/find-placeholder", response_model=DetectPlaceholderResponse)
 def find_placeholder(design_id: str, payload: CampaignFindPlaceholder, db: DbSession, _: CampaignAdminUser):
     """Finds a baked-in placeholder (the red XXXXXXXX) of about the given size; the admin checks it before saving."""
-    setup = db.get(CampaignDesign, _design_id(design_id))
+    setup = db.get(CampaignDesign, _design_id(design_id, db))
     if setup is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload this design's PSD first")
     expected = (payload.expected_w, payload.expected_h) if payload.expected_w and payload.expected_h else None
@@ -428,3 +472,113 @@ def find_placeholder(design_id: str, payload: CampaignFindPlaceholder, db: DbSes
     except (RenderError, OSError) as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Cannot read PSD: {exc}") from exc
     return DetectPlaceholderResponse(text_box=TextBox(x=box.x, y=box.y, w=box.w, h=box.h), fill=box.fill)
+
+
+# ---------------- the catalog: designs a campaign admin adds ----------------
+
+
+def _catalog_out(design: CampaignCatalogDesign) -> CatalogDesignOut:
+    return CatalogDesignOut(
+        design_id=design.design_id, name=design.name, category=design.category, active=design.is_active, version=design.version
+    )
+
+
+def _read_sticker(file: UploadFile) -> bytes:
+    data = file.file.read(settings.campaign_max_sticker_bytes + 1)
+    if len(data) > settings.campaign_max_sticker_bytes:
+        mb = settings.campaign_max_sticker_bytes // (1024 * 1024)
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, f"The sticker must be {mb} MB or smaller.")
+    return data
+
+
+def _catalog_design(db: Session, design_id: str) -> CampaignCatalogDesign:
+    design = db.get(CampaignCatalogDesign, design_id)
+    if design is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not an added design")
+    return design
+
+
+@router.post("/catalog", response_model=CatalogDesignOut, status_code=status.HTTP_201_CREATED)
+def add_design(
+    db: DbSession,
+    _: CampaignAdminUser,
+    name: str = Form(...),
+    category: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """Adds a design for users: shown at once in its category, with this sticker on the can."""
+    # Form fields bypass the JSON schemas' validators, so the same rules are checked here.
+    name = name.strip()
+    if not 1 <= len(name) <= 40:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Give the design a name of up to 40 characters.")
+    if category not in CATEGORIES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"The category must be one of {', '.join(CATEGORIES)}.")
+    data = _read_sticker(file)
+    design_id = new_design_id(db, name)
+    try:
+        sticker = store_sticker(design_id, data)
+    except StickerError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    design = CampaignCatalogDesign(design_id=design_id, name=name, category=category, sticker_path=sticker, version=1)
+    db.add(design)
+    db.commit()
+    db.refresh(design)
+    return _catalog_out(design)
+
+
+@router.patch("/catalog/{design_id}", response_model=CatalogDesignOut)
+def update_added_design(design_id: str, payload: CatalogDesignUpdate, db: DbSession, _: CampaignAdminUser):
+    """Renames, recategorises, hides or shows an added design. Its id, and so its entries, stay."""
+    design = _catalog_design(db, design_id)
+    data = payload.model_dump(exclude_unset=True)
+    if "name" in data:
+        design.name = data["name"].strip()
+    if "category" in data:
+        design.category = data["category"]
+    if "active" in data:
+        design.is_active = data["active"]
+    db.commit()
+    db.refresh(design)
+    return _catalog_out(design)
+
+
+@router.post("/catalog/{design_id}/sticker", response_model=CatalogDesignOut)
+def replace_sticker(design_id: str, db: DbSession, _: CampaignAdminUser, file: UploadFile = File(...)):
+    design = _catalog_design(db, design_id)
+    try:
+        design.sticker_path = store_sticker(design.design_id, _read_sticker(file))
+    except StickerError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    design.version += 1
+    db.commit()
+    db.refresh(design)
+    return _catalog_out(design)
+
+
+@router.get("/catalog/{design_id}/sticker")
+def added_design_sticker(design_id: str, db: DbSession, _: CampaignAdminUser):
+    """The sticker for the admin page, hidden designs included."""
+    path = settings.campaign_sticker_dir / _catalog_design(db, design_id).sticker_path
+    if not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "The sticker file is missing")
+    return FileResponse(path, media_type="image/png")
+
+
+@router.delete("/catalog/{design_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_added_design(design_id: str, db: DbSession, _: CampaignAdminUser):
+    """Deletes an added design nobody has entered with, with its sticker and PSD setup. One with
+    entries is kept so its entries and winners still have their design: hide it instead."""
+    design = _catalog_design(db, design_id)
+    if db.scalar(select(func.count()).select_from(CampaignEntry).where(CampaignEntry.design_id == design_id)):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "People have entered with this design, so it can't be deleted. Hide it instead."
+        )
+    setup = db.get(CampaignDesign, design_id)
+    files = [settings.campaign_sticker_dir / design.sticker_path]
+    if setup is not None:
+        files.append(settings.campaign_psd_dir / setup.psd_path)
+        db.delete(setup)
+    db.delete(design)
+    db.commit()
+    for path in files:
+        path.unlink(missing_ok=True)

@@ -55,11 +55,18 @@ export const adminPost = <T>(path: string, body?: unknown) =>
 export const adminPatch = <T>(path: string, body: unknown) =>
   call<T>(path, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-export function adminUpload<T>(path: string, file: File) {
+/** Posts a file as a form, with any other form fields alongside it. */
+export function adminUpload<T>(path: string, file: File, fields: Record<string, string> = {}) {
   const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) form.append(key, value);
   form.append("file", file);
   return call<T>(path, { method: "POST", body: form });
 }
+
+export const adminDelete = (path: string) => call<void>(path, { method: "DELETE" });
+
+/** An added design's sticker for the admin page, hidden designs included; the version busts the cache. */
+export const addedStickerUrl = (designId: string, version: number) => `${ADMIN_API}/catalog/${designId}/sticker?v=${version}`;
 
 /** A winner's print-ready TIFF. */
 export const tiffUrl = (winnerId: number) => `${ADMIN_API}/winners/${winnerId}/tiff`;
@@ -68,9 +75,13 @@ export const tiffUrl = (winnerId: number) => `${ADMIN_API}/winners/${winnerId}/t
 export const sheetUrl = (day: string) =>
   `${ADMIN_API}/days/${day}/winners.csv?link_base=${encodeURIComponent(`${window.location.origin}${ADMIN_API}`)}`;
 
+/** Today's date in India time (YYYY-MM-DD), the campaign's calendar. */
+export const todayInIndia = (now: Date = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now);
+
 /** Yesterday's date in India time (YYYY-MM-DD): the latest campaign day whose draw can have run. */
 export const yesterdayInIndia = (now: Date = new Date()) => {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now);
+  const today = todayInIndia(now);
   const d = new Date(`${today}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
@@ -91,7 +102,19 @@ export type DesignFormat = {
   placeholder_color: string | null;
 };
 
-export type CampaignDesign = { design_id: string; format: DesignFormat | null };
+/** A design as the admin sees it: one of the nine built in, or one an admin added. */
+export type CampaignDesign = {
+  design_id: string;
+  /** An added design's name and category; built-in ones carry theirs in lib/campaign/designs. */
+  name: string | null;
+  category: string | null;
+  builtin: boolean;
+  /** Shown to users. */
+  active: boolean;
+  /** An added design's sticker version; 0 for built-in ones. */
+  version: number;
+  format: DesignFormat | null;
+};
 
 export type Font = { filename: string; family: string | null };
 

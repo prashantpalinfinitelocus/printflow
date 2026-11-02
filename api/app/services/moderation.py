@@ -314,6 +314,18 @@ sentence in `r` that a store admin can act on."""
 # ---------- Gemini client ----------
 
 
+#: The client is reused across calls: creating one per check added its setup to every text check.
+#: Kept with the factory that made it, so swapping the factory (tests do) makes a new one.
+_shared: tuple[object, object] | None = None
+
+
+def _client():
+    global _shared
+    if _shared is None or _shared[0] is not _make_client:
+        _shared = (_make_client, _make_client())
+    return _shared[1]
+
+
 def _make_client():
     """Build the SDK client. Replaced by a fake in tests."""
     from google import genai
@@ -393,7 +405,7 @@ def moderate_texts(texts: list[str]) -> ModerationOutcome:
     size = max(1, settings.moderation_batch_size)
     batches = [texts[i : i + size] for i in range(0, len(texts), size)]
     try:
-        client = _make_client()
+        client = _client()
     except Exception as exc:  # noqa: BLE001 — no key, broken install: hold everything
         log.error("Moderation client could not be created; holding %d texts: %s", len(texts), exc)
         reason = f"Moderation unavailable: {exc}"
