@@ -46,6 +46,23 @@ describe("AdminLogin", () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it("keeps the fields white, so they read over the backdrop photo", () => {
+    render(<AdminLogin />);
+    expect(screen.getByLabelText("User ID")).toHaveClass("bg-white");
+    expect(screen.getByLabelText("Password")).toHaveClass("bg-white");
+  });
+
+  it("shows and hides the password on request", async () => {
+    render(<AdminLogin />);
+    const password = screen.getByLabelText("Password");
+    expect(password).toHaveAttribute("type", "password");
+
+    await userEvent.click(screen.getByRole("button", { name: "Show password" }));
+    expect(password).toHaveAttribute("type", "text");
+    await userEvent.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(password).toHaveAttribute("type", "password");
+  });
+
   it("asks for both fields before trying", async () => {
     render(<AdminLogin />);
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
