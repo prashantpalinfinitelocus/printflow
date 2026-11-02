@@ -71,3 +71,35 @@ def decode_participant_token(token: str) -> dict:
         issuer=CAMPAIGN_ISSUER,
         options={"require": _CAMPAIGN_REQUIRED_CLAIMS},
     )
+
+
+#: Campaign admin tokens: their own audience and issuer, so a staff or consumer token is
+#: never accepted where one is expected, and one of these opens nothing else.
+CAMPAIGN_ADMIN_AUDIENCE = "campaign-admin"
+CAMPAIGN_ADMIN_ISSUER = "printflow-campaign-admin"
+
+
+def create_campaign_admin_token(*, admin_id: int, version: int = 0) -> tuple[str, int]:
+    expires_in = settings.campaign_admin_jwt_expire_minutes * 60
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(admin_id),
+        "aud": CAMPAIGN_ADMIN_AUDIENCE,
+        "iss": CAMPAIGN_ADMIN_ISSUER,
+        "jti": uuid.uuid4().hex,
+        "ver": version,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=expires_in)).timestamp()),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm), expires_in
+
+
+def decode_campaign_admin_token(token: str) -> dict:
+    return jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=[settings.jwt_algorithm],
+        audience=CAMPAIGN_ADMIN_AUDIENCE,
+        issuer=CAMPAIGN_ADMIN_ISSUER,
+        options={"require": _CAMPAIGN_REQUIRED_CLAIMS},
+    )

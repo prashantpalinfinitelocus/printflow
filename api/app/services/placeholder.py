@@ -252,11 +252,12 @@ def detect_in_psd(
     tolerance: int = 60,
     expected_size: tuple[int, int] | None = DEFAULT_EXPECTED_SIZE,
     size_tolerance: float = 0.08,
+    psd_dir: Path | None = None,
 ) -> PlaceholderBox:
     from .renderer import composite_psd
 
     return detect_placeholder(
-        composite_psd(psd_path),
+        composite_psd(psd_path, psd_dir),
         color,
         tolerance=tolerance,
         expected_size=expected_size,

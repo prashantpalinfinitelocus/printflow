@@ -60,6 +60,11 @@ STATEMENTS: list[str] = [
     # Campaign session revocation (create_all makes the new OTP tables itself).
     "ALTER TABLE campaign_participants ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE campaign_phone_guards ADD COLUMN IF NOT EXISTS last_failed_at TIMESTAMPTZ",
+    # Campaign admin (create_all makes its tables; these reach a database made before the columns).
+    "ALTER TABLE campaign_draws ADD COLUMN IF NOT EXISTS seed BIGINT",
+    "ALTER TABLE campaign_draws ADD COLUMN IF NOT EXISTS excluded_participants JSONB NOT NULL DEFAULT '[]'",
+    "ALTER TABLE campaign_admins ADD COLUMN IF NOT EXISTS failed_logins INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE campaign_admins ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ",
 ]
 
 

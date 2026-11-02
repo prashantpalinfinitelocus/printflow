@@ -16,6 +16,9 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
         fonts-dejavu-core \
         fonts-noto-core \
+        # Pillow's wheel bundles raqm and HarfBuzz but loads FriBiDi from the system; without
+        # it Indic names print with their vowel signs in the wrong place (प्रिया as प्रयिा).
+        libfribidi0 \
         # icc-profiles-free ships FOGRA *measurement data* (.ti3), not usable
         # profiles. Ghostscript carries the actual default_cmyk.icc.
         ghostscript \

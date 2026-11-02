@@ -184,9 +184,12 @@ def _find_in_folder(folder: Path, requested: str | Path) -> Path | None:
     return None
 
 
-def resolve_psd_path(psd_path: str | Path) -> Path:
-    """Turn a format's PSD name into the real file inside the PSD folder."""
-    found = _find_in_folder(settings.psd_dir, psd_path)
+def resolve_psd_path(psd_path: str | Path, psd_dir: Path | None = None) -> Path:
+    """Turn a format's PSD name into the real file inside the PSD folder.
+
+    `psd_dir` lets a caller with its own templates (the campaign) look in its own folder.
+    """
+    found = _find_in_folder(psd_dir or settings.psd_dir, psd_path)
     if found is None:
         raise RenderError(f"PSD template not found in the PSD folder: {Path(psd_path).name}")
     return found
@@ -746,9 +749,9 @@ def _composite_psd(psd_path: Path, skip_layer: str | None) -> tuple[Image.Image,
     return image.convert("RGBA"), placeholder_bbox
 
 
-def composite_psd(psd_path: str | Path) -> Image.Image:
+def composite_psd(psd_path: str | Path, psd_dir: Path | None = None) -> Image.Image:
     """Composite a design to RGBA, resolving bare filenames inside the PSD dir."""
-    psd_path = resolve_psd_path(psd_path)
+    psd_path = resolve_psd_path(psd_path, psd_dir)
     image, _ = _composite_psd(psd_path, None)
     return image
 
@@ -952,8 +955,9 @@ def render_order(
     page_size: str | None = None,
     white_passes: int = 0,
     clear_text_area: bool = False,
+    psd_dir: Path | None = None,
 ) -> RenderResult:
-    psd_path = resolve_psd_path(psd_path)
+    psd_path = resolve_psd_path(psd_path, psd_dir)
 
     image, placeholder_bbox = _composite_psd(psd_path, text_layer_name)
 
@@ -1066,7 +1070,7 @@ def render_order(
     )
 
 
-def psd_dimensions(psd_path: str | Path) -> tuple[int, int]:
-    p = resolve_psd_path(psd_path)
+def psd_dimensions(psd_path: str | Path, psd_dir: Path | None = None) -> tuple[int, int]:
+    p = resolve_psd_path(psd_path, psd_dir)
     psd = PSDImage.open(p)
     return psd.width, psd.height

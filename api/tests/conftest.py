@@ -170,6 +170,48 @@ def operator_headers(client):
     return {"Authorization": f"Bearer {_token(client, 'op@test.local', 'operatorpw')}"}
 
 
+CAMPAIGN_ADMIN = ("campaign-ops", "campaign-pw-123")
+
+
+@pytest.fixture
+def campaign_admin(app_modules, seeded):
+    """A campaign-admin account: its own login, apart from PrintFlow's staff users."""
+    from app.db import SessionLocal
+    from app.models import CampaignAdmin
+    from app.security import hash_password
+
+    db = SessionLocal()
+    try:
+        admin = db.query(CampaignAdmin).filter_by(username=CAMPAIGN_ADMIN[0]).one_or_none()
+        if admin is None:
+            admin = CampaignAdmin(username=CAMPAIGN_ADMIN[0], password_hash=hash_password(CAMPAIGN_ADMIN[1]))
+            db.add(admin)
+        admin.is_active = True
+        db.commit()
+        return {"username": CAMPAIGN_ADMIN[0], "password": CAMPAIGN_ADMIN[1]}
+    finally:
+        db.close()
+
+
+@pytest.fixture
+def ca_headers(client, campaign_admin):
+    res = client.post("/campaign-admin/auth/login", json=campaign_admin)
+    assert res.status_code == 200, res.text
+    return {"Authorization": f"Bearer {res.json()['token']}"}
+
+
+@pytest.fixture
+def participant_headers(client, monkeypatch):
+    """A consumer's campaign login, which must open nothing on the admin side."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "campaign_otp_bypass", True)
+    monkeypatch.setattr(settings, "campaign_otp_bypass_code", "123456")
+    res = client.post("/campaign/otp/verify", json={"phone": "9811111111", "email": "c@example.com", "code": "123456"})
+    assert res.status_code == 200, res.text
+    return {"Authorization": f"Bearer {res.json()['token']}"}
+
+
 @pytest.fixture
 def stub_log(_environment) -> Path:
     return _environment["stub_log"]

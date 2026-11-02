@@ -17,6 +17,9 @@ const config: NextConfig = {
     // default hands only the first 10MB of a body on to the route. A 20MB PSD
     // reached the API cut off mid-file and failed with "file: Field required".
     middlewareClientMaxBodySize: "100mb",
+    // The /user-campaign rewrite below is a proxy, which gives up after 30 seconds by default.
+    // The campaign admin renders a print-resolution TIFF inside one request, so allow longer.
+    proxyTimeout: 120_000,
   },
   // Every page lives under /offline-store (see lib/basePath.ts).
   basePath: BASE_PATH,

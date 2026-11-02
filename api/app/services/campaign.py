@@ -43,6 +43,11 @@ def _zone_label() -> str:
     return "IST" if settings.campaign_timezone == "Asia/Kolkata" else settings.campaign_timezone
 
 
+def closing_label() -> str:
+    """When the entry window closes, e.g. "10 PM IST"."""
+    return f"{_hour_label(settings.campaign_close_hour)} {_zone_label()}"
+
+
 def window_message(state: str) -> str:
     """The PRD 5 copy for a window state, naming the configured hours."""
     opens, closes, zone = _hour_label(settings.campaign_open_hour), _hour_label(settings.campaign_close_hour), _zone_label()

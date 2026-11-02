@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Annotated, Literal
@@ -522,3 +522,103 @@ class EntryCreate(BaseModel):
 
 class EntryOut(BaseModel):
     entry_id: str
+
+
+# ---------------- campaign admin: daily draw and winners ----------------
+
+
+class CampaignDrawOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    eligible_entries: int
+    winner_count: int
+    created_at: datetime
+
+
+class CampaignWinnerOut(BaseModel):
+    id: int
+    rank: int
+    entry_id: str
+    phone: str
+    email: str
+    design_id: str
+    text: str
+    entered_at: datetime
+    tiff_ready: bool
+    tiff_error: str | None
+    tiff_generated_at: datetime | None
+
+
+class CampaignDayOut(BaseModel):
+    day: date
+    entries: int
+    #: The entry window has closed and the day has not been drawn yet.
+    can_draw: bool
+    draw: CampaignDrawOut | None
+    winners: list[CampaignWinnerOut]
+    #: Designs among the winners with no PSD set up under Designs, so no TIFF can be made.
+    missing_formats: list[str]
+
+
+class CampaignAdminLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class CampaignAdminOut(BaseModel):
+    username: str
+
+
+class CampaignAdminSession(BaseModel):
+    token: str
+    expires_in: int
+    admin: CampaignAdminOut
+
+
+class CampaignDesignSetup(BaseModel):
+    """The PSD a campaign design prints from and where its text goes."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    psd_path: str
+    width_px: int
+    height_px: int
+    dpi: int
+    text_box: dict
+    font_path: str | None
+    font_size: int
+    font_color: str
+    placeholder_color: str | None
+
+
+class CampaignDesignOut(BaseModel):
+    design_id: str
+    #: What the design's TIFFs render from; empty until its PSD is uploaded.
+    format: CampaignDesignSetup | None
+
+
+class CampaignTextBox(BaseModel):
+    """Where a design's text goes, in pixels from the PSD's top-left corner."""
+
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
+    w: int = Field(ge=1)
+    h: int = Field(ge=1)
+
+
+class CampaignDesignUpdate(BaseModel):
+    # Fields left out keep their value. The box, size and colour are required columns, so an
+    # explicit null is refused rather than cleared (a default is not validated; a sent null is).
+    text_box: CampaignTextBox = None  # type: ignore[assignment]
+    font_size: int = Field(default=None, ge=1, le=2000)  # type: ignore[assignment]
+    font_color: str = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")  # type: ignore[assignment]
+    #: Empty uses the renderer's automatic font choice.
+    font_path: str | None = None
+    #: Colour of a placeholder baked into the art, erased before printing; empty erases nothing.
+    placeholder_color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+
+
+class CampaignFindPlaceholder(BaseModel):
+    color: str = Field(default="#ED1C24", pattern=r"^#[0-9A-Fa-f]{6}$")
+    expected_w: int | None = Field(default=None, ge=1)
+    expected_h: int | None = Field(default=None, ge=1)

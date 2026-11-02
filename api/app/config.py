@@ -142,6 +142,31 @@ class Settings(BaseSettings):
 
     #: Entries one phone may submit in total (PRD 2: 50). 0 = no cap.
     campaign_max_entries_per_participant: int = 50
+    #: Most winners one day's draw picks (PRD 2: 100). Internal; never shown to consumers.
+    campaign_daily_winners: int = 100
+    #: Wins one phone may have in a calendar month (PRD 2: 5); the draw skips them after that.
+    campaign_monthly_win_limit: int = 5
+    #: Minutes after the window closes before a day may be drawn, so a last-second entry has landed.
+    campaign_draw_grace_minutes: int = 10
+    #: How long a campaign admin stays signed in.
+    campaign_admin_jwt_expire_minutes: int = 12 * 60
+    #: Wrong passwords in a row before a campaign admin account locks for `campaign_admin_lock_minutes`.
+    campaign_admin_max_failed_logins: int = 5
+    campaign_admin_lock_minutes: int = 15
+    #: How far back the nightly draw job looks for days it missed.
+    campaign_draw_catchup_days: int = 7
+    #: The campaign's own storage, apart from PrintFlow's PSD and output folders. Empty means
+    #: data_dir/campaign/psd and data_dir/campaign/output.
+    campaign_psd_dir: Path | None = None
+    campaign_output_dir: Path | None = None
+
+    @model_validator(mode="after")
+    def _campaign_dirs(self) -> "Settings":
+        if self.campaign_psd_dir is None:
+            self.campaign_psd_dir = self.data_dir / "campaign" / "psd"
+        if self.campaign_output_dir is None:
+            self.campaign_output_dir = self.data_dir / "campaign" / "output"
+        return self
 
     bootstrap_admin_email: str = "admin@printflow.local"
     bootstrap_admin_password: str = "admin123"
@@ -157,7 +182,15 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     def ensure_dirs(self) -> None:
-        for d in (self.data_dir, self.inbox_dir, self.psd_dir, self.output_dir, self.fonts_dir):
+        for d in (
+            self.data_dir,
+            self.inbox_dir,
+            self.psd_dir,
+            self.output_dir,
+            self.fonts_dir,
+            self.campaign_psd_dir,
+            self.campaign_output_dir,
+        ):
             d.mkdir(parents=True, exist_ok=True)
 
 

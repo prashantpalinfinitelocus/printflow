@@ -6,6 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -386,3 +387,97 @@ class CampaignEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     participant: Mapped[CampaignParticipant] = relationship(back_populates="entries")
+
+
+class CampaignDraw(Base):
+    """The record of one day's lucky draw (PRD 11). One per campaign day, so a re-run is a no-op."""
+
+    __tablename__ = "campaign_draws"
+
+    campaign_day: Mapped[date] = mapped_column(Date, primary_key=True)
+    #: Entries the day had when it was drawn; the audit's "eligible entry set".
+    eligible_entries: Mapped[int] = mapped_column(Integer)
+    winner_count: Mapped[int] = mapped_column(Integer)
+    #: Phones with entries that day that the monthly win limit kept out, so the draw replays
+    #: from the seed even if other days of the month are drawn later.
+    excluded_participants: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
+    #: Seeds the shuffle, so the draw can be replayed from the day's entries in (created_at, id) order.
+    seed: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    #: The campaign admin who ran it; empty when the scheduled job did.
+    run_by_id: Mapped[int | None] = mapped_column(ForeignKey("campaign_admins.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    winners: Mapped[list[CampaignWinner]] = relationship(
+        back_populates="draw", order_by="CampaignWinner.rank", cascade="all, delete-orphan"
+    )
+
+
+class CampaignWinner(Base):
+    """One winning entry, and the print-ready TIFF made for it."""
+
+    __tablename__ = "campaign_winners"
+    __table_args__ = (UniqueConstraint("campaign_day", "participant_id", name="uq_campaign_winners_day_participant"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    campaign_day: Mapped[date] = mapped_column(ForeignKey("campaign_draws.campaign_day"), index=True)
+    #: Order the draw picked them in, from 1.
+    rank: Mapped[int] = mapped_column(Integer)
+    entry_id: Mapped[str] = mapped_column(ForeignKey("campaign_entries.id"), unique=True)
+    participant_id: Mapped[int] = mapped_column(ForeignKey("campaign_participants.id"), index=True)
+    tiff_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    #: Why the last TIFF attempt failed; cleared by a successful one.
+    tiff_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tiff_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    draw: Mapped[CampaignDraw] = relationship(back_populates="winners")
+    entry: Mapped[CampaignEntry] = relationship()
+    participant: Mapped[CampaignParticipant] = relationship()
+
+
+class CampaignAdmin(Base):
+    """An account for the campaign's admin pages, separate from PrintFlow's staff users.
+
+    Its tokens open only the /campaign-admin routes; staff and consumer tokens open none of them.
+    """
+
+    __tablename__ = "campaign_admins"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    #: The user ID it signs in with, stored lower-case.
+    username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    #: Tokens carry this number; logging out bumps it, which revokes every earlier token.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    #: Wrong passwords since the last sign-in; reaching the limit locks the account until `locked_until`.
+    failed_logins: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CampaignDesign(Base):
+    """The PSD one campaign design prints from, and where its text goes.
+
+    The campaign's own record, apart from PrintFlow's print formats: a winner's TIFF is
+    rendered from this by the shared renderer, but nothing here appears in PrintFlow.
+    """
+
+    __tablename__ = "campaign_designs"
+
+    #: One of the campaign's design ids (DISCO_BALL and so on).
+    design_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    #: File name inside the PSD folder (campaign-<design_id>.psd).
+    psd_path: Mapped[str] = mapped_column(String(512))
+    width_px: Mapped[int] = mapped_column(Integer)
+    height_px: Mapped[int] = mapped_column(Integer)
+    dpi: Mapped[int] = mapped_column(Integer, default=300)
+    # {"x":int,"y":int,"w":int,"h":int}: pixels from the PSD's top-left corner.
+    text_box: Mapped[dict] = mapped_column(JSONB)
+    font_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    font_size: Mapped[int] = mapped_column(Integer)
+    font_color: Mapped[str] = mapped_column(String(16))
+    align: Mapped[str] = mapped_column(String(16), default="center")
+    #: Colour of a placeholder baked into the art (the red XXXXXXXX), erased before the text is drawn.
+    placeholder_color: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -6,8 +6,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from .db import get_db
-from .models import CampaignParticipant, Role, User
-from .security import decode_access_token, decode_participant_token
+from .models import CampaignAdmin, CampaignParticipant, Role, User
+from .security import decode_access_token, decode_campaign_admin_token, decode_participant_token
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -76,3 +76,26 @@ def get_current_participant(
 
 
 CurrentParticipant = Annotated[CampaignParticipant, Depends(get_current_participant)]
+
+
+def get_campaign_admin(
+    db: DbSession,
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)] = None,
+) -> CampaignAdmin:
+    """The campaign admin behind a token. Staff and consumer tokens carry another audience and are refused."""
+    if creds is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+    try:
+        payload = decode_campaign_admin_token(creds.credentials)
+        admin_id = int(payload["sub"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please sign in again.") from None
+    except (jwt.PyJWTError, TypeError, ValueError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in") from None
+    admin = db.get(CampaignAdmin, admin_id)
+    if admin is None or not admin.is_active or payload["ver"] != admin.token_version:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+    return admin
+
+
+CampaignAdminUser = Annotated[CampaignAdmin, Depends(get_campaign_admin)]
