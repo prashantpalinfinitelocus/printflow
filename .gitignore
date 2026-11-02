@@ -5,6 +5,8 @@ api/__pycache__/
 web/node_modules/
 web/.next/
 data/output/
+# The campaign's own PSDs and TIFFs (docs/CAMPAIGN_ADMIN.md).
+data/campaign/
 data/inbox/*.csv
 !data/inbox/sample_orders.csv
 .DS_Store
