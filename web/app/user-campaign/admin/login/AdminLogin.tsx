@@ -83,7 +83,7 @@ export function AdminLogin() {
         </div>
       </div>
       <FieldError className="font-[family-name:var(--dc-text)] font-semibold">{error}</FieldError>
-      <PillButton type="submit" busy={busy} className="mt-2 lg:mx-auto lg:h-14 lg:w-[326px] lg:rounded-[28px] lg:text-base lg:leading-[19.2px]">
+      <PillButton type="submit" busy={busy} className="mt-2 lg:h-14 lg:rounded-[28px] lg:text-base lg:leading-[19.2px]">
         Sign in
       </PillButton>
     </form>

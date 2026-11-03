@@ -26,50 +26,101 @@ html:has(.dc-fonts) body {
   animation: dc-pop 0.18s ease-out both;
 }
 
-/* The admin sign-in's can: it drops into its 17.91° tilt on the left as the page opens, then
-   drifts in a slow, small circle, swaying a little either side of the tilt, as if held in the air.
-   Both animate the individual rotate/translate properties, which Tailwind's rotate-* sets; the
-   drift starts where the drop ends, so the hand-over is seamless. */
-@keyframes dc-can-settle {
+/* The admin sign-in's can floats in a slow circle while swaying a little either side of its tilt. Sideways
+   and up-and-down are separate sine-like swings a quarter-cycle apart, so the motion never stops at a corner,
+   and they live on nested boxes because each box can animate only one translate. The shadow shares the sideways
+   box, so it follows the can, and it tightens and fades in time with the can rising. */
+@keyframes dc-float-x {
   from {
-    rotate: 10deg;
-    translate: 0 -6%;
+    translate: -2.5% 0;
+  }
+  to {
+    translate: 2.5% 0;
+  }
+}
+@keyframes dc-float-y {
+  from {
+    translate: 0 1.5%;
+  }
+  to {
+    translate: 0 -1.5%;
+  }
+}
+@keyframes dc-float-sway {
+  from {
+    rotate: 15.91deg;
+  }
+  to {
+    rotate: 19.91deg;
+  }
+}
+@keyframes dc-float-shadow {
+  from {
+    scale: 1.06;
+    opacity: 1;
+  }
+  to {
+    scale: 0.82;
+    opacity: 0.55;
+  }
+}
+@keyframes dc-can-drop {
+  from {
+    translate: 0 -5%;
     opacity: 0;
   }
   to {
-    rotate: 17.91deg;
     translate: 0 0;
     opacity: 1;
   }
 }
-@keyframes dc-can-float {
-  0%,
-  100% {
-    rotate: 17.91deg;
-    translate: 0 0;
+@keyframes dc-fade-in {
+  from {
+    opacity: 0;
   }
-  25% {
-    rotate: 19.91deg;
-    translate: 1.5% -1.5%;
-  }
-  50% {
-    rotate: 17.91deg;
-    translate: 0 -3%;
-  }
-  75% {
-    rotate: 15.91deg;
-    translate: -1.5% -1.5%;
+  to {
+    opacity: 1;
   }
 }
-.animate-can-float {
+@keyframes dc-rise-in {
+  from {
+    translate: 0 12px;
+    opacity: 0;
+  }
+  to {
+    translate: 0 0;
+    opacity: 1;
+  }
+}
+.animate-float-x {
+  animation: dc-float-x 4.5s cubic-bezier(0.37, 0, 0.63, 1) -2.25s infinite alternate;
+}
+.animate-float-can {
   animation:
-    dc-can-settle 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both,
-    dc-can-float 8s ease-in-out 1.05s infinite;
+    dc-float-y 4.5s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate,
+    dc-float-sway 4.5s cubic-bezier(0.37, 0, 0.63, 1) -2.25s infinite alternate;
+}
+.animate-float-shadow {
+  animation: dc-float-shadow 4.5s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+}
+.animate-can-drop {
+  animation: dc-can-drop 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-fade-in {
+  animation: dc-fade-in 1s ease-out both;
+}
+.animate-rise-in {
+  animation: dc-rise-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-pop,
-  .animate-can-float {
+  .animate-float-x,
+  .animate-float-can,
+  .animate-float-shadow,
+  .animate-can-drop,
+  .animate-fade-in,
+  .animate-rise-in {
     animation: none;
   }
 }

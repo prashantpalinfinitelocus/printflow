@@ -12,14 +12,13 @@ import { AdminLogin } from "./AdminLogin";
 export const metadata: Metadata = { title: "Campaign admin sign in", robots: { index: false, follow: false } };
 
 /**
- * The campaign admin's sign-in, dressed like the web landing (Figma 518:7085): its photo over the
- * whole page, the can dropping into its tilt and then drifting slowly on the left from 1024px, the
- * logo in the corner, and a serif headline with the form where the landing has its copy. Figma has
- * no design for this page. Phones get the photo, the logo and the form.
+ * The campaign admin's sign-in. Figma has no design for it, so it borrows the landing's photo and
+ * tilted can, floating on the left from 1024px and above the card on phones tall enough for both,
+ * with its shadow following it. The headline and form share one left edge in a frosted card.
  */
 export default function AdminLoginPage() {
   return (
-    <main className="relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#ECEDEF] px-6 pt-16 pb-12 text-[#494949] lg:p-0">
+    <main className="relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#ECEDEF] px-5 py-12 text-[#494949] lg:p-0">
       <div data-backdrop className="absolute inset-0" aria-hidden="true">
         <div className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden">
           <Image quality={IMAGE_QUALITY} src={mobileBg} alt="" fill placeholder="blur" sizes="100vw" className="object-cover" />
@@ -27,16 +26,24 @@ export default function AdminLoginPage() {
         <div className="absolute inset-0 hidden lg:block">
           <Image quality={IMAGE_QUALITY} src={webBg} alt="" fill placeholder="blur" sizes="100vw" className="object-cover" />
         </div>
-        {/* Placed as on the landing; the inner box takes the tilt and the drift, which animate its rotate and translate. */}
-        <div
-          data-can-slot
-          className="absolute top-[48.78%] left-[34.83%] hidden aspect-[170/423] h-[72.35dvh] -translate-x-1/2 -translate-y-1/2 lg:block"
-        >
-          <div data-can className="animate-can-float absolute inset-0 rotate-[17.91deg] motion-reduce:animate-none">
-            <Image quality={IMAGE_QUALITY} src={landingCan} alt="" fill priority placeholder="blur" sizes="30vh" className="object-contain" />
+      </div>
+
+      {/* Placed as on the landing on web. The shadow's size and place are shares of this box, so it scales with the can. */}
+      <div
+        data-can-slot
+        aria-hidden="true"
+        className="relative mb-10 hidden aspect-[170/423] h-[150px] shrink-0 [@media(min-height:770px)]:block lg:absolute lg:top-[48.78%] lg:left-[34.83%] lg:mb-0 lg:block lg:h-[72.35dvh] lg:-translate-x-1/2 lg:-translate-y-1/2"
+      >
+        <div data-float-x className="animate-float-x absolute inset-0">
+          <div className="animate-can-drop absolute inset-0">
+            <div data-can className="animate-float-can absolute inset-0 rotate-[17.91deg]">
+              <Image quality={IMAGE_QUALITY} src={landingCan} alt="" fill priority placeholder="blur" sizes="(min-width: 1024px) 30vh, 80px" className="object-contain" />
+            </div>
+          </div>
+          <div className="animate-fade-in absolute top-[107.3%] left-[-25.3%] h-[2.6%] w-[98.2%]">
+            <div data-shadow className="animate-float-shadow h-full w-full rounded-[50%] bg-black/14 blur-[4px]" />
           </div>
         </div>
-        <div className="absolute top-[90.22%] left-[30.08%] hidden h-[17px] w-[257px] -translate-x-1/2 rounded-[50%] bg-black/14 blur-[4px] lg:block" />
       </div>
 
       <Image
@@ -50,17 +57,22 @@ export default function AdminLoginPage() {
 
       <div
         data-panel
-        className="relative flex w-full max-w-[354px] flex-col gap-8 lg:absolute lg:top-1/2 lg:left-[59.03%] lg:w-[401px] lg:max-w-[min(401px,calc(100vw-59.03%-40px))] lg:-translate-y-1/2"
+        className="relative w-full max-w-[362px] lg:absolute lg:top-1/2 lg:left-[59.03%] lg:w-[420px] lg:max-w-[min(420px,calc(100vw-59.03%-40px))] lg:-translate-y-1/2"
       >
-        <div className="flex flex-col gap-2 text-center lg:gap-4">
-          <h1 className="font-[family-name:var(--dc-serif)] text-[32px] leading-10 text-balance text-[#F40009] lg:text-[40px] lg:leading-12">
-            Ready to pick today’s lucky few?
-          </h1>
-          <p className="mx-auto max-w-[316px] text-sm leading-[21px] text-balance">
-            Sign in to run the daily draw, make the winners’ print files and download the sheet.
-          </p>
+        <div
+          data-card
+          className="animate-rise-in flex flex-col gap-6 rounded-[28px] bg-white/75 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.12)] backdrop-blur-md lg:gap-8 lg:p-8"
+        >
+          <div className="flex flex-col gap-2">
+            <h1 className="font-[family-name:var(--dc-serif)] text-[32px] leading-10 text-[#F40009] lg:text-[40px] lg:leading-12">
+              Ready to pick today’s lucky few?
+            </h1>
+            <p className="text-sm leading-[21px] text-pretty">
+              Sign in to run the daily draw, make the winners’ print files and download the sheet.
+            </p>
+          </div>
+          <AdminLogin />
         </div>
-        <AdminLogin />
       </div>
     </main>
   );

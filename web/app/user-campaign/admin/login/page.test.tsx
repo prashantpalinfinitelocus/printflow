@@ -15,10 +15,11 @@ describe("campaign admin login page", () => {
     expect(srcs).toMatch(/web-landing-bg/);
   });
 
-  it("shows the landing's can on the left from 1024px", () => {
+  it("shows the landing's can on the left from 1024px, and above the card on tall phones", () => {
     const { container } = render(<AdminLoginPage />);
     const slot = container.querySelector("[data-can-slot]");
-    expect(slot).toHaveClass("hidden", "lg:block");
+    // Only phones tall enough for both the can and the card show it.
+    expect(slot).toHaveClass("hidden", "[@media(min-height:770px)]:block", "lg:block");
     expect(slot?.querySelector("img")?.getAttribute("src")).toMatch(/landing-can/);
   });
 
@@ -29,18 +30,23 @@ describe("campaign admin login page", () => {
     expect(screen.queryByText(/campaign admin/i)).not.toBeInTheDocument();
   });
 
-  it("drops the can into its tilt, then lets it drift in a slow circle; still for reduced motion", () => {
+  it("floats the can, and moves the shadow with it, inside one shared sideways box", () => {
     const { container } = render(<AdminLoginPage />);
-    const can = container.querySelector("[data-can-slot] [data-can]");
-    expect(can).toHaveClass("animate-can-float", "motion-reduce:animate-none", "rotate-[17.91deg]");
+    const sideways = container.querySelector("[data-float-x]");
+    expect(sideways).toHaveClass("animate-float-x");
+    expect(sideways).toContainElement(container.querySelector("[data-can]"));
+    expect(sideways).toContainElement(container.querySelector("[data-shadow]"));
+    expect(container.querySelector("[data-can]")).toHaveClass("animate-float-can", "rotate-[17.91deg]");
+    expect(container.querySelector("[data-shadow]")).toHaveClass("animate-float-shadow");
   });
 
-  it("puts the sign-in straight on the backdrop, with no box, on the right and centred on phones", () => {
+  it("puts the headline and form in one left-aligned card", () => {
     render(<AdminLoginPage />);
-    const panel = screen.getByRole("heading", { level: 1 }).closest("[data-panel]");
-    expect(panel).toHaveClass("lg:left-[59.03%]");
-    expect(panel?.className).not.toMatch(/\bbg-white\b|rounded|shadow/);
-    expect(panel).toContainElement(screen.getByRole("form", { name: "Sign in form" }));
+    const card = screen.getByRole("heading", { level: 1 }).closest("[data-card]");
+    expect(card).toContainElement(screen.getByRole("form", { name: "Sign in form" }));
+    expect(card).toHaveClass("rounded-[28px]", "bg-white/75");
+    expect(card?.className).not.toMatch(/text-center/);
+    expect(screen.getByRole("heading", { level: 1 }).closest("[data-panel]")).toHaveClass("lg:left-[59.03%]");
   });
 
   it("keeps the logo top right on phones and top left on web, where the landing has it", () => {
