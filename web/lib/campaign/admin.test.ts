@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AdminApiError, adminGet, adminUpload, LOGIN_PATH, sheetUrl, tiffUrl, todayInIndia, yesterdayInIndia } from "./admin";
+import { AdminApiError, adminGet, adminUpload, LOGIN_PATH, sheetUrl, tiffUrl, todayInIndia } from "./admin";
 
 const assign = vi.fn();
 
@@ -66,20 +66,5 @@ describe("todayInIndia", () => {
   it("is today's date in India time, already the next day after midnight IST", () => {
     expect(todayInIndia(new Date("2026-10-31T12:00:00Z"))).toBe("2026-10-31");
     expect(todayInIndia(new Date("2026-10-31T19:00:00Z"))).toBe("2026-11-01");
-  });
-});
-
-describe("yesterdayInIndia", () => {
-  it("is the day before today in India time, as YYYY-MM-DD", () => {
-    expect(yesterdayInIndia(new Date("2026-10-31T12:00:00Z"))).toBe("2026-10-30");
-  });
-
-  it("has already moved on after midnight India time, while UTC is still on the old day", () => {
-    // 00:30 IST on 1 Nov is 19:00 UTC on 31 Oct.
-    expect(yesterdayInIndia(new Date("2026-10-31T19:00:00Z"))).toBe("2026-10-31");
-  });
-
-  it("crosses month ends", () => {
-    expect(yesterdayInIndia(new Date("2026-11-01T06:00:00Z"))).toBe("2026-10-31");
   });
 });

@@ -83,14 +83,6 @@ export const sheetUrl = (day: string) =>
 export const todayInIndia = (now: Date = new Date()) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now);
 
-/** Yesterday's date in India time (YYYY-MM-DD): the latest campaign day whose draw can have run. */
-export const yesterdayInIndia = (now: Date = new Date()) => {
-  const today = todayInIndia(now);
-  const d = new Date(`${today}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-};
-
 export type TextBox = { x: number; y: number; w: number; h: number };
 
 /** The PSD a design's TIFFs render from and where its text goes (the campaign's own record). */

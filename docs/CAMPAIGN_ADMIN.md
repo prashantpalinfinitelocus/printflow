@@ -68,5 +68,5 @@ With these, a draw can be replayed: shuffle the day's entries, ordered by `(crea
 ## Each day in the panel
 
 1. **Designs.** Upload each design's PSD once. The text starts on the can's name line in Diet Coke red. If the PSD has a red XXXXXXXX placeholder, find it under Edit text settings and choose whether to erase it.
-2. **Draw day.** Pick the day (it opens on yesterday). Run the draw if it has not run yet.
+2. **Draw day.** Pick the day (it opens on today, so pick yesterday for the last finished draw). Run the draw if it has not run yet.
 3. **Generate TIFFs**, then **Download sheet**. The sheet is a CSV for Excel listing every winner, with a link to each TIFF. The links open for a signed-in campaign admin.

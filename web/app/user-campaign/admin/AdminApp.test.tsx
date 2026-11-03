@@ -25,13 +25,13 @@ describe("AdminApp", () => {
     expect(api.adminGet).toHaveBeenCalledWith("/auth/me");
   });
 
-  it("shows the panel and who is signed in, opening on yesterday as of now in India, not as of the build", async () => {
+  it("shows the panel and who is signed in, opening on today as of now in India, not as of the build", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-04T09:00:00Z"));
     api.adminGet.mockResolvedValue({ username: "ops" });
     render(<AdminApp />);
 
-    expect(await screen.findByText("winners for 2026-11-03")).toBeInTheDocument();
+    expect(await screen.findByText("winners for 2026-11-04")).toBeInTheDocument();
     vi.useRealTimers();
     expect(screen.getByText("ops")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Daily winners" })).toBeInTheDocument();

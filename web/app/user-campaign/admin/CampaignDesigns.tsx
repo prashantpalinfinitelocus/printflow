@@ -20,7 +20,7 @@ import { CATEGORIES, DESIGNS } from "@/lib/campaign/designs";
 /** The red XXXXXXXX placeholder some PSDs carry; the renderer erases it before printing the text. */
 const PLACEHOLDER_RED = "#ED1C24";
 
-const SMALL_DARK = "inline-flex h-8 items-center justify-center rounded-full bg-black px-4 text-xs font-semibold text-white disabled:opacity-50";
+const SMALL_DARK = "inline-flex h-8 cursor-pointer items-center justify-center rounded-full bg-black px-4 text-xs font-semibold text-white disabled:opacity-50";
 const SMALL_OUTLINE =
   "inline-flex h-8 cursor-pointer items-center justify-center rounded-full border border-black px-4 text-xs font-semibold text-black disabled:opacity-50";
 const SMALL_LINK = "inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold underline underline-offset-2 disabled:opacity-50";
@@ -152,7 +152,7 @@ function AddDesign({ onAdded }: { onAdded: () => Promise<void> }) {
             key={inputKey}
             type="file"
             accept="image/png,image/webp,image/jpeg"
-            className="text-xs file:mr-2 file:rounded-full file:border file:border-black file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold"
+            className="cursor-pointer text-xs file:mr-2 file:cursor-pointer file:rounded-full file:border file:border-black file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>

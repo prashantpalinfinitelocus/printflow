@@ -76,6 +76,13 @@ describe("CampaignDesigns", () => {
     expect(within(row("Beach vibes")).getByText("No PSD yet")).toBeInTheDocument();
   });
 
+  it("shows a pointer on the file pickers that act as buttons", async () => {
+    render(<CampaignDesigns />);
+    await screen.findByText("campaign-DISCO_BALL.psd");
+    expect(within(row("Beach vibes")).getByText("Upload PSD")).toHaveClass("cursor-pointer");
+    expect(screen.getByLabelText("Sticker image")).toHaveClass("cursor-pointer", "file:cursor-pointer");
+  });
+
   it("uploads a design's PSD to its own endpoint; the server places the text on the can's name line", async () => {
     const onSaved = vi.fn();
     api.adminUpload.mockResolvedValue({ design_id: "BEACH_VIBES", format: { ...discoBall, psd_path: "campaign-BEACH_VIBES.psd" } });

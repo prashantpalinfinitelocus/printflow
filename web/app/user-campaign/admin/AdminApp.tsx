@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import logo from "@/app/user-campaign/_assets/logo.png";
-import { adminGet, adminPost, LOGIN_PATH, yesterdayInIndia } from "@/lib/campaign/admin";
+import { adminGet, adminPost, LOGIN_PATH, todayInIndia } from "@/lib/campaign/admin";
 import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 
 import { CampaignWinners } from "./CampaignWinners";
@@ -65,8 +65,8 @@ export function AdminApp() {
                 design’s PSD, then download the sheet of winners with a link to every TIFF.
               </p>
             </div>
-            {/* Rendered only in the browser, after the sign-in check, so "yesterday" is today's. */}
-            <CampaignWinners initialDay={yesterdayInIndia()} />
+            {/* Rendered only in the browser, after the sign-in check, so "today" is really today. */}
+            <CampaignWinners initialDay={todayInIndia()} />
           </>
         ) : (
           <p className="mt-16 text-center text-sm text-[#8A8A8A]">Checking your sign-in…</p>
