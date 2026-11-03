@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { FieldError, Modal, PillButton } from "@/components/campaign/ui";
+import { failureReason, track, useTrackOnce } from "@/lib/campaign/analytics";
 import { CampaignError, campaignApi, errorMessage, type CampaignApi, type Session } from "@/lib/campaign/api";
 import { isValidEmail, isValidPhone } from "@/lib/campaign/text";
 
@@ -103,6 +104,7 @@ function DetailsModal({
 }) {
   const [errors, setErrors] = useState<{ phone?: string; email?: string; terms?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
+  useTrackOnce("login_screen_viewed");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -117,8 +119,10 @@ function DetailsModal({
     setBusy(true);
     try {
       const { resendAfter } = await api.sendOtp(phone, email.trim());
+      track("otp_requested");
       onSent(resendAfter);
     } catch (err) {
+      track("otp_request_failed", { failure_reason: failureReason(err) });
       setErrors({ form: errorMessage(err, TECH_ERROR) });
       setBusy(false);
     }
@@ -278,8 +282,12 @@ function OtpModal({
     setBusy(true);
     setError(null);
     try {
-      onVerified(await api.verifyOtp(phone, email, code));
+      const session = await api.verifyOtp(phone, email, code);
+      track("login", { method: "otp" });
+      track("email_capture_completed");
+      onVerified(session);
     } catch (err) {
+      track("login_failed", { failure_reason: failureReason(err) });
       const kind = err instanceof CampaignError ? err.code : null;
       setError(kind === "OTP_WRONG" ? "wrong" : kind === "OTP_EXPIRED" ? "expired" : errorMessage(err, TECH_ERROR));
       setBusy(false);
@@ -291,11 +299,13 @@ function OtpModal({
     setResending(true);
     try {
       const { resendAfter } = await api.sendOtp(phone, email);
+      track("otp_requested");
       setResendAt(Date.now() + resendAfter * 1000);
       setNow(Date.now());
       setCode("");
       setError(null);
     } catch (err) {
+      track("otp_request_failed", { failure_reason: failureReason(err) });
       setError(errorMessage(err, TECH_ERROR));
     } finally {
       setResending(false);

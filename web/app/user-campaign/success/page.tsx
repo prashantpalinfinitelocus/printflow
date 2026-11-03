@@ -4,6 +4,7 @@ import logo from "@/app/user-campaign/_assets/logo.png";
 import successBg from "@/app/user-campaign/_assets/success-bg.jpg";
 import webSuccessBg from "@/app/user-campaign/_assets/web-success-bg.jpg";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
+import { TrackOnce } from "@/lib/campaign/analytics";
 import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 
 const BG_SIZES = "100vw";
@@ -16,6 +17,7 @@ const BG_SIZES = "100vw";
 export default function SuccessPage() {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-[#EDE7E2] text-center">
+      <TrackOnce event="thank_you_viewed" />
       {/* Figma's 874px phone frame starts with a 99px mocked browser bar, so the photo starts that far above the screen. */}
       <div className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden" aria-hidden="true">
         <Image quality={IMAGE_QUALITY} src={successBg} alt="" fill placeholder="blur" sizes={BG_SIZES} className="object-cover" />

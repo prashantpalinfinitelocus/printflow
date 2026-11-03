@@ -16,4 +16,9 @@ describe("campaign layout", () => {
     expect(column).toHaveClass("w-full");
     expect(column.className).not.toMatch(/max-w-/);
   });
+
+  it("starts analytics on every campaign page", () => {
+    render(<CampaignLayout>page</CampaignLayout>);
+    expect(document.head.querySelector('script[src*="googletagmanager"]')).not.toBeNull();
+  });
 });

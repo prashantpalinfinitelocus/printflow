@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CampaignError, CampaignServerError, campaignApi } from "@/lib/campaign/api";
-import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
+import { SESSION, gaEventNames, gaEvents, renderCampaign, savedJourney } from "@/test/campaign";
 import { router } from "@/test/navigation";
 
 import CreatePage from "./page";
@@ -497,5 +497,93 @@ describe("web popups (Figma 518:7053, 518:7066)", () => {
     expect(dialog.firstElementChild).toHaveClass("!pt-6", "lg:!pt-8");
     expect(screen.getByText(/didn’t make the cut/).parentElement).toHaveClass("lg:gap-[5px]");
     expect(screen.getByRole("button", { name: "Edit Text" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+  });
+});
+
+describe("analytics", () => {
+  const checkMyVibe = () => userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
+
+  it("counts the gallery once it shows, not while a logged-out visitor is sent away", async () => {
+    renderCampaign(<CreatePage />);
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+    expect(gaEventNames()).toEqual([]);
+  });
+
+  it("counts one gallery view for a logged-in visitor", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await textField();
+    expect(gaEventNames()).toEqual(["design_gallery_viewed"]);
+  });
+
+  it("counts each design selection", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    const [first, second] = await screen.findAllByRole("radio");
+    await userEvent.click(first);
+    await userEvent.click(second);
+    expect(gaEventNames().filter((n) => n === "design_selected")).toHaveLength(2);
+  });
+
+  it("counts customization starting once, however much is typed", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aan");
+    expect(gaEventNames().filter((n) => n === "customization_started")).toHaveLength(1);
+  });
+
+  it.each([
+    ["empty", "   "],
+    ["emoji", "Hi 🎉"],
+  ])("reports a %s validation failure by reason, without the text", async (reason, typed) => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), typed);
+    await checkMyVibe();
+    expect(gaEvents()).toContainEqual({ name: "customization_validation_failed", validation_reason: reason });
+    expect(JSON.stringify(gaEvents())).not.toContain("🎉");
+  });
+
+  it("counts approved text through moderation to a completed customization", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await checkMyVibe();
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/preview"));
+    expect(gaEventNames()).toContain("moderation_submitted");
+    expect(gaEvents()).toContainEqual({ name: "moderation_completed", moderation_status: "approved" });
+    expect(gaEventNames()).toContain("customization_completed");
+    expect(JSON.stringify(gaEvents())).not.toContain("Aanya");
+  });
+
+  it("counts one moderation request per distinct text, shared with the live check", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await checkMyVibe();
+    await waitFor(() => expect(router.push).toHaveBeenCalled());
+    expect(gaEventNames().filter((n) => n === "moderation_completed")).toHaveLength(1);
+  });
+
+  it("reports rejected text and no completed customization", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "idiot");
+    await checkMyVibe();
+    await screen.findByRole("dialog", { name: "Let’s keep it friendly" });
+    expect(gaEvents()).toContainEqual({ name: "moderation_completed", moderation_status: "rejected" });
+    expect(gaEventNames()).not.toContain("customization_completed");
+  });
+
+  it("does not count moderation that never answered", async () => {
+    vi.spyOn(campaignApi, "moderateText").mockRejectedValue(new Error("down"));
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    await checkMyVibe();
+    await screen.findByText(/message checker needs a moment/i);
+    expect(gaEventNames()).not.toContain("moderation_submitted");
+    expect(gaEventNames()).not.toContain("moderation_completed");
+  });
+
+  it("counts a completed customization when already-approved text goes straight to preview", async () => {
+    renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "Aanya", approvedText: "Aanya" });
+    await textField();
+    await checkMyVibe();
+    expect(router.push).toHaveBeenCalledWith("/user-campaign/preview");
+    expect(gaEventNames()).toContain("customization_completed");
+    expect(gaEventNames()).not.toContain("moderation_submitted");
   });
 });

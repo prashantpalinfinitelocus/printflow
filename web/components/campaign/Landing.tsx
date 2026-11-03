@@ -11,6 +11,7 @@ import webBg from "@/app/user-campaign/_assets/web-landing-bg.jpg";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { LoginFlow } from "@/components/campaign/LoginFlow";
 import { PillButton } from "@/components/campaign/ui";
+import { track, useTrackOnce } from "@/lib/campaign/analytics";
 import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useCampaign } from "@/lib/campaign/store";
 
@@ -30,8 +31,10 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
   const [loginOpen, setLoginOpen] = useState(openLogin);
   // A logged-in visitor pressing Back onto ?login=1 must not be asked to log in again.
   const showLogin = loginOpen && ready && !session;
+  useTrackOnce("campaign_landing_viewed");
 
   function start() {
+    track("campaign_cta_clicked");
     if (session) router.push("/user-campaign/create");
     else setLoginOpen(true);
   }

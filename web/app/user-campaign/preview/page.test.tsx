@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CampaignError, CampaignServerError, campaignApi } from "@/lib/campaign/api";
 import { renderCanPng } from "@/lib/campaign/canImage";
-import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
+import { SESSION, gaEventNames, gaEvents, renderCampaign, savedJourney } from "@/test/campaign";
 import { router } from "@/test/navigation";
 
 import PreviewPage from "./page";
@@ -324,5 +324,99 @@ describe("download and share", () => {
     await userEvent.click(await imageReady("Share My Look"));
     await waitFor(() => expect(share).toHaveBeenCalled());
     expect(screen.queryByText(/couldn.t open sharing/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("analytics", () => {
+  it("counts one preview view", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    await imageReady("Download My Can");
+    expect(gaEventNames()).toEqual(["preview_viewed"]);
+  });
+
+  it("does not count a preview for a visitor being sent away", async () => {
+    renderCampaign(<PreviewPage />, { session: SESSION, text: "Aanya", approvedText: null });
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+    expect(gaEventNames()).toEqual([]);
+  });
+
+  it("counts the click back to editing", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await screen.findByRole("button", { name: "Back to editing" }));
+    expect(gaEventNames()).toContain("preview_edit_clicked");
+  });
+
+  it("counts a download's click and its outcome", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await imageReady("Download My Can"));
+    expect(gaEventNames()).toContain("download_initiated");
+    expect(gaEvents()).toContainEqual({ name: "file_download", download_outcome: "success" });
+  });
+
+  it("counts a share when the sheet opens", async () => {
+    Object.assign(navigator, { share: vi.fn().mockResolvedValue(undefined), canShare: () => true });
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await imageReady("Share My Look"));
+    await waitFor(() => expect(gaEventNames()).toContain("share"));
+  });
+
+  it("counts a share sheet the visitor closed, since it did open", async () => {
+    Object.assign(navigator, { share: vi.fn().mockRejectedValue(new DOMException("cancelled", "AbortError")), canShare: () => true });
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await imageReady("Share My Look"));
+    await waitFor(() => expect(gaEventNames()).toContain("share"));
+  });
+
+  it("does not count a share sheet that failed to open", async () => {
+    Object.assign(navigator, { share: vi.fn().mockRejectedValue(new Error("nope")), canShare: () => true });
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await imageReady("Share My Look"));
+    await screen.findByText(/couldn’t open sharing/i);
+    expect(gaEventNames()).not.toContain("share");
+  });
+
+  it("counts the fallback save as a download, not a share", async () => {
+    Object.assign(navigator, { share: vi.fn(), canShare: () => false });
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await imageReady("Share My Look"));
+    expect(gaEventNames()).not.toContain("share");
+    expect(gaEvents()).toContainEqual({ name: "file_download", download_outcome: "success" });
+  });
+
+  it("counts an attempt and an accepted entry", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/success"));
+    expect(gaEventNames()).toEqual(["preview_viewed", "entry_submission_attempted", "entry_submitted"]);
+  });
+
+  it("reports a failed entry by reason, not by message", async () => {
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValue(new CampaignError("ENTRY_LIMIT_REACHED", "That's all for today."));
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    await screen.findByText("That's all for today.");
+    expect(gaEvents()).toContainEqual({ name: "entry_submission_failed", failure_reason: "entry_limit_reached" });
+    expect(gaEventNames()).not.toContain("entry_submitted");
+  });
+
+  it("counts a closed window as a block, not a failure", async () => {
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValue(new CampaignError("WINDOW_CLOSED", "Closed for today."));
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    await screen.findByText("Closed for today.");
+    expect(gaEventNames()).toContain("entry_window_blocked");
+    expect(gaEventNames()).not.toContain("entry_submission_failed");
+  });
+
+  it("counts a retry of the same entry as the same attempt", async () => {
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new Error("lost"));
+    renderCampaign(<PreviewPage />, APPROVED);
+    await userEvent.click(await makeItHappen());
+    await screen.findByText(/couldn’t submit your entry/i);
+    await userEvent.click(await makeItHappen());
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/success"));
+    expect(gaEventNames().filter((n) => n === "entry_submission_attempted")).toHaveLength(1);
+    expect(gaEventNames().filter((n) => n === "entry_submission_failed")).toHaveLength(1);
+    expect(gaEventNames().filter((n) => n === "entry_submitted")).toHaveLength(1);
   });
 });

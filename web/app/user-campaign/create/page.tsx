@@ -9,13 +9,14 @@ import logo from "@/app/user-campaign/_assets/logo.png";
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { PHOTO_PAGE, PhotoBackdrop } from "@/components/campaign/PhotoBackdrop";
 import { FieldError, LiveCheck, Modal, PillButton } from "@/components/campaign/ui";
+import { track, useTrackOnce } from "@/lib/campaign/analytics";
 import { errorMessage, isUnauthorized } from "@/lib/campaign/api";
 import { CATEGORIES, type Category } from "@/lib/campaign/designs";
 import { useDesigns } from "@/lib/campaign/useDesigns";
 import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useLiveModeration } from "@/lib/campaign/liveModeration";
 import { useCampaign } from "@/lib/campaign/store";
-import { MAX_TEXT_LENGTH, textLength, validateText } from "@/lib/campaign/text";
+import { MAX_TEXT_LENGTH, textLength, textProblem, validateText } from "@/lib/campaign/text";
 
 const CHECKER_DOWN = "Our message checker needs a moment. Your design is still here — please try again.";
 
@@ -33,6 +34,8 @@ export default function CreatePage() {
   const [rejected, setRejected] = useState(false);
   const [category, setCategory] = useState<Category | "All">("All");
   const inputRef = useRef<HTMLInputElement>(null);
+  const customizing = useRef(false);
+  useTrackOnce("design_gallery_viewed", ready && Boolean(session));
   // Dropping the session triggers the login redirect below; design and text stay saved.
   const live = useLiveModeration(text, { approvedText, onUnauthorized: () => update({ session: null }) });
 
@@ -53,11 +56,13 @@ export default function CreatePage() {
     const problem = validateText(text);
     if (problem) {
       setError(problem);
+      track("customization_validation_failed", { validation_reason: textProblem(text)! });
       return;
     }
     const clean = text.trim();
     // Moderation reruns only when the text changed since it last passed (PRD 6.3).
     if (clean === approvedText) {
+      track("customization_completed");
       router.push("/user-campaign/preview");
       return;
     }
@@ -71,6 +76,7 @@ export default function CreatePage() {
     try {
       if ((await live.moderate(clean)) === "APPROVED") {
         update({ text: clean, approvedText: clean });
+        track("customization_completed");
         router.push("/user-campaign/preview");
         return;
       }
@@ -129,6 +135,10 @@ export default function CreatePage() {
                 ref={inputRef}
                 value={text}
                 onChange={(e) => {
+                  if (!customizing.current) {
+                    customizing.current = true;
+                    track("customization_started");
+                  }
                   // Cap by code points (as textLength counts), so a surrogate pair is never split.
                   update({ text: Array.from(e.target.value).slice(0, MAX_TEXT_LENGTH).join("") });
                   setError(null);
@@ -230,7 +240,10 @@ export default function CreatePage() {
                     role="radio"
                     aria-checked={selected}
                     aria-label={d.name}
-                    onClick={() => update({ designId: d.id })}
+                    onClick={() => {
+                      update({ designId: d.id });
+                      track("design_selected");
+                    }}
                     className={`relative h-20 overflow-hidden rounded-lg border bg-white transition lg:h-[140px] ${filteredOut ? "lg:hidden" : ""} ${
                       selected
                         ? "border-black shadow-[0_3px_12px_rgba(0,0,0,0.08)] lg:shadow-[0_3.6px_14.4px_rgba(0,0,0,0.08)]"

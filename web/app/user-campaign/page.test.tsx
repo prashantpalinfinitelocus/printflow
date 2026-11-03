@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { MOCK_OTP } from "@/lib/campaign/api";
 import { CampaignProvider } from "@/lib/campaign/store";
-import { SESSION, renderCampaign, savedJourney } from "@/test/campaign";
+import { SESSION, gaEventNames, renderCampaign, savedJourney } from "@/test/campaign";
 import { router } from "@/test/navigation";
 
 import LandingPage from "./page";
@@ -138,5 +138,28 @@ describe("Landing", () => {
 
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/user-campaign/create"), { timeout: 2000 });
     await waitFor(() => expect(savedJourney().session).toMatchObject({ phone: "9876543210" }));
+  });
+});
+
+describe("analytics", () => {
+  it("counts one landing view", async () => {
+    renderCampaign(await landing());
+    await screen.findByRole("button", { name: "Be on the can!" });
+    expect(gaEventNames()).toEqual(["campaign_landing_viewed"]);
+  });
+
+  it("counts the CTA click and the login screen it opens", async () => {
+    renderCampaign(await landing());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Be on the can!" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("button", { name: "Be on the can!" }));
+    await screen.findByRole("dialog", { name: "Login" });
+    expect(gaEventNames()).toEqual(["campaign_landing_viewed", "campaign_cta_clicked", "login_screen_viewed"]);
+  });
+
+  it("counts the CTA click of a visitor who is already logged in", async () => {
+    renderCampaign(await landing(), { session: SESSION });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Be on the can!" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("button", { name: "Be on the can!" }));
+    expect(gaEventNames()).toEqual(["campaign_landing_viewed", "campaign_cta_clicked"]);
   });
 });

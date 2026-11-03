@@ -16,6 +16,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # API_BASE_URL is deliberately not set here. It is read at runtime by
 # lib/session.ts (server-only), so one image works against any API address.
+# The GA4 measurement ID is the exception: it is inlined into the browser bundle,
+# so it has to be here at build time. Left unset, analytics stays off.
+ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
 RUN npm run build
 
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
+import { CampaignAnalytics } from "@/lib/campaign/analytics";
 import { canFont, sans, serif } from "@/lib/campaign/fonts";
 import { CampaignProvider } from "@/lib/campaign/store";
 
@@ -22,6 +23,7 @@ export default function CampaignLayout({ children }: { children: React.ReactNode
     >
       {/* Designed at 402px for phones and 1440 × 900 for web (1024px up). Every screen fills the full width; on tablets each page keeps its controls in a centred phone-width column. */}
       <div className="relative min-h-dvh w-full overflow-x-hidden bg-white">
+        <CampaignAnalytics />
         <CampaignProvider>{children}</CampaignProvider>
       </div>
     </div>

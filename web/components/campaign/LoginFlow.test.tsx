@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CampaignError, CampaignServerError, MOCK_OTP, createMockCampaignApi, type CampaignApi } from "@/lib/campaign/api";
 
+import { gaEventNames, gaEvents } from "@/test/campaign";
+
 import { LoginFlow } from "./LoginFlow";
 
 let api: CampaignApi;
@@ -337,5 +339,79 @@ describe("OTP step", () => {
     expect(screen.getByLabelText("Your mobile number")).toHaveValue("9876543210");
     expect(screen.getByLabelText("Your email ID")).toHaveValue("aanya@example.com");
     expect(screen.getByRole("checkbox")).toBeChecked();
+  });
+});
+
+describe("analytics", () => {
+  const enterCode = async (code: string) => {
+    await user.type(screen.getByLabelText("6-digit code"), code);
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+  };
+
+  it("counts the login screen once, and an accepted OTP request", async () => {
+    await reachOtp();
+    expect(gaEventNames()).toEqual(["login_screen_viewed", "otp_requested"]);
+  });
+
+  it("does not count a form that fails its own checks as an OTP request", async () => {
+    renderFlow();
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(gaEventNames()).toEqual(["login_screen_viewed"]);
+  });
+
+  it("reports a refused OTP request with its code", async () => {
+    vi.spyOn(api, "sendOtp").mockRejectedValue(new CampaignError("OTP_SEND_FAILED", "Could not send."));
+    renderFlow();
+    await fillDetails();
+    await screen.findByText("Could not send.");
+    expect(gaEvents()).toContainEqual({ name: "otp_request_failed", failure_reason: "otp_send_failed" });
+    expect(gaEventNames()).not.toContain("otp_requested");
+  });
+
+  it("counts a resend as another OTP request", async () => {
+    await reachOtp();
+    await act(async () => void (await vi.advanceTimersByTimeAsync(60_000)));
+    await user.click(await screen.findByRole("button", { name: "Resend OTP" }));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1_000)));
+    expect(gaEventNames().filter((n) => n === "otp_requested")).toHaveLength(2);
+  });
+
+  it("reports a failed resend", async () => {
+    await reachOtp();
+    await act(async () => void (await vi.advanceTimersByTimeAsync(60_000)));
+    vi.spyOn(api, "sendOtp").mockRejectedValue(new CampaignError("OTP_BLOCKED", "Too many codes."));
+    await user.click(await screen.findByRole("button", { name: "Resend OTP" }));
+    await screen.findByText("Too many codes.");
+    expect(gaEvents()).toContainEqual({ name: "otp_request_failed", failure_reason: "otp_blocked" });
+  });
+
+  it("counts a verified login and the saved email", async () => {
+    await reachOtp();
+    await enterCode(MOCK_OTP);
+    await vi.waitFor(() => expect(onVerified).toHaveBeenCalled());
+    expect(gaEvents()).toContainEqual({ name: "login", method: "otp" });
+    expect(gaEventNames()).toContain("email_capture_completed");
+  });
+
+  it("reports a wrong code and does not count a login", async () => {
+    await reachOtp();
+    await enterCode("000000");
+    await screen.findByText("Incorrect code. Please try again.");
+    expect(gaEvents()).toContainEqual({ name: "login_failed", failure_reason: "otp_wrong" });
+    expect(gaEventNames()).not.toContain("login");
+  });
+
+  it("does not count a too-short code as a verification attempt", async () => {
+    await reachOtp();
+    await enterCode("12");
+    expect(gaEventNames()).not.toContain("login_failed");
+  });
+
+  it("never sends the phone number, email or code to GA", async () => {
+    await reachOtp();
+    await enterCode(MOCK_OTP);
+    await vi.waitFor(() => expect(onVerified).toHaveBeenCalled());
+    const sent = JSON.stringify(gaEvents());
+    for (const secret of ["9876543210", "aanya@example.com", MOCK_OTP]) expect(sent).not.toContain(secret);
   });
 });

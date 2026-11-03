@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { track } from "@/lib/campaign/analytics";
 import { campaignApi, isUnauthorized, type ModerationResult } from "@/lib/campaign/api";
 import { validateText } from "@/lib/campaign/text";
 
@@ -37,7 +38,13 @@ export function useLiveModeration(
     if (!verdict) {
       verdict = campaignApi.moderateText(clean);
       verdicts.current.set(clean, verdict);
-      verdict.catch(() => verdicts.current.delete(clean));
+      verdict.then(
+        (result) => {
+          track("moderation_submitted");
+          track("moderation_completed", { moderation_status: result.toLowerCase() });
+        },
+        () => verdicts.current.delete(clean),
+      );
     }
     return verdict;
   }, []);

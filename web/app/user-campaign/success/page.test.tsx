@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { gaEventNames } from "@/test/campaign";
+
 import SuccessPage from "./page";
 
 describe("Success", () => {
@@ -46,5 +48,10 @@ describe("Success", () => {
     expect(preloads.find((l) => l.media === "(max-width: 1023px)")?.getAttribute("imagesrcset")).toMatch(/success-bg/);
     expect(preloads.find((l) => l.media === "(min-width: 1024px)")?.getAttribute("imagesrcset")).toMatch(/web-success-bg/);
     expect(preloads.filter((l) => !l.media)).toHaveLength(0);
+  });
+
+  it("counts the thank-you view", () => {
+    render(<SuccessPage />);
+    expect(gaEventNames()).toEqual(["thank_you_viewed"]);
   });
 });

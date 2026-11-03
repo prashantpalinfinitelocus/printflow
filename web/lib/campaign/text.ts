@@ -24,17 +24,30 @@ const HIDDEN_MARKS = /[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u;
 /** ©, ® and ™ are Extended_Pictographic, but people don't think of them as emoji. */
 const LEGAL_SYMBOLS = /[©®™]/u;
 
+const TEXT_PROBLEMS = {
+  empty: "Add a name or a short message first.",
+  too_long: `Keep it to ${MAX_TEXT_LENGTH} characters.`,
+  emoji: "Emojis can't be printed — letters only, please.",
+  unprintable: "That text has characters we can't print.",
+};
+
 /**
  * Client-side mirror of the server's rules (PRD 6.2). The server re-checks
  * everything; this only saves a round trip for the obvious cases.
  */
-export function validateText(raw: string): string | null {
+export function textProblem(raw: string): keyof typeof TEXT_PROBLEMS | null {
   const text = raw.trim();
-  if (!text) return "Add a name or a short message first.";
-  if (textLength(text) > MAX_TEXT_LENGTH) return `Keep it to ${MAX_TEXT_LENGTH} characters.`;
-  if (!LEGAL_SYMBOLS.test(text) && EMOJI.test(text)) return "Emojis can't be printed — letters only, please.";
-  if (!PRINTABLE.test(text) || HIDDEN_MARKS.test(text)) return "That text has characters we can't print.";
+  if (!text) return "empty";
+  if (textLength(text) > MAX_TEXT_LENGTH) return "too_long";
+  if (!LEGAL_SYMBOLS.test(text) && EMOJI.test(text)) return "emoji";
+  if (!PRINTABLE.test(text) || HIDDEN_MARKS.test(text)) return "unprintable";
   return null;
+}
+
+/** What to tell the user about `raw`, or null when it passes. */
+export function validateText(raw: string): string | null {
+  const problem = textProblem(raw);
+  return problem && TEXT_PROBLEMS[problem];
 }
 
 export const isValidPhone = (phone: string) => /^[6-9]\d{9}$/.test(phone);

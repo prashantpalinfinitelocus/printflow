@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_TEXT_LENGTH, isValidEmail, isValidPhone, textLength, validateText } from "./text";
+import { MAX_TEXT_LENGTH, isValidEmail, isValidPhone, textLength, textProblem, validateText } from "./text";
 
 describe("textLength", () => {
   it("counts a Devanagari name by code points, not UTF-16 units", () => {
@@ -102,5 +102,17 @@ describe("isValidEmail", () => {
 
   it("rejects an address without @", () => {
     expect(isValidEmail("aanya.example.com")).toBe(false);
+  });
+});
+
+describe("textProblem", () => {
+  it.each([
+    ["  ", "empty"],
+    ["a".repeat(MAX_TEXT_LENGTH + 1), "too_long"],
+    ["Hi 🎉", "emoji"],
+    ["a\u200Bb", "unprintable"],
+    ["Aanya", null],
+  ])("names what is wrong with %j", (text, problem) => {
+    expect(textProblem(text)).toBe(problem);
   });
 });

@@ -8,6 +8,7 @@ import logo from "@/app/user-campaign/_assets/logo.png";
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { PHOTO_PAGE, PhotoBackdrop } from "@/components/campaign/PhotoBackdrop";
 import { CircleButton, FieldError, PillButton } from "@/components/campaign/ui";
+import { failureReason, track, useTrackOnce } from "@/lib/campaign/analytics";
 import {
   CampaignError,
   WINDOW_MESSAGE,
@@ -36,6 +37,8 @@ function saveFile({ file, url }: CanImage) {
   a.href = url;
   a.download = file.name;
   a.click();
+  // The browser reports nothing back, so a download counts as successful once it is handed over.
+  track("file_download", { download_outcome: "success" });
 }
 
 /**
@@ -59,6 +62,7 @@ export default function PreviewPage() {
 
   const clean = text.trim();
   const approved = Boolean(approvedText) && approvedText === clean;
+  useTrackOnce("preview_viewed", ready && Boolean(session) && approved);
 
   useEffect(() => {
     if (!ready) return;
@@ -102,6 +106,7 @@ export default function PreviewPage() {
 
   function download() {
     if (!image) return;
+    track("download_initiated");
     saveFile(image);
     // The icon turns into a tick for a moment instead of showing a message.
     setDownloaded(true);
@@ -119,12 +124,14 @@ export default function PreviewPage() {
       setNotice("Sharing isn’t supported here, so we saved it instead. Post it from your gallery!");
       return;
     }
-    navigator.share(data).catch((err: unknown) => {
-      // AbortError is the user closing the share sheet — not a failure.
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
-        setNotice("Couldn’t open sharing. Try downloading your can instead.");
-      }
-    });
+    navigator.share(data).then(
+      () => track("share"),
+      (err: unknown) => {
+        // AbortError is the user closing the share sheet — not a failure, and the sheet did open.
+        if (err instanceof DOMException && err.name === "AbortError") track("share");
+        else setNotice("Couldn’t open sharing. Try downloading your can instead.");
+      },
+    );
   }
 
   async function submit() {
@@ -132,12 +139,19 @@ export default function PreviewPage() {
     setError(null);
     const resumable = pendingEntry && pendingEntry.designId === designId && pendingEntry.text === clean;
     const key = resumable ? pendingEntry.key : crypto.randomUUID();
-    if (!resumable) update({ pendingEntry: { key, designId, text: clean } });
+    // A retry reuses the key, so it stays the same logical attempt.
+    if (!resumable) {
+      update({ pendingEntry: { key, designId, text: clean } });
+      track("entry_submission_attempted");
+    }
     try {
       await campaignApi.submitEntry({ designId, text: clean, idempotencyKey: key });
+      track("entry_submitted");
       update({ pendingEntry: null });
       router.push("/user-campaign/success");
     } catch (err) {
+      if (err instanceof CampaignError && err.code === "WINDOW_CLOSED") track("entry_window_blocked");
+      else track("entry_submission_failed", { failure_reason: failureReason(err) });
       if (isUnauthorized(err)) {
         // Dropping the session triggers the login redirect above; the can stays saved.
         update({ session: null });
@@ -169,7 +183,13 @@ export default function PreviewPage() {
         data-actions
         className="relative flex items-center justify-between lg:absolute lg:top-[130px] lg:left-[50px] lg:flex-col-reverse lg:gap-4"
       >
-        <CircleButton label="Back to editing" onClick={() => router.push("/user-campaign/create")}>
+        <CircleButton
+          label="Back to editing"
+          onClick={() => {
+            track("preview_edit_clicked");
+            router.push("/user-campaign/create");
+          }}
+        >
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14.5 6.5L9 12l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>

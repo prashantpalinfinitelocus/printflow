@@ -11,6 +11,9 @@ import { router } from "./navigation";
 afterEach(() => {
   cleanup();
   sessionStorage.clear();
+  // Analytics starts once per page; each test is a fresh page.
+  delete window.dataLayer;
+  document.head.querySelectorAll('script[src*="googletagmanager"]').forEach((s) => s.remove());
   // The designs are loaded once per page; each test is a fresh page.
   resetDesigns();
   router.push.mockReset();

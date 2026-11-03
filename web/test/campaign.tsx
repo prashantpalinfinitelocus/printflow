@@ -14,3 +14,12 @@ export function renderCampaign(ui: ReactElement, state: Record<string, unknown> 
 
 /** The journey state persisted for this tab. */
 export const savedJourney = () => JSON.parse(sessionStorage.getItem("dc-campaign") ?? "{}");
+
+/** The GA4 events this page has queued, each as its name plus its parameters. */
+export const gaEvents = () =>
+  (window.dataLayer ?? [])
+    .map((call) => Array.from(call as ArrayLike<unknown>))
+    .filter(([command]) => command === "event")
+    .map(([, name, params]) => ({ name, ...(params as object) }));
+
+export const gaEventNames = () => gaEvents().map((e) => e.name);

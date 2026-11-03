@@ -20,7 +20,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     // Screens run against the in-browser mock; the HTTP client has its own tests.
-    env: { NEXT_PUBLIC_CAMPAIGN_API: "mock" },
+    env: { NEXT_PUBLIC_CAMPAIGN_API: "mock", NEXT_PUBLIC_GA_MEASUREMENT_ID: "G-TEST" },
     setupFiles: ["./test/setup.ts"],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules", ".next"],
