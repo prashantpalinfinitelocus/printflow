@@ -78,6 +78,17 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     }
   }, [state, ready]);
 
+  // The journey moves with full page loads (nav.ts), so Back can thaw a page from the browser's
+  // back/forward cache exactly as it left: its button still spinning from the submit that moved on.
+  // Reloading gives the same fresh screen as any other Back; the journey is in sessionStorage.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
   const update = useCallback((patch: Partial<CampaignState>) => setState((s) => ({ ...s, ...patch })), []);
 
   return <CampaignContext.Provider value={{ ...state, ready, update }}>{children}</CampaignContext.Provider>;

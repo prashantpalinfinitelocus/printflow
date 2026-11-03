@@ -83,3 +83,27 @@ describe("useCampaign", () => {
     expect(() => renderHook(useCampaign)).toThrow(/CampaignProvider/);
   });
 });
+
+describe("coming back from the browser's back/forward cache", () => {
+  const reload = vi.fn();
+  const pageshow = (persisted: boolean) => window.dispatchEvent(Object.assign(new Event("pageshow"), { persisted }));
+
+  afterEach(() => {
+    reload.mockClear();
+    vi.unstubAllGlobals();
+  });
+
+  it("reloads a restored page, so a button frozen mid-submit does not stay spinning", () => {
+    vi.stubGlobal("location", { reload });
+    renderHook(useCampaign, { wrapper });
+    pageshow(true);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("leaves a normal page load alone", () => {
+    vi.stubGlobal("location", { reload });
+    renderHook(useCampaign, { wrapper });
+    pageshow(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+});
