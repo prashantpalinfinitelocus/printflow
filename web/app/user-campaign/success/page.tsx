@@ -15,17 +15,17 @@ const BG_SIZES = "100vw";
  */
 export default function SuccessPage() {
   return (
-    <main className="relative min-h-dvh overflow-hidden text-center">
+    <main className="relative min-h-dvh overflow-hidden bg-[#EDE7E2] text-center">
       {/* Figma's 874px phone frame starts with a 99px mocked browser bar, so the photo starts that far above the screen. */}
       <div className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden" aria-hidden="true">
-        <Image quality={IMAGE_QUALITY} src={successBg} alt="" fill sizes={BG_SIZES} className="object-cover" />
+        <Image quality={IMAGE_QUALITY} src={successBg} alt="" fill placeholder="blur" sizes={BG_SIZES} className="object-cover" />
       </div>
       {/* Each size preloads only its own photo; the images stay lazy, so a hidden one is never fetched. */}
       <ImagePreload src={successBg} sizes={BG_SIZES} media="(max-width: 1023px)" />
       <ImagePreload src={webSuccessBg} sizes={BG_SIZES} media="(min-width: 1024px)" />
       {/* Web: the full-screen photo with the small logo top left. Figma also has the landing's large logo top right; it was left out on request. */}
       <div data-web-logos className="absolute inset-0 hidden lg:block" aria-hidden="true">
-        <Image quality={IMAGE_QUALITY} src={webSuccessBg} alt="" fill sizes={BG_SIZES} className="object-cover" />
+        <Image quality={IMAGE_QUALITY} src={webSuccessBg} alt="" fill placeholder="blur" sizes={BG_SIZES} className="object-cover" />
         <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
       </div>
       {/*

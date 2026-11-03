@@ -5,11 +5,9 @@ import { useCampaignRouter } from "@/lib/campaign/nav";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 
 import logo from "@/app/user-campaign/_assets/logo.png";
-import mobileBg from "@/app/user-campaign/_assets/mobile-bg.jpg";
-import webPanelBg from "@/app/user-campaign/_assets/web-panel-bg.jpg";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
-import { ImagePreload } from "@/components/campaign/ImagePreload";
+import { PHOTO_PAGE, PhotoBackdrop } from "@/components/campaign/PhotoBackdrop";
 import { FieldError, LiveCheck, Modal, PillButton } from "@/components/campaign/ui";
 import { errorMessage, isUnauthorized } from "@/lib/campaign/api";
 import { CATEGORIES, type Category } from "@/lib/campaign/designs";
@@ -42,7 +40,13 @@ export default function CreatePage() {
     if (ready && !session) router.replace("/?login=1");
   }, [ready, session, router]);
 
-  if (!ready || !session) return null;
+  // Until the saved journey is read, show the backdrop rather than a blank page.
+  if (!ready || !session)
+    return (
+      <main className={PHOTO_PAGE}>
+        <PhotoBackdrop />
+      </main>
+    );
 
   async function check(e: FormEvent) {
     e.preventDefault();
@@ -84,23 +88,8 @@ export default function CreatePage() {
   }
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-[#D7D8D8] lg:bg-white">
-      {/* Each size preloads only its own photo; the images stay lazy, so a hidden one is never fetched. */}
-      <ImagePreload src={mobileBg} sizes="100vw" media="(max-width: 1023px)" />
-      <ImagePreload src={webPanelBg} sizes="54vw" media="(min-width: 1024px)" />
-      {/* Figma's 874px phone frame starts with a 99px mocked browser bar, so the photo starts that far above the screen. */}
-      <div className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden" aria-hidden="true">
-        <Image quality={IMAGE_QUALITY} src={mobileBg} alt="" fill sizes="100vw" className="object-cover" />
-      </div>
-      {/* Web: the 768px photo panel behind the can, with the small logo. */}
-      <div
-        data-web-panel
-        className="absolute inset-y-0 left-0 hidden w-[53.33%] lg:block"
-        aria-hidden="true"
-      >
-        <Image quality={IMAGE_QUALITY} src={webPanelBg} alt="" fill sizes="54vw" className="object-cover" />
-        <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
-      </div>
+    <main className={PHOTO_PAGE}>
+      <PhotoBackdrop />
 
       {/*
         Figma: 154×382 from 40px down on the 775px screen, leaving 13px above the 340px panel; it fills that
@@ -130,7 +119,7 @@ export default function CreatePage() {
       >
         {/* Web: Figma "Frame 110", the 422px text card 739px down, centred under the can; never closer than
             161px to the foot, so even the two-line rejection message stays clear of it. */}
-        <div className="flex flex-col gap-1 lg:absolute lg:top-[min(82.11dvh,calc(100dvh-161px))] lg:left-[26.74%] lg:w-[422px] lg:-translate-x-1/2 lg:gap-2">
+        <div className="relative flex flex-col gap-1 lg:absolute lg:top-[min(82.11dvh,calc(100dvh-161px))] lg:left-[26.74%] lg:w-[422px] lg:-translate-x-1/2 lg:gap-2">
           <div className="flex h-[60px] items-center gap-2 rounded-[14px] border-[0.5px] border-[#E8E8E8] px-4 py-3 focus-within:border-[#8A8A8A] lg:h-[89px] lg:gap-8 lg:rounded-2xl lg:border lg:border-[#E5E5E5] lg:bg-white lg:px-6 lg:py-5">
             <label className="flex min-w-0 flex-1 flex-col gap-0.5 lg:gap-1">
               <span className="text-[11px] leading-[13.2px] font-semibold text-[#F40009] lg:text-xs lg:leading-[14.4px] lg:font-normal">
@@ -177,7 +166,14 @@ export default function CreatePage() {
           <p className="hidden text-right text-xs leading-[14.4px] text-[#8A8A8A] tabular-nums lg:block" aria-live="polite">
             Max characters allowed {textLength(text)}/{MAX_TEXT_LENGTH}
           </p>
-          {error ? <FieldError>{error}</FieldError> : <LiveCheck status={live.status} />}
+          {error ? (
+            <FieldError>{error}</FieldError>
+          ) : (
+            // On phones a passing status sits beside "Pick your vibe", so typing never moves the designs.
+            <div className={live.status === "rejected" ? undefined : "absolute top-[calc(100%+12px)] right-0 lg:static"}>
+              <LiveCheck status={live.status} />
+            </div>
+          )}
         </div>
 
         {/*
@@ -243,6 +239,7 @@ export default function CreatePage() {
                   >
                     {d.thumb && typeof d.sticker !== "string" ? (
                       <Image quality={IMAGE_QUALITY}
+                        loading="eager"
                         src={d.sticker}
                         alt=""
                         width={d.thumb.w}

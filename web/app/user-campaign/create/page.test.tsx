@@ -83,6 +83,22 @@ describe("tablet layout (481px to 1023px)", () => {
   });
 });
 
+describe("while loading and typing", () => {
+  it("shows the photo backdrop, not a blank page, for a visitor without a session", async () => {
+    const { container } = renderCampaign(<CreatePage />);
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?login=1"));
+    expect(container.querySelector("main")).toBeInTheDocument();
+    expect(container.querySelector("[data-web-panel]")).toBeInTheDocument();
+  });
+
+  it("keeps a passing status out of the flow on phones, so typing never moves the designs", async () => {
+    renderCampaign(<CreatePage />, LOGGED_IN);
+    await userEvent.type(await textField(), "Aanya");
+    const status = await screen.findByTestId("live-check", {}, { timeout: 3000 });
+    expect(status.parentElement).toHaveClass("absolute", "lg:static");
+  });
+});
+
 describe("short laptop screens (under 900px tall)", () => {
   it("keeps the text card and a two-line status message on screen, with the can shrinking rather than overlapping it", async () => {
     const { container } = renderCampaign(<CreatePage />, LOGGED_IN);

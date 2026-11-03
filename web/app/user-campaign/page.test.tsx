@@ -73,6 +73,11 @@ describe("Landing", () => {
     expect(phone?.getAttribute("imagesizes")).toBe("100vw");
   });
 
+  it("never dims the button while the saved session is read", async () => {
+    renderCampaign(await landing());
+    expect(await screen.findByRole("button", { name: "Be on the can!" })).toHaveClass("disabled:opacity-100");
+  });
+
   it("serves every image at quality 90, and preloads the same files", async () => {
     const { container } = renderCampaign(await landing());
     await screen.findByRole("heading", { name: "Make it official. Make it yours!" });

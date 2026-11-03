@@ -43,10 +43,10 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
       <ImagePreload src={webBg} sizes="100vw" media="(min-width: 1024px)" />
       {/* Figma's 874px phone frame starts with a 99px mocked browser bar, so the photo starts that far above the screen. */}
       <div data-mobile-bg className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden" aria-hidden="true">
-        <Image quality={IMAGE_QUALITY} src={mobileBg} alt="" fill sizes="100vw" className="object-cover" />
+        <Image quality={IMAGE_QUALITY} src={mobileBg} alt="" fill placeholder="blur" sizes="100vw" className="object-cover" />
       </div>
       <div data-web-bg className="absolute inset-0 hidden lg:block" aria-hidden="true">
-        <Image quality={IMAGE_QUALITY} src={webBg} alt="" fill sizes="100vw" className="object-cover" />
+        <Image quality={IMAGE_QUALITY} src={webBg} alt="" fill placeholder="blur" sizes="100vw" className="object-cover" />
       </div>
       {/*
         Figma: 170×423 from 168px down on the 775px screen, filling the space above the button. Web: 262×651,
@@ -56,7 +56,7 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         data-can
         className="absolute top-[168px] left-1/2 aspect-[170/423] h-[calc(100dvh-352px)] -translate-x-1/2 lg:top-[48.78%] lg:left-[34.83%] lg:h-[72.35dvh] lg:-translate-y-1/2 lg:rotate-[17.91deg]"
       >
-        <Image quality={IMAGE_QUALITY} src={landingCan} alt="" fill priority sizes={CAN_SIZES} className="object-contain" />
+        <Image quality={IMAGE_QUALITY} src={landingCan} alt="" fill priority placeholder="blur" sizes={CAN_SIZES} className="object-contain" />
       </div>
       <div
         data-shadow
@@ -84,12 +84,12 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         </span>
       </h1>
       <div data-foot className="relative mt-auto flex flex-col gap-4 px-[max(24px,calc(50%-177px))] pb-[47px] lg:contents">
-        {/* Disabled until the saved session is read, so a fast tap can't open login for a logged-in visitor. */}
+        {/* Disabled until the saved session is read, so a fast tap can't open login for a logged-in visitor; it never looks dimmed. */}
         <PillButton
           type="button"
           onClick={start}
           disabled={!ready}
-          className="lg:absolute lg:top-[56.39%] lg:left-[calc(59.03%+37.5px)] lg:h-14 lg:w-[326px] lg:rounded-[28px] lg:text-base lg:leading-[19.2px]"
+          className="disabled:opacity-100 lg:absolute lg:top-[56.39%] lg:left-[calc(59.03%+37.5px)] lg:h-14 lg:w-[326px] lg:rounded-[28px] lg:text-base lg:leading-[19.2px]"
         >
           Be on the can!
         </PillButton>

@@ -304,12 +304,15 @@ function OtpModal({
 
   const active = Math.min(code.length, OTP_LENGTH - 1);
   const message = wrong ? "Incorrect code. Please try again." : expired ? "This code has expired." : error;
+  // Figma's normal state spaces the groups 20px apart with the countdown under the code; every other state uses 16px.
+  const counting = !wrong && !expired && secondsLeft > 0;
+  const canResend = !wrong && !expired && secondsLeft <= 0;
 
   return (
     // Figma 518:6658, and the web popup in 518:7026.
     <Modal onClose={onClose} cardClassName="font-[family-name:var(--dc-sans)] lg:font-[family-name:var(--dc-text)]">
       {(titleId) => (
-        <form onSubmit={verify} noValidate className="flex flex-col gap-5 lg:gap-6">
+        <form onSubmit={verify} noValidate className={`flex flex-col lg:gap-6 ${counting ? "gap-5" : "gap-4"}`}>
           <div className="flex flex-col gap-4">
             <h2 id={titleId} className="text-center font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-black lg:text-[28px] lg:leading-[38px]">
               Verify OTP
@@ -329,20 +332,20 @@ function OtpModal({
                 const digit = code[i];
                 const isActive = !wrong && !expired && i === active && code.length < OTP_LENGTH;
                 const look = expired
-                  ? "border border-[#E5E5E5] bg-[#F7F7F7] text-[#8A8A8A]"
+                  ? "border border-[#E5E5E5] bg-[#F7F7F7] font-normal text-[#8A8A8A]"
                   : wrong
-                    ? "border-[1.5px] border-[#F40009] bg-white"
+                    ? "border-[1.5px] border-[#F40009] bg-white font-normal"
                     : isActive
-                      ? "border-2 border-black bg-white"
+                      ? "border-2 border-black bg-white font-bold"
                       : digit
-                        ? "border border-[#8A8A8A] bg-white"
+                        ? "border border-[#8A8A8A] bg-white font-bold"
                         : "border border-[#E5E5E5] bg-white";
                 return (
                   <div
                     key={i}
                     data-otp-box
                     aria-hidden="true"
-                    className={`flex aspect-square items-center justify-center rounded-lg text-xl leading-[24.4px] font-bold ${look}`}
+                    className={`flex aspect-square items-center justify-center rounded-lg text-xl leading-[24.4px] ${look}`}
                   >
                     {digit ?? (isActive && <span className="h-[22px] w-0.5 animate-pulse rounded-full bg-black" />)}
                   </div>
@@ -363,33 +366,34 @@ function OtpModal({
             <FieldError className="justify-center font-[family-name:var(--dc-text)] font-semibold lg:justify-start">
               {message}
             </FieldError>
+            {canResend && (
+              <p className="text-center text-xs leading-[14px] text-[#8A8A8A]">
+                Didn’t get the code?{" "}
+                <button
+                  type="button"
+                  onClick={resend}
+                  disabled={resending}
+                  className="font-[family-name:var(--dc-text)] font-bold text-[#F40009] underline underline-offset-2 disabled:opacity-50"
+                >
+                  Resend OTP
+                </button>
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-4">
-            {expired ? (
+            {expired && (
               <p className="text-center font-[family-name:var(--dc-text)] text-xs leading-[14.4px] text-[#8A8A8A]">
                 Request a new code to continue.
               </p>
-            ) : (
-              !wrong && (
-                <p className="text-center text-xs leading-[15px] text-[#8A8A8A]">
-                  Didn’t get the code?{" "}
-                  {secondsLeft > 0 ? (
-                    <span className="font-semibold text-black">
-                      Resend in <span className="text-[#F40009] tabular-nums">{formatCountdown(secondsLeft)}</span>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={resend}
-                      disabled={resending}
-                      className="font-[family-name:var(--dc-text)] font-bold text-[#F40009] underline underline-offset-2 disabled:opacity-50"
-                    >
-                      Resend OTP
-                    </button>
-                  )}
-                </p>
-              )
+            )}
+            {counting && (
+              <p className="text-center text-xs leading-[15px] text-[#8A8A8A]">
+                Didn’t get the code?{" "}
+                <span className="font-semibold text-black">
+                  Resend in <span className="text-[#F40009] tabular-nums">{formatCountdown(secondsLeft)}</span>
+                </span>
+              </p>
             )}
 
             <div className="flex flex-col gap-4">
@@ -419,7 +423,7 @@ function OtpModal({
               <button
                 type="button"
                 onClick={onChangeNumber}
-                className="text-center text-[13px] leading-[15.8px] font-semibold underline underline-offset-2 lg:text-xs lg:leading-[14.4px]"
+                className={`text-center text-[13px] font-semibold underline underline-offset-2 lg:text-xs lg:leading-[14.4px] ${counting ? "leading-[15.8px]" : "leading-[14px]"}`}
               >
                 Change number
               </button>

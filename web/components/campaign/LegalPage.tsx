@@ -14,7 +14,7 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
   return (
     <div className="flex min-h-dvh w-full flex-col bg-white text-[#494949]">
       <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
-        <div className="flex h-[72px] w-full items-center justify-between px-6 lg:h-[130px] lg:px-10">
+        <div className="flex h-14 w-full items-center justify-between px-6 lg:h-[88px] lg:px-10">
           <a
             href="/"
             className="flex items-center gap-1.5 text-sm leading-4 font-semibold text-black lg:text-base"
@@ -26,9 +26,9 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
         </div>
       </header>
 
-      <main className="flex-1 px-6 pt-4 pb-12 lg:px-10 lg:pt-6 lg:pb-20">
-        <article className="flex w-full flex-col gap-8 lg:gap-10">
-          <div className="flex flex-col gap-3 lg:gap-4">
+      <main className="flex-1 px-6 pt-2 pb-12 lg:px-10 lg:pt-4 lg:pb-20">
+        <article className="flex w-full flex-col gap-4 lg:gap-6">
+          <div className="flex flex-col gap-2 lg:gap-3">
             <p className="text-[10px] leading-3 font-semibold tracking-[1.6px] text-[#F40009] uppercase lg:text-xs lg:leading-4">
               Diet Coke &nbsp;·&nbsp; Custom Edition
             </p>
@@ -41,7 +41,7 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
               "flex flex-col gap-4 text-sm leading-[22px] break-words lg:text-base lg:leading-[26px]",
               "[&_a]:font-semibold [&_a]:text-[#F40009] [&_a]:underline [&_a]:underline-offset-2",
               "[&_h2]:mt-2 [&_h2]:font-[family-name:var(--dc-headline)] [&_h2]:text-base [&_h2]:leading-6 [&_h2]:font-bold [&_h2]:text-black lg:[&_h2]:text-xl lg:[&_h2]:leading-7",
-              "[&_strong]:text-black [&_li]:mt-3 [&_li]:pl-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5",
+              "[&>h2:first-child]:mt-0 [&>ol>li:first-child]:mt-0 [&_strong]:text-black [&_li]:mt-3 [&_li]:pl-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5",
               "[&_li::marker]:font-semibold [&_li::marker]:text-black [&_[id]]:scroll-mt-24 lg:[&_[id]]:scroll-mt-36",
             ].join(" ")}
             dangerouslySetInnerHTML={{ __html: html }}

@@ -63,6 +63,14 @@ describe("access", () => {
   });
 });
 
+describe("while loading", () => {
+  it("shows the photo backdrop, not a blank page, when the text has not been approved", async () => {
+    const { container } = renderCampaign(<PreviewPage />, { ...APPROVED, text: "Aanya!" });
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/user-campaign/create"));
+    expect(container.querySelector("[data-web-panel]")).toBeInTheDocument();
+  });
+});
+
 describe("tablet layout (481px to 1023px)", () => {
   it("keeps the buttons and copy in a centred phone-width column", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);

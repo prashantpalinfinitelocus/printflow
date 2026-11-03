@@ -1,15 +1,12 @@
 "use client";
 
 import { useCampaignRouter } from "@/lib/campaign/nav";
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import logo from "@/app/user-campaign/_assets/logo.png";
-import mobileBg from "@/app/user-campaign/_assets/mobile-bg.jpg";
-import webPanelBg from "@/app/user-campaign/_assets/web-panel-bg.jpg";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
-import { ImagePreload } from "@/components/campaign/ImagePreload";
+import { PHOTO_PAGE, PhotoBackdrop } from "@/components/campaign/PhotoBackdrop";
 import { CircleButton, FieldError, PillButton } from "@/components/campaign/ui";
 import {
   CampaignError,
@@ -22,7 +19,6 @@ import {
 import { renderCanPng } from "@/lib/campaign/canImage";
 import { useDesigns } from "@/lib/campaign/useDesigns";
 import { canFont } from "@/lib/campaign/fonts";
-import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useCampaign } from "@/lib/campaign/store";
 
 const FILE_NAME = "my-diet-coke-can.png";
@@ -96,7 +92,13 @@ export default function PreviewPage() {
     };
   }, [ready, approved, designId, clean]);
 
-  if (!ready || !session || !approved) return null;
+  // Until the saved journey is read, show the backdrop rather than a blank page.
+  if (!ready || !session || !approved)
+    return (
+      <main className={PHOTO_PAGE}>
+        <PhotoBackdrop />
+      </main>
+    );
 
   function download() {
     if (!image) return;
@@ -159,23 +161,8 @@ export default function PreviewPage() {
   const closed = windowState !== null && windowState !== "OPEN";
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-[#D7D8D8] px-[max(20px,calc(50%-220px))] pt-4 lg:bg-white lg:px-5">
-      {/* Each size preloads only its own photo; the images stay lazy, so a hidden one is never fetched. */}
-      <ImagePreload src={mobileBg} sizes="100vw" media="(max-width: 1023px)" />
-      <ImagePreload src={webPanelBg} sizes="54vw" media="(min-width: 1024px)" />
-      {/* Figma's 874px phone frame starts with a 99px mocked browser bar, so the photo starts that far above the screen. */}
-      <div className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden" aria-hidden="true">
-        <Image quality={IMAGE_QUALITY} src={mobileBg} alt="" fill sizes="100vw" className="object-cover" />
-      </div>
-      {/* Web: the 768px photo panel behind the can, with the small logo. */}
-      <div
-        data-web-panel
-        className="absolute inset-y-0 left-0 hidden w-[53.33%] lg:block"
-        aria-hidden="true"
-      >
-        <Image quality={IMAGE_QUALITY} src={webPanelBg} alt="" fill sizes="54vw" className="object-cover" />
-        <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
-      </div>
+    <main className={`${PHOTO_PAGE} px-[max(20px,calc(50%-220px))] pt-4 lg:px-5`}>
+      <PhotoBackdrop />
 
       {/* Web: download and share stack 130px down, 50px in, 16px apart, with the added back circle after them. */}
       <div
