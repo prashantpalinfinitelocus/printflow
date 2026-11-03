@@ -19,8 +19,9 @@ describe("Success", () => {
   it("switches to Figma's web success (356:1102) from 1024px up", () => {
     const { container } = render(<SuccessPage />);
     expect(container.querySelector("[data-web-logos]")).toHaveClass("hidden", "lg:block");
-    // The photo plus the two logos.
-    expect(container.querySelector("[data-web-logos]")?.querySelectorAll("img")).toHaveLength(3);
+    // The photo plus the small logo top left; no second logo top right.
+    expect(container.querySelector("[data-web-logos]")?.querySelectorAll("img")).toHaveLength(2);
+    expect(container.querySelector("[data-web-logos] img.right-10")).toBeNull();
     const heading = screen.getByRole("heading", { name: "You ate! Your entry is in.." });
     expect(heading.parentElement?.parentElement).toHaveClass("lg:top-[39.23%]", "lg:w-[612px]");
     expect(screen.getByText("You ate!")).toHaveClass("lg:text-[32px]", "lg:leading-[36.48px]");

@@ -21,8 +21,8 @@ export default function SuccessPage() {
         <Image quality={IMAGE_QUALITY} src={successBg} alt="" fill sizes={BG_SIZES} className="object-cover" />
       </div>
       {/*
-        Web: the photo is 1672 × 941 from 116px left and 20px above the 1440 × 900 screen. Figma
-        shows two logos, a small one top left and the landing's large one top right over the glass.
+        Web: the photo is 1672 × 941 from 116px left and 20px above the 1440 × 900 screen, with the
+        small logo top left. Figma also has the landing's large logo top right; it was left out on request.
       */}
       {/* Each size preloads only its own photo; the images stay lazy, so a hidden one is never fetched. */}
       <ImagePreload src={successBg} sizes={BG_SIZES} media="(max-width: 1023px)" />
@@ -32,7 +32,6 @@ export default function SuccessPage() {
           <Image quality={IMAGE_QUALITY} src={webSuccessBg} alt="" fill sizes="116vw" className="object-cover" />
         </div>
         <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
-        <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="112px" className="absolute top-10 right-10 h-[49.8px] w-28 object-contain" />
       </div>
       {/*
         Figma: the 302px block's top is at 254px on the 775px screen, kept as an offset from centre.
