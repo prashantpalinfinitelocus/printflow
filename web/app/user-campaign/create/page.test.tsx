@@ -84,15 +84,13 @@ describe("tablet layout (481px to 1023px)", () => {
 });
 
 describe("short laptop screens (under 900px tall)", () => {
-  it("keeps the text card and a two-line status message on screen, with the can 32px above the card as in Figma", async () => {
+  it("keeps the text card and a two-line status message on screen, with the can shrinking rather than overlapping it", async () => {
     const { container } = renderCampaign(<CreatePage />, LOGGED_IN);
     const card = (await textField()).closest("label")!.parentElement!.parentElement!;
-    // Card, counter and the two-line rejection message take 148px; 176px keeps them 28px off the foot,
-    // the room Figma leaves under its one-line message.
-    expect(card).toHaveClass("lg:top-[min(82.11dvh,calc(100dvh-176px))]");
-    // The can (from 10.33dvh) ends 32px above the card, so it shrinks with the screen rather than overlap.
+    // Card, counter and the two-line rejection message take about 149px of the 161px Figma leaves under the card.
+    expect(card).toHaveClass("lg:top-[min(82.11dvh,calc(100dvh-161px))]");
     const can = container.querySelector('[role="img"]')!.parentElement!;
-    expect(can).toHaveClass("lg:top-[10.33dvh]", "lg:h-[min(68.22dvh,calc(89.67dvh-208px))]");
+    expect(can).toHaveClass("lg:top-[8.39dvh]", "lg:h-[min(68.78dvh,calc(91.61dvh-205.5px))]");
   });
 });
 
@@ -391,7 +389,7 @@ describe("live check while typing", () => {
   });
 });
 
-describe("web layout (1024px and up, Figma 356:1111)", () => {
+describe("web layout (1024px and up, Figma 518:6902)", () => {
   it("filters the designs with category chips, starting on All", async () => {
     renderCampaign(<CreatePage />, LOGGED_IN);
     const chips = await screen.findByRole("group", { name: "Design categories" });
@@ -460,27 +458,28 @@ describe("web layout (1024px and up, Figma 356:1111)", () => {
     await textField();
     expect(container.querySelector("[data-web-panel]")).toHaveClass("hidden", "lg:block", "w-[53.33%]");
     expect(container.querySelector("[data-vibes]")).toHaveClass("lg:absolute", "lg:left-[calc(53.33%+80px)]", "lg:right-20");
-    expect(screen.getByText("Pick your vibe")).toHaveClass("lg:text-[32px]", "lg:leading-[38.4px]");
-    expect(screen.getByRole("button", { name: "Check my vibe" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(screen.getByText("Pick your vibe")).toHaveClass("lg:font-[family-name:var(--dc-serif)]", "lg:text-[32px]", "lg:leading-11");
+    expect(screen.getByRole("button", { name: "Check my vibe" })).toHaveClass("lg:mx-auto", "lg:h-14", "lg:w-[280px]");
     for (const card of screen.getAllByRole("radio")) expect(card).toHaveClass("lg:h-[140px]");
   });
 });
 
-describe("web popups (Figma 356:1183, 356:1233)", () => {
-  it("spaces the heads-up as the web design does", async () => {
+describe("web popups (Figma 518:7053, 518:7066)", () => {
+  it("makes the heads-up Figma's narrower card with a full-width button", async () => {
     renderCampaign(<CreatePage />, { session: SESSION });
     const dialog = await screen.findByRole("dialog", { name: "Quick Heads-Up!" });
+    expect(dialog).toHaveClass("max-w-[334px]", "lg:w-[372px]", "lg:max-w-[372px]");
     // Important, to beat the phone popup's !pt-6.
-    expect(dialog).toHaveClass("lg:!py-8");
-    expect(dialog.firstElementChild?.nextElementSibling ?? dialog.querySelector("div")).toHaveClass("lg:gap-4");
-    expect(screen.getByRole("button", { name: "Let’s Do This" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(dialog.firstElementChild).toHaveClass("!pt-6", "lg:!p-8");
+    expect(screen.getByRole("button", { name: "Let’s Do This" })).toHaveClass("lg:h-14");
+    expect(screen.getByRole("heading", { name: "Quick Heads-Up!" })).toHaveClass("lg:text-[28px]", "lg:leading-[38px]");
   });
 
   it("spaces the friendly-content popup as the web design does", async () => {
     renderCampaign(<CreatePage />, { ...LOGGED_IN, textRejected: true });
     const dialog = await screen.findByRole("dialog", { name: "Let’s keep it friendly" });
-    expect(dialog).toHaveClass("lg:pt-[54px]", "lg:pb-6");
-    expect(screen.getByText(/didn’t make the cut/).parentElement).toHaveClass("lg:gap-4");
+    expect(dialog.firstElementChild).toHaveClass("!pt-6", "lg:!pt-8");
+    expect(screen.getByText(/didn’t make the cut/).parentElement).toHaveClass("lg:gap-[5px]");
     expect(screen.getByRole("button", { name: "Edit Text" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
   });
 });

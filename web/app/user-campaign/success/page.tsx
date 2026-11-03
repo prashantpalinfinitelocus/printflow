@@ -1,36 +1,31 @@
 import Image from "next/image";
 
 import logo from "@/app/user-campaign/_assets/logo.png";
-import successBg from "@/app/user-campaign/_assets/success-bg.png";
+import successBg from "@/app/user-campaign/_assets/success-bg.jpg";
 import webSuccessBg from "@/app/user-campaign/_assets/web-success-bg.jpg";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 
-const BG_SIZES = "115vw";
+const BG_SIZES = "100vw";
 
 /**
- * Thank-you — Figma 243:1094, and 356:1102 from 1024px up. Confirms the entry without implying a win
+ * Thank-you — Figma 518:6536, and 518:6892 from 1024px up. Confirms the entry without implying a win
  * (PRD 10). The preview navigates here after the server accepts an entry; the
  * page itself is static and does not check that one was made.
  */
 export default function SuccessPage() {
   return (
     <main className="relative min-h-dvh overflow-hidden text-center">
-      {/* The design crops the photo tighter than the screen: 458px wide, top 99px under the browser bar. */}
-      <div className="absolute inset-x-[-7%] top-[-12.8%] bottom-0 lg:hidden" aria-hidden="true">
+      {/* Figma's 874px phone frame starts with a 99px mocked browser bar, so the photo starts that far above the screen. */}
+      <div className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden" aria-hidden="true">
         <Image quality={IMAGE_QUALITY} src={successBg} alt="" fill sizes={BG_SIZES} className="object-cover" />
       </div>
-      {/*
-        Web: the photo is 1672 × 941 from 116px left and 20px above the 1440 × 900 screen, with the
-        small logo top left. Figma also has the landing's large logo top right; it was left out on request.
-      */}
       {/* Each size preloads only its own photo; the images stay lazy, so a hidden one is never fetched. */}
       <ImagePreload src={successBg} sizes={BG_SIZES} media="(max-width: 1023px)" />
-      <ImagePreload src={webSuccessBg} sizes="116vw" media="(min-width: 1024px)" />
+      <ImagePreload src={webSuccessBg} sizes={BG_SIZES} media="(min-width: 1024px)" />
+      {/* Web: the full-screen photo with the small logo top left. Figma also has the landing's large logo top right; it was left out on request. */}
       <div data-web-logos className="absolute inset-0 hidden lg:block" aria-hidden="true">
-        <div className="absolute top-[-2.22%] left-[-8.06%] h-[104.56%] w-[116.11%]">
-          <Image quality={IMAGE_QUALITY} src={webSuccessBg} alt="" fill sizes="116vw" className="object-cover" />
-        </div>
+        <Image quality={IMAGE_QUALITY} src={webSuccessBg} alt="" fill sizes={BG_SIZES} className="object-cover" />
         <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
       </div>
       {/*

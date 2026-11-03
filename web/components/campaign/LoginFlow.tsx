@@ -22,7 +22,7 @@ function toNationalNumber(input: string) {
 
 /** Figma: typed text in TCCC-UnityText Regular, the placeholder in UnityHeadline Light grey. */
 const INPUT_TEXT =
-  "font-[family-name:var(--dc-text)] text-xs leading-[14.4px] font-normal outline-none placeholder:font-[family-name:var(--dc-headline)] placeholder:font-light placeholder:text-[#8A8A8A]";
+  "font-[family-name:var(--dc-text)] text-xs leading-[14.4px] font-normal outline-none lg:text-sm placeholder:font-[family-name:var(--dc-headline)] placeholder:font-light placeholder:text-[#8A8A8A]";
 
 const LABEL =
   "font-[family-name:var(--dc-headline)] text-xs leading-[14px] font-bold lg:font-[family-name:var(--dc-text)] lg:leading-[14.4px]";
@@ -125,13 +125,13 @@ function DetailsModal({
   }
 
   return (
-    // Web (Figma 356:1324): 32px padding, 24px rhythm, left-aligned UnityText title and labels.
-    <Modal onClose={onClose} figmaTop={186} anchor="bottom" className="lg:p-8">
+    // Figma 518:6616, and the web popup in 518:7053.
+    <Modal onClose={onClose} cardClassName="lg:!px-8">
       {(titleId) => (
         <form onSubmit={submit} noValidate className="flex flex-col gap-4 lg:gap-6">
           <h2
             id={titleId}
-            className="text-center font-[family-name:var(--dc-headline)] text-[21px] leading-[25px] font-bold lg:text-left lg:font-[family-name:var(--dc-text)] lg:leading-[25.2px]"
+            className="text-center font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-black lg:text-[28px] lg:leading-[38px]"
           >
             Login
           </h2>
@@ -164,7 +164,7 @@ function DetailsModal({
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <label htmlFor="dc-email" className={LABEL}>
-                your email ID
+                <span className="lg:capitalize">Your email ID</span>
               </label>
               <input
                 id="dc-email"
@@ -180,7 +180,7 @@ function DetailsModal({
                 }`}
               />
               <FieldError>{errors.email}</FieldError>
-              <label className="flex cursor-pointer items-center gap-1 text-[9px] leading-[10.8px]">
+              <label className="flex cursor-pointer items-center gap-1 text-[10px] leading-3 lg:text-[11px] lg:leading-[13px]">
                 <input
                   type="checkbox"
                   checked={agreed}
@@ -189,10 +189,7 @@ function DetailsModal({
                   className="m-0.5 h-3 w-3 accent-[#1C1B1F]"
                 />
                 <span>
-                  I agree to Diet Coke’s{" "}
-                  <a href="/user-campaign/terms" className="underline underline-offset-2">
-                    terms of usage
-                  </a>
+                  I agree to Diet Coke’s <a href="/user-campaign/terms">terms of usage</a>
                 </span>
               </label>
               <FieldError>{errors.terms}</FieldError>
@@ -200,7 +197,7 @@ function DetailsModal({
 
             <div className="flex flex-col gap-2">
               <FieldError>{errors.form}</FieldError>
-              <PillButton type="submit" busy={busy} className="lg:mx-auto lg:w-[280px]">
+              <PillButton type="submit" busy={busy} className="lg:mx-auto lg:h-14 lg:w-[280px] lg:rounded-[26px] lg:text-base lg:leading-[19.2px]">
                 Submit
               </PillButton>
             </div>
@@ -309,23 +306,20 @@ function OtpModal({
   const message = wrong ? "Incorrect code. Please try again." : expired ? "This code has expired." : error;
 
   return (
-    // Web (Figma 356:1063): UnityText for the title, digits and links; 373px tall with the content centred.
-    <Modal
-      onClose={onClose}
-      figmaTop={186}
-      anchor="bottom"
-      className="font-[family-name:var(--dc-sans)] lg:flex lg:min-h-[373px] lg:flex-col lg:justify-center lg:font-[family-name:var(--dc-text)]"
-    >
+    // Figma 518:6658, and the web popup in 518:7026.
+    <Modal onClose={onClose} cardClassName="font-[family-name:var(--dc-sans)] lg:font-[family-name:var(--dc-text)]">
       {(titleId) => (
-        <form onSubmit={verify} noValidate className="flex flex-col gap-4">
-          <h2 id={titleId} className="text-center text-[21px] leading-[25.6px] font-bold lg:leading-[25.2px]">
-            Verify OTP
-          </h2>
-          <p className="text-center text-[13px] leading-5 text-[#8A8A8A] lg:font-[family-name:var(--dc-sans)] lg:text-xs">
-            We’ve sent a {OTP_LENGTH}-digit code to
-            <br />
-            <span className="font-semibold text-black">{formatPhone(phone)}</span>
-          </p>
+        <form onSubmit={verify} noValidate className="flex flex-col gap-5 lg:gap-6">
+          <div className="flex flex-col gap-4">
+            <h2 id={titleId} className="text-center font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-black lg:text-[28px] lg:leading-[38px]">
+              Verify OTP
+            </h2>
+            <p className="text-center text-[13px] leading-5 text-[#8A8A8A] lg:font-[family-name:var(--dc-sans)] lg:text-xs">
+              We’ve sent a {OTP_LENGTH}-digit code to
+              <br />
+              <span className="font-semibold text-black">{formatPhone(phone)}</span>
+            </p>
+          </div>
 
           {/* Figma "OTP Field": the error line sits 8px under the boxes, as wide as they are. */}
           <div className="mx-auto flex w-full max-w-[268px] flex-col gap-2">
@@ -371,63 +365,65 @@ function OtpModal({
             </FieldError>
           </div>
 
-          {expired ? (
-            <p className="text-center font-[family-name:var(--dc-text)] text-xs leading-[14.4px] text-[#8A8A8A]">
-              Request a new code to continue.
-            </p>
-          ) : (
-            !wrong && (
-              <p className="text-center text-xs leading-[15px] text-[#8A8A8A]">
-                Didn’t get the code?{" "}
-                {secondsLeft > 0 ? (
-                  <span className="font-semibold text-black">
-                    Resend in <span className="text-[#F40009] tabular-nums">{formatCountdown(secondsLeft)}</span>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={resend}
-                    disabled={resending}
-                    className="font-[family-name:var(--dc-text)] font-bold text-[#F40009] underline underline-offset-2 disabled:opacity-50"
-                  >
-                    Resend OTP
-                  </button>
-                )}
-              </p>
-            )
-          )}
-
           <div className="flex flex-col gap-4">
             {expired ? (
-              <PillButton
-                ref={resendRef}
-                type="button"
-                onClick={resend}
-                busy={resending}
-                className="font-[family-name:var(--dc-text)] lg:mx-auto lg:w-[280px]"
-              >
-                Resend OTP
-              </PillButton>
+              <p className="text-center font-[family-name:var(--dc-text)] text-xs leading-[14.4px] text-[#8A8A8A]">
+                Request a new code to continue.
+              </p>
             ) : (
-              // Figma sets the popup in Montserrat but this button in TCCC-UnityText Medium,
-              // greyed out (351:75) until there is a code to check.
-              <PillButton
-                type="submit"
-                busy={busy}
-                // Greyed out with no code, and for a code the server has just turned down.
-                disabled={!code || wrong}
-                className="font-[family-name:var(--dc-text)] disabled:bg-[#E5E5E5] disabled:text-[#8A8A8A] disabled:opacity-100 lg:mx-auto lg:w-[280px]"
-              >
-                Verify
-              </PillButton>
+              !wrong && (
+                <p className="text-center text-xs leading-[15px] text-[#8A8A8A]">
+                  Didn’t get the code?{" "}
+                  {secondsLeft > 0 ? (
+                    <span className="font-semibold text-black">
+                      Resend in <span className="text-[#F40009] tabular-nums">{formatCountdown(secondsLeft)}</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={resend}
+                      disabled={resending}
+                      className="font-[family-name:var(--dc-text)] font-bold text-[#F40009] underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Resend OTP
+                    </button>
+                  )}
+                </p>
+              )
             )}
-            <button
-              type="button"
-              onClick={onChangeNumber}
-              className="text-center text-[13px] leading-[15.8px] font-semibold underline underline-offset-2 lg:text-xs lg:leading-[14.4px]"
-            >
-              Change number
-            </button>
+
+            <div className="flex flex-col gap-4">
+              {expired ? (
+                <PillButton
+                  ref={resendRef}
+                  type="button"
+                  onClick={resend}
+                  busy={resending}
+                  className="font-[family-name:var(--dc-text)] lg:mx-auto lg:h-14 lg:w-[280px] lg:rounded-[26px] lg:text-base lg:leading-[19.2px]"
+                >
+                  Resend OTP
+                </PillButton>
+              ) : (
+                // Figma sets the popup in Montserrat but this button in TCCC-UnityText Medium,
+                // greyed out (351:75) until there is a code to check.
+                <PillButton
+                  type="submit"
+                  busy={busy}
+                  // Greyed out with no code, and for a code the server has just turned down.
+                  disabled={!code || wrong}
+                  className="font-[family-name:var(--dc-text)] disabled:bg-[#E5E5E5] disabled:text-[#8A8A8A] disabled:opacity-100 lg:mx-auto lg:h-14 lg:w-[280px] lg:rounded-[26px] lg:text-base lg:leading-[19.2px]"
+                >
+                  Verify
+                </PillButton>
+              )}
+              <button
+                type="button"
+                onClick={onChangeNumber}
+                className="text-center text-[13px] leading-[15.8px] font-semibold underline underline-offset-2 lg:text-xs lg:leading-[14.4px]"
+              >
+                Change number
+              </button>
+            </div>
           </div>
         </form>
       )}

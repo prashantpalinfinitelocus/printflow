@@ -30,52 +30,46 @@ describe("PillButton", () => {
 
 describe("Modal", () => {
   it("is a modal dialog named by its title", () => {
-    render(<Modal figmaTop={186}>{(titleId) => <h2 id={titleId}>Login</h2>}</Modal>);
+    render(<Modal>{(titleId) => <h2 id={titleId}>Login</h2>}</Modal>);
     expect(screen.getByRole("dialog", { name: "Login" })).toHaveAttribute("aria-modal", "true");
   });
 
   it("closes from the close button", async () => {
     const onClose = vi.fn();
-    render(<Modal figmaTop={186} onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    render(<Modal onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("closes on Escape", async () => {
     const onClose = vi.fn();
-    render(<Modal figmaTop={186} onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    render(<Modal onClose={onClose}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("keeps its Figma top as an offset from the centre by default", () => {
-    render(<Modal figmaTop={209}>{(id) => <h2 id={id}>Heads up</h2>}</Modal>);
-    expect(screen.getByRole("dialog").style.getPropertyValue("--dc-top")).toBe("calc(50% - 178.5px)");
+  it("sits 49.5px above centre on phones, the centre of Figma's 874px frame", () => {
+    render(<Modal>{(id) => <h2 id={id}>Heads up</h2>}</Modal>);
+    expect(screen.getByRole("dialog")).toHaveClass("top-[calc(50%-49.5px)]", "-translate-y-1/2");
   });
 
-  it("keeps its Figma top as a distance from the foot when anchored to the bottom", () => {
-    // 775 − 186 = 589: on the 874px Figma frame that puts the card at 285, as designed.
-    render(<Modal figmaTop={186} anchor="bottom">{(id) => <h2 id={id}>Login</h2>}</Modal>);
-    expect(screen.getByRole("dialog").style.getPropertyValue("--dc-top")).toContain("calc(100% - 589px)");
+  it("puts a round close button 16px under the card, 60px on web", () => {
+    render(<Modal onClose={() => {}}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("h-10", "w-10", "rounded-full", "bg-white", "lg:h-[60px]", "lg:w-[60px]");
+    expect(close.parentElement).toBe(screen.getByRole("dialog"));
+    expect(screen.getByRole("dialog")).toHaveClass("gap-4");
   });
 
-  it("is Figma's 480px web popup, centred on screen, from 1024px up", () => {
-    render(<Modal figmaTop={186} anchor="bottom">{(id) => <h2 id={id}>Login</h2>}</Modal>);
-    expect(screen.getByRole("dialog")).toHaveClass(
-      "top-(--dc-top)",
-      "lg:top-1/2",
-      "lg:-translate-y-1/2",
-      "lg:w-[480px]",
-      "lg:max-w-[480px]",
-      "lg:rounded-3xl",
-      // A short laptop window scrolls the popup instead of cutting it off.
-      "lg:max-h-[calc(100dvh-32px)]",
-      "lg:overflow-y-auto",
-    );
+  it("is Figma's 480px web popup, centred on screen, from 1024px up, and scrolls the card on a short screen", () => {
+    render(<Modal>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveClass("lg:top-1/2", "lg:w-[480px]", "lg:max-w-[480px]", "lg:max-h-[calc(100dvh-32px)]");
+    expect(dialog.firstElementChild).toHaveClass("lg:rounded-3xl", "min-h-0", "overflow-y-auto");
   });
 
   it("has no close button when it must be answered", () => {
-    render(<Modal figmaTop={186}>{(id) => <h2 id={id}>Login</h2>}</Modal>);
+    render(<Modal>{(id) => <h2 id={id}>Login</h2>}</Modal>);
     expect(screen.getByRole("dialog", { name: "Login" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
   });

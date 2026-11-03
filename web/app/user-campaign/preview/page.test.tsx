@@ -80,14 +80,14 @@ describe("image quality", () => {
   });
 });
 
-describe("web layout (1024px and up, Figma 356:1288)", () => {
-  it("puts the can on a grey left panel with the round buttons stacked beside it", async () => {
+describe("web layout (1024px and up, Figma 518:6976)", () => {
+  it("puts the can on a photo left panel with the round buttons stacked beside it", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);
     await screen.findByRole("button", { name: "Make It Happen" });
-    expect(container.querySelector("[data-web-panel]")).toHaveClass("hidden", "lg:block", "w-1/2");
+    expect(container.querySelector("[data-web-panel]")).toHaveClass("hidden", "lg:block", "w-[53.33%]");
     const actions = container.querySelector("[data-actions]");
-    expect(actions).toHaveClass("lg:absolute", "lg:top-[130px]", "lg:left-[50px]", "lg:flex-col", "lg:gap-4");
-    // Back first (an addition to Figma, agreed for editing), then download and share.
+    expect(actions).toHaveClass("lg:absolute", "lg:top-[130px]", "lg:left-[50px]", "lg:flex-col-reverse", "lg:gap-4");
+    // Back is an addition to Figma, agreed for editing: first in the tab order, shown after download and share on web.
     expect([...actions!.querySelectorAll("button")].map((b) => b.getAttribute("aria-label"))).toEqual([
       "Back to editing",
       "Download My Can",
@@ -96,16 +96,22 @@ describe("web layout (1024px and up, Figma 356:1288)", () => {
     for (const b of actions!.querySelectorAll("button")) expect(b).toHaveClass("lg:h-12", "lg:w-12", "lg:border-0");
   });
 
-  it("centres the headline, copy and button in the right half", async () => {
+  it("centres the headline, copy and button in the right part", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);
     await screen.findByRole("button", { name: "Make It Happen" });
-    expect(container.querySelector("[data-copy]")).toHaveClass("lg:absolute", "lg:left-3/4", "lg:top-1/2", "lg:w-[352px]");
-    expect(screen.getByRole("heading", { name: "It’s giving iconic!" })).toHaveClass("lg:text-[40px]", "lg:leading-[48px]");
-    expect(screen.getByRole("button", { name: "Make It Happen" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(container.querySelector("[data-copy]")).toHaveClass("lg:absolute", "lg:left-[76.67%]", "lg:top-1/2", "lg:w-[454px]", "lg:gap-14");
+    expect(screen.getByRole("heading", { name: "It’s giving iconic!" })).toHaveClass("lg:text-[56px]", "lg:leading-[84px]");
+    expect(screen.getByRole("button", { name: "Make It Happen" })).toHaveClass("lg:mx-auto", "lg:h-14", "lg:w-[280px]");
   });
 });
 
 describe("preview", () => {
+  it("keeps the headline and message above the background photo", async () => {
+    renderCampaign(<PreviewPage />, APPROVED);
+    const heading = await screen.findByRole("heading", { name: "It’s giving iconic!" });
+    expect(heading.parentElement).toHaveClass("relative");
+  });
+
   it("shows the approved can under the Figma headline", async () => {
     renderCampaign(<PreviewPage />, APPROVED);
     expect(await screen.findByRole("heading", { name: "It’s giving iconic!" })).toBeInTheDocument();

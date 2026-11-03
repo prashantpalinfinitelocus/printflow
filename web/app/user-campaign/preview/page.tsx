@@ -5,8 +5,11 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import logo from "@/app/user-campaign/_assets/logo.png";
+import mobileBg from "@/app/user-campaign/_assets/mobile-bg.jpg";
+import webPanelBg from "@/app/user-campaign/_assets/web-panel-bg.jpg";
 
 import { CanPreview } from "@/components/campaign/CanPreview";
+import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { CircleButton, FieldError, PillButton } from "@/components/campaign/ui";
 import {
   CampaignError,
@@ -40,8 +43,8 @@ function saveFile({ file, url }: CanImage) {
 }
 
 /**
- * Preview — Figma 243:826, and 356:1288 from 1024px up. Download and share never submit an
- * entry (PRD 7). Web adds a back circle above them, as phones have, so the design can be edited.
+ * Preview — Figma 518:6405, and 518:6976 from 1024px up. Download and share never submit an
+ * entry (PRD 7). Web adds a back circle below them, as phones have, so the design can be edited.
  */
 export default function PreviewPage() {
   const router = useCampaignRouter();
@@ -156,20 +159,28 @@ export default function PreviewPage() {
   const closed = windowState !== null && windowState !== "OPEN";
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-white px-[max(20px,calc(50%-220px))] pt-4 lg:px-5">
-      {/* Web: the 720px grey panel behind the can, with the small logo. */}
+    <main className="relative h-dvh overflow-hidden bg-[#D7D8D8] px-[max(20px,calc(50%-220px))] pt-4 lg:bg-white lg:px-5">
+      {/* Each size preloads only its own photo; the images stay lazy, so a hidden one is never fetched. */}
+      <ImagePreload src={mobileBg} sizes="100vw" media="(max-width: 1023px)" />
+      <ImagePreload src={webPanelBg} sizes="54vw" media="(min-width: 1024px)" />
+      {/* Figma's 874px phone frame starts with a 99px mocked browser bar, so the photo starts that far above the screen. */}
+      <div className="absolute inset-x-0 top-[-99px] bottom-0 lg:hidden" aria-hidden="true">
+        <Image quality={IMAGE_QUALITY} src={mobileBg} alt="" fill sizes="100vw" className="object-cover" />
+      </div>
+      {/* Web: the 768px photo panel behind the can, with the small logo. */}
       <div
         data-web-panel
-        className="absolute inset-y-0 left-0 hidden w-1/2 bg-[linear-gradient(to_bottom,#E8E8EA,#CECFD2)] lg:block"
+        className="absolute inset-y-0 left-0 hidden w-[53.33%] lg:block"
         aria-hidden="true"
       >
+        <Image quality={IMAGE_QUALITY} src={webPanelBg} alt="" fill sizes="54vw" className="object-cover" />
         <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
       </div>
 
-      {/* Web: the round buttons stack 130px down, 50px in, 16px apart. */}
+      {/* Web: download and share stack 130px down, 50px in, 16px apart, with the added back circle after them. */}
       <div
         data-actions
-        className="relative flex items-center justify-between lg:absolute lg:top-[130px] lg:left-[50px] lg:flex-col lg:gap-4"
+        className="relative flex items-center justify-between lg:absolute lg:top-[130px] lg:left-[50px] lg:flex-col-reverse lg:gap-4"
       >
         <CircleButton label="Back to editing" onClick={() => router.push("/user-campaign/create")}>
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
@@ -211,11 +222,11 @@ export default function PreviewPage() {
       </div>
 
       {/*
-        Figma: 191×473 at 179px, ending 123px above the screen's foot (32px above the button).
-        The can fills that space: exactly 473px on the 775px design screen, larger on taller phones.
-        Web: 640px tall from 130px down on the 900px screen, centred in the left half.
+        Figma: 191×474 at 179px, ending 122px above the screen's foot. The can fills that space:
+        exactly 474px on the 775px design screen, larger on taller phones.
+        Web: 249×619 from 126px down on the 900px screen, with its shadow 12px under it.
       */}
-      <div className="absolute top-[179px] left-1/2 h-[calc(100dvh-302px)] -translate-x-1/2 lg:top-[14.44dvh] lg:left-1/4 lg:h-[71.11dvh]">
+      <div className="absolute top-[179px] left-1/2 h-[calc(100dvh-301px)] -translate-x-1/2 lg:top-[14dvh] lg:left-1/4 lg:h-[68.78dvh]">
         {image ? (
           // A blob URL, so next/image's optimiser has nothing to fetch; a plain img is right here.
           <img
@@ -226,22 +237,27 @@ export default function PreviewPage() {
         ) : (
           <CanPreview designId={designId} text={clean} priority className="h-full" />
         )}
+        <div
+          data-shadow
+          className="absolute top-[calc(100%+12px)] left-1/2 hidden h-[17px] w-[257px] -translate-x-1/2 rounded-[50%] bg-black/14 blur-[4px] lg:block"
+          aria-hidden="true"
+        />
       </div>
 
       {/*
         On phones the headline sits at the top and the button at the foot. On web they are one
-        352px block centred in the right half: headline, copy, then the button 32px below.
+        454px block centred in the right part: headline, copy, then the button 56px below.
       */}
       <div
         data-copy
-        className="contents lg:absolute lg:top-1/2 lg:left-3/4 lg:flex lg:w-[352px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:flex-col lg:gap-8"
+        className="contents lg:absolute lg:top-1/2 lg:left-[76.67%] lg:flex lg:w-[454px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:flex-col lg:gap-14"
       >
-        <div className="mx-auto mt-4 flex max-w-[316px] flex-col gap-2 text-center lg:mt-0 lg:max-w-none lg:gap-4">
+        <div className="relative mx-auto mt-4 flex max-w-[316px] flex-col gap-2 text-center lg:mt-0 lg:max-w-none">
           {/* Figma's box is 33px: the DM Serif ascent overflows the 28.8px line height. */}
-          <h1 className="font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-[#F40009] lg:text-[40px] lg:leading-[48px]">
+          <h1 className="font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-[#F40009] lg:text-[56px] lg:leading-[84px]">
             It’s giving <em>iconic!</em>
           </h1>
-          <p className="text-base leading-[1.2] text-[#8A8A8A]">
+          <p className="text-base leading-[1.2] text-[#8A8A8A] lg:text-2xl">
             Your main character moment won’t wait forever. Don’t let it slip!
           </p>
         </div>
@@ -257,7 +273,7 @@ export default function PreviewPage() {
               <FieldError className="justify-center">{error}</FieldError>
             </div>
           )}
-          <PillButton type="button" onClick={submit} busy={submitting} disabled={closed} className="lg:mx-auto lg:w-[280px]">
+          <PillButton type="button" onClick={submit} busy={submitting} disabled={closed} className="!font-normal lg:mx-auto lg:h-14 lg:!font-semibold lg:w-[280px] lg:rounded-[26px] lg:text-base lg:leading-[19.2px]">
             Make It Happen
           </PillButton>
         </div>

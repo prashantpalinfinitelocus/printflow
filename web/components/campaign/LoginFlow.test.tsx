@@ -25,7 +25,7 @@ const renderFlow = () => render(<LoginFlow api={api} onClose={onClose} onVerifie
 
 async function fillDetails(phone = "9876543210", email = "aanya@example.com") {
   await user.type(screen.getByLabelText("Your mobile number"), phone);
-  await user.type(screen.getByLabelText("your email ID"), email);
+  await user.type(screen.getByLabelText("Your email ID"), email);
   await user.click(screen.getByRole("checkbox"));
   await user.click(screen.getByRole("button", { name: "Submit" }));
 }
@@ -54,7 +54,7 @@ describe("details step", () => {
   it("words the field errors as Figma does, each with the alert icon", async () => {
     renderFlow();
     await user.type(screen.getByLabelText("Your mobile number"), "98765432");
-    await user.type(screen.getByLabelText("your email ID"), "aanya@gail");
+    await user.type(screen.getByLabelText("Your email ID"), "aanya@gail");
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: "Submit" }));
     const [phoneError, emailError] = screen.getAllByRole("alert");
@@ -67,12 +67,12 @@ describe("details step", () => {
     renderFlow();
     await user.click(screen.getByRole("button", { name: "Submit" }));
     expect(screen.getByLabelText("Your mobile number").parentElement).toHaveClass("border-[#E5E5E5]");
-    expect(screen.getByLabelText("your email ID")).toHaveClass("border-[#F40009]");
+    expect(screen.getByLabelText("Your email ID")).toHaveClass("border-[#F40009]");
   });
 
   it("sets typed text in TCCC-UnityText and only the placeholder in UnityHeadline Light", () => {
     renderFlow();
-    for (const input of [screen.getByLabelText("Your mobile number"), screen.getByLabelText("your email ID")]) {
+    for (const input of [screen.getByLabelText("Your mobile number"), screen.getByLabelText("Your email ID")]) {
       expect(input).toHaveClass(
         "font-[family-name:var(--dc-text)]",
         "font-normal",
@@ -85,7 +85,7 @@ describe("details step", () => {
   it("blocks submission until the terms are ticked", async () => {
     renderFlow();
     await user.type(screen.getByLabelText("Your mobile number"), "9876543210");
-    await user.type(screen.getByLabelText("your email ID"), "aanya@example.com");
+    await user.type(screen.getByLabelText("Your email ID"), "aanya@example.com");
     await user.click(screen.getByRole("button", { name: "Submit" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/agree to the terms/i);
     expect(screen.queryByRole("dialog", { name: "Verify OTP" })).not.toBeInTheDocument();
@@ -155,22 +155,17 @@ describe("details step", () => {
     expect(screen.getByRole("checkbox")).not.toBeChecked();
   });
 
-  it("sits where Figma puts it over the landing page, measured from the foot", () => {
-    renderFlow();
-    expect(screen.getByRole("dialog", { name: "Login" }).style.getPropertyValue("--dc-top")).toContain("calc(100% - 589px)");
-  });
-
   it("switches to Figma's web login popup from 1024px up", () => {
     renderFlow();
     const dialog = screen.getByRole("dialog", { name: "Login" });
-    expect(dialog).toHaveClass("lg:p-8");
+    expect(dialog.firstElementChild).toHaveClass("lg:!px-8", "lg:pb-8");
     expect(dialog.querySelector("form")).toHaveClass("lg:gap-6");
-    expect(screen.getByRole("heading", { name: "Login" })).toHaveClass("lg:text-left", "lg:font-[family-name:var(--dc-text)]");
+    expect(screen.getByRole("heading", { name: "Login" })).toHaveClass("font-[family-name:var(--dc-serif)]", "lg:text-[28px]", "lg:leading-[38px]");
     expect(screen.getByText("Your mobile number")).toHaveClass("lg:font-[family-name:var(--dc-text)]");
-    expect(screen.getByRole("button", { name: "Submit" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(screen.getByRole("button", { name: "Submit" })).toHaveClass("lg:mx-auto", "lg:h-14", "lg:w-[280px]");
     // Web sets only the phone placeholder in UnityText Regular; the email one stays UnityHeadline Light.
     expect(screen.getByLabelText("Your mobile number")).toHaveClass("lg:placeholder:font-[family-name:var(--dc-text)]", "lg:placeholder:font-normal");
-    expect(screen.getByLabelText("your email ID")).not.toHaveClass("lg:placeholder:font-normal");
+    expect(screen.getByLabelText("Your email ID")).not.toHaveClass("lg:placeholder:font-normal");
   });
 
   it("draws the agreement box at Figma's 12px inside a 16px slot", () => {
@@ -328,24 +323,19 @@ describe("OTP step", () => {
 
   it("switches to Figma's web OTP popup from 1024px up", async () => {
     const dialog = await reachOtp();
-    // Figma's web OTP popup is 373px tall with its content centred in it.
-    expect(dialog).toHaveClass("lg:font-[family-name:var(--dc-text)]", "lg:min-h-[373px]", "lg:flex", "lg:flex-col", "lg:justify-center");
-    expect(screen.getByRole("heading", { name: "Verify OTP" })).toHaveClass("lg:leading-[25.2px]");
+    expect(dialog.firstElementChild).toHaveClass("lg:font-[family-name:var(--dc-text)]");
+    expect(dialog.querySelector("form")).toHaveClass("gap-5", "lg:gap-6");
+    expect(screen.getByRole("heading", { name: "Verify OTP" })).toHaveClass("lg:text-[28px]", "lg:leading-[38px]");
     expect(screen.getByText(/sent a 6-digit code/)).toHaveClass("lg:font-[family-name:var(--dc-sans)]", "lg:text-xs");
-    expect(screen.getByRole("button", { name: "Verify" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(screen.getByRole("button", { name: "Verify" })).toHaveClass("lg:mx-auto", "lg:h-14", "lg:w-[280px]");
     expect(screen.getByRole("button", { name: "Change number" })).toHaveClass("lg:text-xs", "lg:leading-[14.4px]");
-  });
-
-  it("opens in the same place as the login popup", async () => {
-    const dialog = await reachOtp();
-    expect(dialog.style.getPropertyValue("--dc-top")).toContain("calc(100% - 589px)");
   });
 
   it("goes back to the form with the details kept when changing number", async () => {
     await reachOtp();
     await user.click(screen.getByRole("button", { name: "Change number" }));
     expect(screen.getByLabelText("Your mobile number")).toHaveValue("9876543210");
-    expect(screen.getByLabelText("your email ID")).toHaveValue("aanya@example.com");
+    expect(screen.getByLabelText("Your email ID")).toHaveValue("aanya@example.com");
     expect(screen.getByRole("checkbox")).toBeChecked();
   });
 });

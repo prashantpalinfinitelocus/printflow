@@ -31,7 +31,7 @@ describe("Success", () => {
   it("asks for the phone photo at the screen's width, so tablets get a sharp one", () => {
     render(<SuccessPage />);
     const phone = document.head.querySelector('link[rel="preload"][media="(max-width: 1023px)"]');
-    expect(phone?.getAttribute("imagesizes")).toBe("115vw");
+    expect(phone?.getAttribute("imagesizes")).toBe("100vw");
   });
 
   it("serves every image at quality 90, and preloads the same files", () => {

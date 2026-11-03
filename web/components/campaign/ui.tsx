@@ -37,38 +37,28 @@ function CloseIcon() {
   );
 }
 
-/** Height of the Figma screen below the mocked browser bar (874 − 99). */
-const FIGMA_VIEWPORT_H = 775;
-
 /**
- * White card over a 60% black scrim, as in the Figma popups. Escape and the
- * close button both call `onClose`; omit it for a popup that must be answered.
+ * White card over a 60% black scrim with a round close button 16px under it, as in the Figma popups.
+ * Escape and the close button both call `onClose`; omit it for a popup that must be answered.
  * `children` receives the id to put on the title, which names the dialog.
  *
- * `figmaTop` is the card's top on the 775px Figma screen. By default it is kept
- * as an offset from the vertical centre, so taller or shorter phones shift it
- * evenly. `anchor="bottom"` keeps it as a distance from the foot instead, for
- * popups over a screen whose content is pinned to the bottom.
- * From 1024px up it is Figma's web popup: 480px wide, 24px corners, centred.
+ * The card and button are centred on Figma's 874px phone frame, whose first 99px are a mocked browser
+ * bar, so on a phone they sit 49.5px above the screen's centre. From 1024px up it is Figma's web popup:
+ * 480px wide, 24px corners, truly centred, with a 60px close button. A short screen scrolls the card
+ * rather than cutting it off.
  */
 export function Modal({
   onClose,
   children,
-  figmaTop,
-  anchor = "centre",
   className = "",
+  cardClassName = "",
 }: {
   onClose?: () => void;
   children: (titleId: string) => ReactNode;
-  figmaTop: number;
-  anchor?: "centre" | "bottom";
   className?: string;
+  cardClassName?: string;
 }) {
   const titleId = useId();
-  const top =
-    anchor === "bottom"
-      ? `max(16px, calc(100% - ${FIGMA_VIEWPORT_H - figmaTop}px))`
-      : `calc(50% - ${FIGMA_VIEWPORT_H / 2 - figmaTop}px)`;
 
   useEffect(() => {
     if (!onClose) return;
@@ -83,20 +73,23 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        style={{ "--dc-top": top } as CSSProperties}
-        className={`animate-rise absolute top-(--dc-top) left-1/2 w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] lg:top-1/2 lg:max-h-[calc(100dvh-32px)] lg:w-[480px] lg:max-w-[480px] lg:-translate-y-1/2 lg:overflow-y-auto lg:rounded-3xl ${className}`}
+        className={`animate-rise absolute top-[calc(50%-49.5px)] left-1/2 flex max-h-[calc(100dvh-115px)] w-[calc(100%-68px)] max-w-[318px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 lg:top-1/2 lg:max-h-[calc(100dvh-32px)] lg:w-[480px] lg:max-w-[480px] ${className}`}
       >
+        <div
+          className={`min-h-0 w-full overflow-y-auto rounded-[28px] bg-white px-6 pt-8 pb-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] lg:rounded-3xl lg:pb-8 ${cardClassName}`}
+        >
+          {children(titleId)}
+        </div>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-4 right-4 flex h-6 w-6 items-center justify-center text-black"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black lg:h-[60px] lg:w-[60px]"
           >
             <CloseIcon />
           </button>
         )}
-        {children(titleId)}
       </div>
     </div>
   );
