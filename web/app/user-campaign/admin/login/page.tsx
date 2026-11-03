@@ -13,8 +13,8 @@ export const metadata: Metadata = { title: "Campaign admin sign in", robots: { i
 
 /**
  * The campaign admin's sign-in. Figma has no design for it, so it borrows the landing's photo and
- * tilted can, floating on the left from 1024px and above the card on phones tall enough for both,
- * with its shadow following it. The headline and form share one left edge in a frosted card.
+ * tilted can, floating on the left from 1024px and above the form on phones tall enough for both,
+ * with its shadow following it. The headline and form share one left edge, directly on the photo.
  */
 export default function AdminLoginPage() {
   return (
@@ -57,17 +57,17 @@ export default function AdminLoginPage() {
 
       <div
         data-panel
-        className="relative w-full max-w-[362px] lg:absolute lg:top-1/2 lg:left-[59.03%] lg:w-[420px] lg:max-w-[min(420px,calc(100vw-59.03%-40px))] lg:-translate-y-1/2"
+        className="relative w-full max-w-[362px] lg:absolute lg:top-1/2 lg:left-[59.03%] lg:w-[400px] lg:max-w-[min(400px,calc(100vw-59.03%-40px))] lg:-translate-y-1/2"
       >
         <div
-          data-card
-          className="animate-rise-in flex flex-col gap-6 rounded-[28px] bg-white/75 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.12)] backdrop-blur-md lg:gap-8 lg:p-8"
+          data-content
+          className="animate-rise-in flex flex-col gap-6 lg:gap-8"
         >
-          <div className="flex flex-col gap-2">
-            <h1 className="font-[family-name:var(--dc-serif)] text-[32px] leading-10 text-[#F40009] lg:text-[40px] lg:leading-12">
+          <div className="flex flex-col gap-3">
+            <h1 className="font-[family-name:var(--dc-serif)] text-[36px] leading-[44px] text-balance text-[#F40009] lg:text-[48px] lg:leading-14">
               Ready to pick today’s lucky few?
             </h1>
-            <p className="text-sm leading-[21px] text-pretty">
+            <p className="text-sm leading-[22px] text-pretty lg:text-base lg:leading-6">
               Sign in to run the daily draw, make the winners’ print files and download the sheet.
             </p>
           </div>

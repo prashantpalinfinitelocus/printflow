@@ -15,10 +15,10 @@ describe("campaign admin login page", () => {
     expect(srcs).toMatch(/web-landing-bg/);
   });
 
-  it("shows the landing's can on the left from 1024px, and above the card on tall phones", () => {
+  it("shows the landing's can on the left from 1024px, and above the form on tall phones", () => {
     const { container } = render(<AdminLoginPage />);
     const slot = container.querySelector("[data-can-slot]");
-    // Only phones tall enough for both the can and the card show it.
+    // Only phones tall enough for both the can and the form show it.
     expect(slot).toHaveClass("hidden", "[@media(min-height:770px)]:block", "lg:block");
     expect(slot?.querySelector("img")?.getAttribute("src")).toMatch(/landing-can/);
   });
@@ -40,12 +40,11 @@ describe("campaign admin login page", () => {
     expect(container.querySelector("[data-shadow]")).toHaveClass("animate-float-shadow");
   });
 
-  it("puts the headline and form in one left-aligned card", () => {
+  it("puts the headline and form straight on the photo, on one left edge, with no box", () => {
     render(<AdminLoginPage />);
-    const card = screen.getByRole("heading", { level: 1 }).closest("[data-card]");
-    expect(card).toContainElement(screen.getByRole("form", { name: "Sign in form" }));
-    expect(card).toHaveClass("rounded-[28px]", "bg-white/75");
-    expect(card?.className).not.toMatch(/text-center/);
+    const content = screen.getByRole("heading", { level: 1 }).closest("[data-content]");
+    expect(content).toContainElement(screen.getByRole("form", { name: "Sign in form" }));
+    expect(content?.className).not.toMatch(/\bbg-|rounded|shadow|backdrop-blur|text-center/);
     expect(screen.getByRole("heading", { level: 1 }).closest("[data-panel]")).toHaveClass("lg:left-[59.03%]");
   });
 
