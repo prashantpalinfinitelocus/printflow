@@ -56,18 +56,12 @@ export const adminPost = <T>(path: string, body?: unknown) =>
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
-export const adminPatch = <T>(path: string, body: unknown) =>
-  call<T>(path, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-
-/** Posts a file as a form, with any other form fields alongside it. */
-export function adminUpload<T>(path: string, file: File, fields: Record<string, string> = {}) {
+/** Posts a file as a form. */
+export function adminUpload<T>(path: string, file: File) {
   const form = new FormData();
-  for (const [key, value] of Object.entries(fields)) form.append(key, value);
   form.append("file", file);
   return call<T>(path, { method: "POST", body: form });
 }
-
-export const adminDelete = (path: string) => call<void>(path, { method: "DELETE" });
 
 /** An added design's sticker for the admin page, hidden designs included; the version busts the cache. */
 export const addedStickerUrl = (designId: string, version: number) => `${ADMIN_API}/catalog/${designId}/sticker?v=${version}`;
@@ -111,8 +105,6 @@ export type CampaignDesign = {
   version: number;
   format: DesignFormat | null;
 };
-
-export type Font = { filename: string; family: string | null };
 
 export type CampaignWinner = {
   id: number;
