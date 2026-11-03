@@ -44,6 +44,16 @@ body {
 
 /* ---- primitives ---- */
 
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* `btn` is a @utility (not a plain class) so the variants below can @apply it —
    Tailwind v4 only lets @apply reference utilities, never component classes. */
 @utility btn {
