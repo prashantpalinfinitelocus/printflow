@@ -26,18 +26,18 @@ html:has(.dc-fonts) body {
   animation: dc-pop 0.18s ease-out both;
 }
 
-/* The admin sign-in's can: it drops into its 9° tilt between the hands as the page opens, then
+/* The admin sign-in's can: it drops into its 17.91° tilt on the left as the page opens, then
    drifts in a slow, small circle, swaying a little either side of the tilt, as if held in the air.
    Both animate the individual rotate/translate properties, which Tailwind's rotate-* sets; the
    drift starts where the drop ends, so the hand-over is seamless. */
 @keyframes dc-can-settle {
   from {
-    rotate: 1deg;
+    rotate: 10deg;
     translate: 0 -6%;
     opacity: 0;
   }
   to {
-    rotate: 9deg;
+    rotate: 17.91deg;
     translate: 0 0;
     opacity: 1;
   }
@@ -45,19 +45,19 @@ html:has(.dc-fonts) body {
 @keyframes dc-can-float {
   0%,
   100% {
-    rotate: 9deg;
+    rotate: 17.91deg;
     translate: 0 0;
   }
   25% {
-    rotate: 11deg;
+    rotate: 19.91deg;
     translate: 1.5% -1.5%;
   }
   50% {
-    rotate: 9deg;
+    rotate: 17.91deg;
     translate: 0 -3%;
   }
   75% {
-    rotate: 7deg;
+    rotate: 15.91deg;
     translate: -1.5% -1.5%;
   }
 }

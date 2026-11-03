@@ -2,12 +2,12 @@
 
 import { useState, type FormEvent } from "react";
 
-import { PillButton } from "@/components/campaign/ui";
+import { FieldError, PillButton } from "@/components/campaign/ui";
 import { ADMIN_API, ADMIN_HOME } from "@/lib/campaign/admin";
 
 const FIELD =
-  "h-12 w-full rounded-[14px] border border-[#E5E5E5] bg-white px-4 text-base text-[#111111] outline-none placeholder:text-[#B5B5B5] focus:border-[#8A8A8A]";
-const CAPTION = "text-xs leading-4 font-semibold text-black";
+  "h-12 w-full rounded-lg border border-[#E5E5E5] bg-white px-4 font-[family-name:var(--dc-text)] text-sm text-[#111111] outline-none placeholder:text-[#8A8A8A] focus:border-black";
+const CAPTION = "font-[family-name:var(--dc-text)] text-xs leading-[14px] font-bold text-black";
 
 /** The campaign admin's own sign-in, with its own accounts; PrintFlow logins do not work here. */
 export function AdminLogin() {
@@ -45,7 +45,7 @@ export function AdminLogin() {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex w-full flex-col gap-5">
+    <form onSubmit={submit} noValidate className="flex w-full flex-col gap-4">
       <label className="flex flex-col gap-2">
         <span className={CAPTION}>User ID</span>
         <input
@@ -82,12 +82,8 @@ export function AdminLogin() {
           </button>
         </div>
       </div>
-      {error && (
-        <p role="alert" className="text-xs leading-4 font-medium text-[#F40009]">
-          {error}
-        </p>
-      )}
-      <PillButton type="submit" busy={busy}>
+      <FieldError className="font-[family-name:var(--dc-text)] font-semibold">{error}</FieldError>
+      <PillButton type="submit" busy={busy} className="mt-2 lg:mx-auto lg:h-14 lg:w-[326px] lg:rounded-[28px] lg:text-base lg:leading-[19.2px]">
         Sign in
       </PillButton>
     </form>

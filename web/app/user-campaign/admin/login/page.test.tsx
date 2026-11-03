@@ -6,20 +6,20 @@ vi.mock("./AdminLogin", () => ({ AdminLogin: () => <form aria-label="Sign in for
 import AdminLoginPage, { metadata } from "./page";
 
 describe("campaign admin login page", () => {
-  it("lays the landing's sunlight backdrop behind the whole page", () => {
+  it("lays the landing's photo behind the whole page, each size getting its own", () => {
     const { container } = render(<AdminLoginPage />);
     const backdrop = container.querySelector("[data-backdrop]");
     expect(backdrop).toHaveAttribute("aria-hidden", "true");
-    expect(backdrop?.querySelector("img")?.getAttribute("src")).toMatch(/web-bg/);
+    const srcs = [...(backdrop?.querySelectorAll("img") ?? [])].map((i) => i.getAttribute("src")).join();
+    expect(srcs).toMatch(/mobile-bg/);
+    expect(srcs).toMatch(/web-landing-bg/);
   });
 
-  it("shows the can-in-hands photo on the left from 1024px, as the landing does", () => {
+  it("shows the landing's can on the left from 1024px", () => {
     const { container } = render(<AdminLoginPage />);
-    const hands = container.querySelector("[data-hands]");
-    expect(hands).toHaveClass("hidden", "lg:block");
-    const srcs = [...(hands?.querySelectorAll("img") ?? [])].map((i) => i.getAttribute("src"));
-    expect(srcs.join()).toMatch(/web-landing-hands/);
-    expect(srcs.join()).toMatch(/web-landing-can/);
+    const slot = container.querySelector("[data-can-slot]");
+    expect(slot).toHaveClass("hidden", "lg:block");
+    expect(slot?.querySelector("img")?.getAttribute("src")).toMatch(/landing-can/);
   });
 
   it("opens with a headline that says what signing in is for", () => {
@@ -31,21 +31,21 @@ describe("campaign admin login page", () => {
 
   it("drops the can into its tilt, then lets it drift in a slow circle; still for reduced motion", () => {
     const { container } = render(<AdminLoginPage />);
-    const can = container.querySelector("[data-hands] [data-can]");
-    expect(can).toHaveClass("animate-can-float", "motion-reduce:animate-none", "rotate-[9deg]");
+    const can = container.querySelector("[data-can-slot] [data-can]");
+    expect(can).toHaveClass("animate-can-float", "motion-reduce:animate-none", "rotate-[17.91deg]");
   });
 
   it("puts the sign-in straight on the backdrop, with no box, on the right and centred on phones", () => {
     render(<AdminLoginPage />);
     const panel = screen.getByRole("heading", { level: 1 }).closest("[data-panel]");
-    expect(panel).toHaveClass("lg:left-[57.08%]");
+    expect(panel).toHaveClass("lg:left-[59.03%]");
     expect(panel?.className).not.toMatch(/\bbg-white\b|rounded|shadow/);
     expect(panel).toContainElement(screen.getByRole("form", { name: "Sign in form" }));
   });
 
-  it("keeps the logo in the top-right corner, where the landing has it", () => {
+  it("keeps the logo top right on phones and top left on web, where the landing has it", () => {
     render(<AdminLoginPage />);
-    expect(screen.getByRole("img", { name: "Diet Coke" })).toHaveClass("lg:top-10", "lg:right-10");
+    expect(screen.getByRole("img", { name: "Diet Coke" })).toHaveClass("top-4", "right-4", "lg:top-10", "lg:left-10");
   });
 
   it("has no line about asking for an account", () => {
