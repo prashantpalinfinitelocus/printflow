@@ -15,8 +15,8 @@ const staticImages: Plugin = {
 
 export default defineConfig({
   plugins: [staticImages],
-  esbuild: { jsx: "automatic" },
-  resolve: { alias: { "@": path.resolve(__dirname) } },
+  oxc: { jsx: { runtime: "automatic" } },
+  resolve: { alias: { "@": import.meta.dirname } },
   test: {
     environment: "jsdom",
     // Screens run against the in-browser mock; the HTTP client has its own tests.

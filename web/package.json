@@ -26,7 +26,7 @@
     "jsdom": "26.1.0",
     "tailwindcss": "4.1.13",
     "typescript": "5.7.2",
-    "vitest": "3.2.4"
+    "vitest": "4.1.12"
   },
   "allowScripts": {
     "@tailwindcss/oxide@4.1.13": true
