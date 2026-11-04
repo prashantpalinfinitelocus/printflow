@@ -25,6 +25,10 @@ jobs:
             echo "PRINTFLOW_MODERATION_ENABLED=false"
           } > .env
 
+      # The API image runs as uid 1000; the runner checks the repo out as another user.
+      - name: Let the API container write to data/
+        run: sudo chown -R 1000:1000 data
+
       - name: Start the stack and seed test data
         run: |
           docker compose up --build -d
@@ -32,6 +36,14 @@ jobs:
             curl -fsS http://localhost:8000/health && break || sleep 3
           done
           docker compose exec -T api python -m scripts.seed
+          echo "CAMPAIGN_SCAN_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+
+      - name: Create a campaign admin for the scan
+        run: docker compose exec -T -e CAMPAIGN_ADMIN_PASSWORD="$CAMPAIGN_SCAN_PASSWORD" api python -m scripts.create_campaign_admin scan-admin
+
+      - name: Show the API log
+        if: failure()
+        run: docker compose logs api
 
       - name: Run StackHawk scan
         env:
@@ -39,14 +51,19 @@ jobs:
           SCAN_USERNAME: admin@printflow.local
           SCAN_PASSWORD: admin123 # seeded test user in the throwaway stack, not a real credential
           APP_ENV: CI
+          CAMPAIGN_SCAN_USERNAME: scan-admin
+          APP_ID: ${{ vars.HAWK_APP_ID || '7773c38a-765e-436e-9399-a1cccf82cc5c' }}
           COMMIT_SHA: ${{ github.sha }}
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
-          docker run --rm --network host \
-            -v "$PWD:/hawk:rw" \
-            -e API_KEY="$HAWK_API_KEY" \
-            -e SCAN_USERNAME -e SCAN_PASSWORD -e APP_ENV -e COMMIT_SHA -e BRANCH_NAME \
-            stackhawk/hawkscan stackhawk.yml
+          for config in stackhawk.yml stackhawk-campaign-admin.yml; do
+            docker run --rm --network host \
+              -v "$PWD:/hawk:rw" \
+              -e API_KEY="$HAWK_API_KEY" \
+              -e SCAN_USERNAME -e SCAN_PASSWORD -e CAMPAIGN_SCAN_USERNAME -e CAMPAIGN_SCAN_PASSWORD \
+              -e APP_ID -e APP_ENV -e COMMIT_SHA -e BRANCH_NAME \
+              stackhawk/hawkscan "$config"
+          done
 
       - name: Stop the stack
         if: always()
