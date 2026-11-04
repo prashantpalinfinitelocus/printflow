@@ -4,8 +4,6 @@ import Image from "next/image";
 import { useCampaignRouter } from "@/lib/campaign/nav";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 
-import logo from "@/app/user-campaign/_assets/logo.png";
-
 import { CanPreview } from "@/components/campaign/CanPreview";
 import { PHOTO_PAGE, PhotoBackdrop } from "@/components/campaign/PhotoBackdrop";
 import { FieldError, LiveCheck, Modal, PillButton } from "@/components/campaign/ui";

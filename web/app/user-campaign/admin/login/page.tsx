@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import landingCan from "@/app/user-campaign/_assets/landing-can.png";
-import logo from "@/app/user-campaign/_assets/logo.png";
+import logo from "@/app/user-campaign/_assets/logo.svg";
 import mobileBg from "@/app/user-campaign/_assets/mobile-bg.png";
 import webBg from "@/app/user-campaign/_assets/web-landing-bg.png";
-import { IMAGE_QUALITY, LOGO_SIZES } from "@/lib/campaign/imageQuality";
+import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 
 import { AdminLogin } from "./AdminLogin";
 
@@ -51,8 +51,7 @@ export default function AdminLoginPage() {
         src={logo}
         alt="Diet Coke"
         priority
-        sizes={LOGO_SIZES}
-        className="absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
+        className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
       />
 
       <div

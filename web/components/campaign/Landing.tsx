@@ -5,14 +5,14 @@ import { useCampaignRouter } from "@/lib/campaign/nav";
 import { useState } from "react";
 
 import landingCan from "@/app/user-campaign/_assets/landing-can.png";
-import logo from "@/app/user-campaign/_assets/logo.png";
+import logo from "@/app/user-campaign/_assets/logo.svg";
 import mobileBg from "@/app/user-campaign/_assets/mobile-bg.png";
 import webBg from "@/app/user-campaign/_assets/web-landing-bg.png";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { LoginFlow } from "@/components/campaign/LoginFlow";
 import { PillButton } from "@/components/campaign/ui";
 import { track, useTrackOnce } from "@/lib/campaign/analytics";
-import { IMAGE_QUALITY, LOGO_SIZES } from "@/lib/campaign/imageQuality";
+import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
 import { useCampaign } from "@/lib/campaign/store";
 
 const CAN_SIZES = "(min-width: 1024px) 45vh, 100vw";
@@ -70,8 +70,7 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         src={logo}
         alt="Diet Coke"
         priority
-        sizes={LOGO_SIZES}
-        className="absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
+        className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
       />
 
       {/* On web the headline, button and legal links are placed on the screen separately, so the wrapper steps aside. */}
