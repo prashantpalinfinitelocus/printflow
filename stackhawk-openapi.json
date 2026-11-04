@@ -12,6 +12,7 @@
      "meta"
     ],
     "summary": "Health",
+    "description": "Liveness: the process is up. Public, so it says nothing about the system.",
     "operationId": "health_health_get",
     "responses": {
      "200": {
@@ -25,8 +26,27 @@
        }
       }
      }
-    },
-    "parameters": []
+    }
+   }
+  },
+  "/health/ready": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Ready",
+    "description": "Readiness: the process is up and can reach its database. Public and minimal.",
+    "operationId": "ready_health_ready_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
    }
   },
   "/auth/login": {
@@ -67,8 +87,7 @@
        }
       }
      }
-    },
-    "parameters": []
+    }
    }
   },
   "/auth/me": {
@@ -94,8 +113,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/stores": {
@@ -192,8 +210,7 @@
        }
       }
      }
-    },
-    "parameters": []
+    }
    }
   },
   "/stores/{store_id}": {
@@ -215,6 +232,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Store Id"
       }
      }
@@ -270,6 +289,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Store Id"
       }
      }
@@ -311,7 +332,9 @@
       "schema": {
        "anyOf": [
         {
-         "type": "integer"
+         "type": "integer",
+         "maximum": 2147483647,
+         "minimum": 1
         },
         {
          "type": "null"
@@ -406,8 +429,7 @@
        }
       }
      }
-    },
-    "parameters": []
+    }
    }
   },
   "/users/{user_id}": {
@@ -429,6 +451,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "User Id"
       }
      }
@@ -484,6 +508,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "User Id"
       }
      }
@@ -598,8 +624,7 @@
        }
       }
      }
-    },
-    "parameters": []
+    }
    }
   },
   "/print-formats/{format_id}": {
@@ -621,6 +646,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Format Id"
       }
      }
@@ -676,6 +703,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Format Id"
       }
      }
@@ -741,8 +770,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/print-formats/fit-text": {
@@ -789,8 +817,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/print-formats/page-sizes": {
@@ -821,8 +848,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/print-formats/fonts": {
@@ -853,8 +879,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/print-formats/upload-font": {
@@ -898,8 +923,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/print-formats/upload-psd": {
@@ -944,8 +968,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/orders": {
@@ -1010,7 +1033,9 @@
       "schema": {
        "anyOf": [
         {
-         "type": "integer"
+         "type": "integer",
+         "maximum": 2147483647,
+         "minimum": 1
         },
         {
          "type": "null"
@@ -1103,7 +1128,9 @@
       "schema": {
        "anyOf": [
         {
-         "type": "integer"
+         "type": "integer",
+         "maximum": 2147483647,
+         "minimum": 1
         },
         {
          "type": "null"
@@ -1156,6 +1183,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Order Id"
       }
      }
@@ -1204,6 +1233,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Order Id"
       }
      }
@@ -1262,6 +1293,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Order Id"
       }
      }
@@ -1309,6 +1342,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Order Id"
       }
      }
@@ -1384,8 +1419,54 @@
      {
       "HTTPBearer": []
      }
+    ]
+   }
+  },
+  "/csv/upload-url": {
+   "post": {
+    "tags": [
+     "orders"
     ],
-    "parameters": []
+    "summary": "Csv Upload Url",
+    "description": "A short-lived signed form for posting a CSV straight into the inbox bucket.\n\n503 when no bucket is configured, which tells the page to use the multipart upload instead.",
+    "operationId": "csv_upload_url_csv_upload_url_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UploadUrlRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UploadUrlOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
    }
   },
   "/csv/inbox": {
@@ -1416,8 +1497,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/csv/import-from-inbox": {
@@ -1463,8 +1543,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/csv/batches": {
@@ -1538,8 +1617,7 @@
        }
       }
      }
-    },
-    "parameters": []
+    }
    }
   },
   "/printers": {
@@ -1569,8 +1647,7 @@
      {
       "HTTPBearer": []
      }
-    ],
-    "parameters": []
+    ]
    }
   },
   "/orders/{order_id}/print": {
@@ -1593,6 +1670,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Order Id"
       }
      }
@@ -1650,6 +1729,8 @@
       "required": true,
       "schema": {
        "type": "integer",
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Order Id"
       }
      },
@@ -1669,7 +1750,9 @@
       "schema": {
        "anyOf": [
         {
-         "type": "integer"
+         "type": "integer",
+         "maximum": 2147483647,
+         "minimum": 1
         },
         {
          "type": "null"
@@ -1700,15 +1783,1309 @@
      }
     }
    }
+  },
+  "/app-settings": {
+   "get": {
+    "tags": [
+     "app-settings"
+    ],
+    "summary": "Read App Settings",
+    "description": "Readable by operators too: the print dialog shows text the way it will print.",
+    "operationId": "read_app_settings_app_settings_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AppSettingsOut"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "patch": {
+    "tags": [
+     "app-settings"
+    ],
+    "summary": "Update App Settings",
+    "operationId": "update_app_settings_app_settings_patch",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AppSettingsUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AppSettingsOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign/otp/send": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Send Otp",
+    "description": "Starts a login: texts a code, or (flag off, bypass on) texts nothing. Rate limited per phone.",
+    "operationId": "send_otp_campaign_otp_send_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OtpRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OtpSent"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/otp/verify": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Verify Otp",
+    "operationId": "verify_otp_campaign_otp_verify_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OtpVerify"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignSession"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/logout": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Logout",
+    "description": "Revokes every session token issued so far for this phone.",
+    "operationId": "logout_campaign_logout_post",
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign/window": {
+   "get": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Get Window",
+    "operationId": "get_window_campaign_window_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignWindow"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/designs": {
+   "get": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "List Designs",
+    "description": "How the nine built-in designs have changed: designs a campaign admin added and shows\n(after the built-in ones), and built-in ones the admin hid.",
+    "operationId": "list_designs_campaign_designs_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicDesignsOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/designs/{design_id}/sticker": {
+   "get": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Added Design Sticker",
+    "operationId": "added_design_sticker_campaign_designs__design_id__sticker_get",
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign/moderate": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Moderate",
+    "operationId": "moderate_campaign_moderate_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TextCheck"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TextVerdict"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign/entries": {
+   "post": {
+    "tags": [
+     "campaign"
+    ],
+    "summary": "Create Entry",
+    "operationId": "create_entry_campaign_entries_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EntryCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EntryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign-admin/auth/login": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Login",
+    "description": "These accounts see every winner's phone and email, so repeated wrong passwords lock\nthe account for a while (campaign_admin_max_failed_logins, campaign_admin_lock_minutes).",
+    "operationId": "login_campaign_admin_auth_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignAdminLogin"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignAdminSession"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/auth/me": {
+   "get": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Me",
+    "operationId": "me_campaign_admin_auth_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignAdminOut"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign-admin/auth/logout": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Logout",
+    "operationId": "logout_campaign_admin_auth_logout_post",
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign-admin/days/{day}": {
+   "get": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Get Day",
+    "operationId": "get_day_campaign_admin_days__day__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "day",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date",
+       "title": "Day"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignDayOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/days/{day}/draw": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Draw Day",
+    "description": "Runs the day's draw now, or returns the one already recorded (the scheduled job may have run it).",
+    "operationId": "draw_day_campaign_admin_days__day__draw_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "day",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date",
+       "title": "Day"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignDayOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/winners/{winner_id}/tiff": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Generate Tiff",
+    "description": "Renders the winner's design PSD with their text, at the design's settings.",
+    "operationId": "generate_tiff_campaign_admin_winners__winner_id__tiff_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "winner_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Winner Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignWinnerOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Download Tiff",
+    "operationId": "download_tiff_campaign_admin_winners__winner_id__tiff_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "winner_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Winner Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/days/{day}/winners.csv": {
+   "get": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Winners Sheet",
+    "description": "The day's winners as a CSV for Excel. `link_base` is the address the admin page\ndownloads through, so each TIFF link opens for a signed-in admin.",
+    "operationId": "winners_sheet_campaign_admin_days__day__winners_csv_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "day",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date",
+       "title": "Day"
+      }
+     },
+     {
+      "name": "link_base",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 500,
+       "pattern": "^https?://\\S+$",
+       "title": "Link Base"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/designs": {
+   "get": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "List Designs",
+    "description": "The nine built-in designs, then the added ones in the order they were added.",
+    "operationId": "list_designs_campaign_admin_designs_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CampaignDesignOut"
+         },
+         "type": "array",
+         "title": "Response List Designs Campaign Admin Designs Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign-admin/designs/{design_id}/visibility": {
+   "patch": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Set Visibility",
+    "description": "Hides a design from users, or shows it again. Works for built-in and added designs;\nentries already made with it, and their winners, keep it.",
+    "operationId": "set_visibility_campaign_admin_designs__design_id__visibility_patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DesignVisibility"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignDesignOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/fonts": {
+   "get": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "List Fonts",
+    "description": "Font files the renderer can use, for the text settings.",
+    "operationId": "list_fonts_campaign_admin_fonts_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/FontOut"
+         },
+         "type": "array",
+         "title": "Response List Fonts Campaign Admin Fonts Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign-admin/designs/{design_id}/psd": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Upload Design Psd",
+    "description": "Stores the design's PSD in the campaign's own folder. A new design gets the can's\nname-line text setup; a replaced PSD keeps the text settings already made.",
+    "operationId": "upload_design_psd_campaign_admin_designs__design_id__psd_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_design_psd_campaign_admin_designs__design_id__psd_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignDesignOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/designs/{design_id}": {
+   "patch": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Update Design",
+    "operationId": "update_design_campaign_admin_designs__design_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignDesignUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignDesignOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/designs/{design_id}/find-placeholder": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Find Placeholder",
+    "description": "Finds a baked-in placeholder (the red XXXXXXXX) of about the given size; the admin checks it before saving.",
+    "operationId": "find_placeholder_campaign_admin_designs__design_id__find_placeholder_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignFindPlaceholder"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DetectPlaceholderResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/catalog": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Add Design",
+    "description": "Adds a design for users: shown at once in its category, with this sticker on the can.",
+    "operationId": "add_design_campaign_admin_catalog_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_add_design_campaign_admin_catalog_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CatalogDesignOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/campaign-admin/catalog/{design_id}": {
+   "patch": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Update Added Design",
+    "description": "Renames, recategorises, hides or shows an added design. Its id, and so its entries, stay.",
+    "operationId": "update_added_design_campaign_admin_catalog__design_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CatalogDesignUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CatalogDesignOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Delete Added Design",
+    "description": "Deletes an added design nobody has entered with, with its sticker and PSD setup. One with\nentries is kept so its entries and winners still have their design: hide it instead.",
+    "operationId": "delete_added_design_campaign_admin_catalog__design_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/campaign-admin/catalog/{design_id}/sticker": {
+   "post": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Replace Sticker",
+    "operationId": "replace_sticker_campaign_admin_catalog__design_id__sticker_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_replace_sticker_campaign_admin_catalog__design_id__sticker_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CatalogDesignOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "campaign admin"
+    ],
+    "summary": "Added Design Sticker",
+    "description": "The sticker for the admin page, hidden designs included.",
+    "operationId": "added_design_sticker_campaign_admin_catalog__design_id__sticker_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "design_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Design Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
   "schemas": {
+   "AppSettingsOut": {
+    "properties": {
+     "uppercase_text": {
+      "type": "boolean",
+      "title": "Uppercase Text"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "uppercase_text",
+     "updated_at"
+    ],
+    "title": "AppSettingsOut"
+   },
+   "AppSettingsUpdate": {
+    "properties": {
+     "uppercase_text": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uppercase Text"
+     }
+    },
+    "type": "object",
+    "title": "AppSettingsUpdate"
+   },
+   "Body_add_design_campaign_admin_catalog_post": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "category": {
+      "type": "string",
+      "title": "Category"
+     },
+     "file": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "category",
+     "file"
+    ],
+    "title": "Body_add_design_campaign_admin_catalog_post"
+   },
+   "Body_replace_sticker_campaign_admin_catalog__design_id__sticker_post": {
+    "properties": {
+     "file": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "file"
+    ],
+    "title": "Body_replace_sticker_campaign_admin_catalog__design_id__sticker_post"
+   },
    "Body_upload_csv_csv_upload_post": {
     "properties": {
      "file": {
       "type": "string",
-      "format": "binary",
+      "contentMediaType": "application/octet-stream",
       "title": "File"
      }
     },
@@ -1718,11 +3095,25 @@
     ],
     "title": "Body_upload_csv_csv_upload_post"
    },
+   "Body_upload_design_psd_campaign_admin_designs__design_id__psd_post": {
+    "properties": {
+     "file": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_design_psd_campaign_admin_designs__design_id__psd_post"
+   },
    "Body_upload_font_print_formats_upload_font_post": {
     "properties": {
      "file": {
       "type": "string",
-      "format": "binary",
+      "contentMediaType": "application/octet-stream",
       "title": "File"
      }
     },
@@ -1736,7 +3127,7 @@
     "properties": {
      "file": {
       "type": "string",
-      "format": "binary",
+      "contentMediaType": "application/octet-stream",
       "title": "File"
      }
     },
@@ -1745,6 +3136,559 @@
      "file"
     ],
     "title": "Body_upload_psd_print_formats_upload_psd_post"
+   },
+   "CampaignAdminLogin": {
+    "properties": {
+     "username": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Username"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "username",
+     "password"
+    ],
+    "title": "CampaignAdminLogin"
+   },
+   "CampaignAdminOut": {
+    "properties": {
+     "username": {
+      "type": "string",
+      "title": "Username"
+     }
+    },
+    "type": "object",
+    "required": [
+     "username"
+    ],
+    "title": "CampaignAdminOut"
+   },
+   "CampaignAdminSession": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "title": "Token"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     },
+     "admin": {
+      "$ref": "#/components/schemas/CampaignAdminOut"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token",
+     "expires_in",
+     "admin"
+    ],
+    "title": "CampaignAdminSession"
+   },
+   "CampaignDayOut": {
+    "properties": {
+     "day": {
+      "type": "string",
+      "format": "date",
+      "title": "Day"
+     },
+     "entries": {
+      "type": "integer",
+      "title": "Entries"
+     },
+     "can_draw": {
+      "type": "boolean",
+      "title": "Can Draw"
+     },
+     "draw": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CampaignDrawOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "winners": {
+      "items": {
+       "$ref": "#/components/schemas/CampaignWinnerOut"
+      },
+      "type": "array",
+      "title": "Winners"
+     },
+     "missing_formats": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Missing Formats"
+     }
+    },
+    "type": "object",
+    "required": [
+     "day",
+     "entries",
+     "can_draw",
+     "draw",
+     "winners",
+     "missing_formats"
+    ],
+    "title": "CampaignDayOut"
+   },
+   "CampaignDesignOut": {
+    "properties": {
+     "design_id": {
+      "type": "string",
+      "title": "Design Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "category": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category"
+     },
+     "builtin": {
+      "type": "boolean",
+      "title": "Builtin",
+      "default": true
+     },
+     "active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version",
+      "default": 0
+     },
+     "format": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CampaignDesignSetup"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "design_id",
+     "format"
+    ],
+    "title": "CampaignDesignOut"
+   },
+   "CampaignDesignSetup": {
+    "properties": {
+     "psd_path": {
+      "type": "string",
+      "title": "Psd Path"
+     },
+     "width_px": {
+      "type": "integer",
+      "title": "Width Px"
+     },
+     "height_px": {
+      "type": "integer",
+      "title": "Height Px"
+     },
+     "dpi": {
+      "type": "integer",
+      "title": "Dpi"
+     },
+     "text_box": {
+      "type": "object",
+      "title": "Text Box"
+     },
+     "font_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Path"
+     },
+     "font_size": {
+      "type": "integer",
+      "title": "Font Size"
+     },
+     "font_color": {
+      "type": "string",
+      "title": "Font Color"
+     },
+     "placeholder_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Placeholder Color"
+     }
+    },
+    "type": "object",
+    "required": [
+     "psd_path",
+     "width_px",
+     "height_px",
+     "dpi",
+     "text_box",
+     "font_path",
+     "font_size",
+     "font_color",
+     "placeholder_color"
+    ],
+    "title": "CampaignDesignSetup",
+    "description": "The PSD a campaign design prints from and where its text goes."
+   },
+   "CampaignDesignUpdate": {
+    "properties": {
+     "text_box": {
+      "$ref": "#/components/schemas/CampaignTextBox"
+     },
+     "font_size": {
+      "type": "integer",
+      "maximum": 2000.0,
+      "minimum": 1.0,
+      "title": "Font Size"
+     },
+     "font_color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "title": "Font Color"
+     },
+     "font_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Font Path"
+     },
+     "placeholder_color": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{6}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Placeholder Color"
+     }
+    },
+    "type": "object",
+    "title": "CampaignDesignUpdate"
+   },
+   "CampaignDrawOut": {
+    "properties": {
+     "eligible_entries": {
+      "type": "integer",
+      "title": "Eligible Entries"
+     },
+     "winner_count": {
+      "type": "integer",
+      "title": "Winner Count"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "eligible_entries",
+     "winner_count",
+     "created_at"
+    ],
+    "title": "CampaignDrawOut"
+   },
+   "CampaignFindPlaceholder": {
+    "properties": {
+     "color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "title": "Color",
+      "default": "#ED1C24"
+     },
+     "expected_w": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expected W"
+     },
+     "expected_h": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expected H"
+     }
+    },
+    "type": "object",
+    "title": "CampaignFindPlaceholder"
+   },
+   "CampaignSession": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "title": "Token"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     },
+     "phone": {
+      "type": "string",
+      "title": "Phone"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token",
+     "expires_in",
+     "phone",
+     "email"
+    ],
+    "title": "CampaignSession"
+   },
+   "CampaignTextBox": {
+    "properties": {
+     "x": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "X"
+     },
+     "y": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Y"
+     },
+     "w": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "W"
+     },
+     "h": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "H"
+     }
+    },
+    "type": "object",
+    "required": [
+     "x",
+     "y",
+     "w",
+     "h"
+    ],
+    "title": "CampaignTextBox",
+    "description": "Where a design's text goes, in pixels from the PSD's top-left corner."
+   },
+   "CampaignWindow": {
+    "properties": {
+     "state": {
+      "type": "string",
+      "enum": [
+       "OPEN",
+       "BEFORE_OPEN",
+       "CLOSED",
+       "PAUSED"
+      ],
+      "title": "State"
+     }
+    },
+    "type": "object",
+    "required": [
+     "state"
+    ],
+    "title": "CampaignWindow"
+   },
+   "CampaignWinnerOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "rank": {
+      "type": "integer",
+      "title": "Rank"
+     },
+     "entry_id": {
+      "type": "string",
+      "title": "Entry Id"
+     },
+     "phone": {
+      "type": "string",
+      "title": "Phone"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "design_id": {
+      "type": "string",
+      "title": "Design Id"
+     },
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "entered_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Entered At"
+     },
+     "tiff_ready": {
+      "type": "boolean",
+      "title": "Tiff Ready"
+     },
+     "tiff_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tiff Error"
+     },
+     "tiff_generated_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tiff Generated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "rank",
+     "entry_id",
+     "phone",
+     "email",
+     "design_id",
+     "text",
+     "entered_at",
+     "tiff_ready",
+     "tiff_error",
+     "tiff_generated_at"
+    ],
+    "title": "CampaignWinnerOut"
+   },
+   "CatalogDesignOut": {
+    "properties": {
+     "design_id": {
+      "type": "string",
+      "title": "Design Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "category": {
+      "type": "string",
+      "title": "Category"
+     },
+     "active": {
+      "type": "boolean",
+      "title": "Active"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     }
+    },
+    "type": "object",
+    "required": [
+     "design_id",
+     "name",
+     "category",
+     "active",
+     "version"
+    ],
+    "title": "CatalogDesignOut",
+    "description": "A design a campaign admin added."
+   },
+   "CatalogDesignUpdate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 40,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "category": {
+      "type": "string",
+      "title": "Category"
+     },
+     "active": {
+      "type": "boolean",
+      "title": "Active"
+     }
+    },
+    "type": "object",
+    "title": "CatalogDesignUpdate"
    },
    "CsvBatchOut": {
     "properties": {
@@ -1836,6 +3780,19 @@
     "title": "Delivery",
     "description": "How the rendered file reaches paper."
    },
+   "DesignVisibility": {
+    "properties": {
+     "active": {
+      "type": "boolean",
+      "title": "Active"
+     }
+    },
+    "type": "object",
+    "required": [
+     "active"
+    ],
+    "title": "DesignVisibility"
+   },
    "DetectPlaceholderRequest": {
     "properties": {
      "psd_path": {
@@ -1899,6 +3856,46 @@
      "fill"
     ],
     "title": "DetectPlaceholderResponse"
+   },
+   "EntryCreate": {
+    "properties": {
+     "design_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_]{1,64}$",
+      "title": "Design Id"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Text"
+     },
+     "idempotency_key": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Idempotency Key"
+     }
+    },
+    "type": "object",
+    "required": [
+     "design_id",
+     "text",
+     "idempotency_key"
+    ],
+    "title": "EntryCreate"
+   },
+   "EntryOut": {
+    "properties": {
+     "entry_id": {
+      "type": "string",
+      "title": "Entry Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "entry_id"
+    ],
+    "title": "EntryOut"
    },
    "FitTextRequest": {
     "properties": {
@@ -2451,6 +4448,63 @@
     ],
     "title": "OrderStatus"
    },
+   "OtpRequest": {
+    "properties": {
+     "phone": {
+      "type": "string",
+      "pattern": "^[6-9][0-9]{9}$",
+      "title": "Phone"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "phone",
+     "email"
+    ],
+    "title": "OtpRequest"
+   },
+   "OtpSent": {
+    "properties": {
+     "resend_after": {
+      "type": "integer",
+      "title": "Resend After"
+     }
+    },
+    "type": "object",
+    "required": [
+     "resend_after"
+    ],
+    "title": "OtpSent"
+   },
+   "OtpVerify": {
+    "properties": {
+     "phone": {
+      "type": "string",
+      "pattern": "^[6-9][0-9]{9}$",
+      "title": "Phone"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "code": {
+      "type": "string",
+      "pattern": "^[0-9]{4,8}$",
+      "title": "Code"
+     }
+    },
+    "type": "object",
+    "required": [
+     "phone",
+     "email",
+     "code"
+    ],
+    "title": "OtpVerify"
+   },
    "PageSizeOut": {
     "properties": {
      "name": {
@@ -2586,6 +4640,18 @@
       "title": "White Passes",
       "default": 0
      },
+     "operator_note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Operator Note"
+     },
      "is_active": {
       "type": "boolean",
       "title": "Is Active",
@@ -2714,6 +4780,17 @@
       "type": "integer",
       "title": "White Passes"
      },
+     "operator_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Operator Note"
+     },
      "is_active": {
       "type": "boolean",
       "title": "Is Active"
@@ -2740,6 +4817,7 @@
      "page_size",
      "print_passes",
      "white_passes",
+     "operator_note",
      "is_active"
     ],
     "title": "PrintFormatOut"
@@ -2913,6 +4991,18 @@
        }
       ],
       "title": "White Passes"
+     },
+     "operator_note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Operator Note"
      },
      "is_active": {
       "anyOf": [
@@ -3165,6 +5255,60 @@
     ],
     "title": "PrinterOut"
    },
+   "PublicDesignOut": {
+    "properties": {
+     "design_id": {
+      "type": "string",
+      "title": "Design Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "category": {
+      "type": "string",
+      "title": "Category"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     }
+    },
+    "type": "object",
+    "required": [
+     "design_id",
+     "name",
+     "category",
+     "version"
+    ],
+    "title": "PublicDesignOut",
+    "description": "An added design as users see it; its sticker is at /campaign/designs/<id>/sticker."
+   },
+   "PublicDesignsOut": {
+    "properties": {
+     "added": {
+      "items": {
+       "$ref": "#/components/schemas/PublicDesignOut"
+      },
+      "type": "array",
+      "title": "Added"
+     },
+     "hidden": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Hidden"
+     }
+    },
+    "type": "object",
+    "required": [
+     "added",
+     "hidden"
+    ],
+    "title": "PublicDesignsOut",
+    "description": "What users can pick beyond the defaults: added designs shown, and built-in ones hidden."
+   },
    "Role": {
     "type": "string",
     "enum": [
@@ -3380,6 +5524,37 @@
     ],
     "title": "TextBox"
    },
+   "TextCheck": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Text"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "TextCheck"
+   },
+   "TextVerdict": {
+    "properties": {
+     "result": {
+      "type": "string",
+      "enum": [
+       "APPROVED",
+       "REJECTED"
+      ],
+      "title": "Result"
+     }
+    },
+    "type": "object",
+    "required": [
+     "result"
+    ],
+    "title": "TextVerdict"
+   },
    "TokenResponse": {
     "properties": {
      "access_token": {
@@ -3406,6 +5581,51 @@
      "user"
     ],
     "title": "TokenResponse"
+   },
+   "UploadUrlOut": {
+    "properties": {
+     "url": {
+      "type": "string",
+      "title": "Url"
+     },
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Fields"
+     },
+     "filename": {
+      "type": "string",
+      "title": "Filename"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     }
+    },
+    "type": "object",
+    "required": [
+     "url",
+     "fields",
+     "filename",
+     "expires_in"
+    ],
+    "title": "UploadUrlOut",
+    "description": "Where and how the browser may POST a CSV form directly into the bucket."
+   },
+   "UploadUrlRequest": {
+    "properties": {
+     "filename": {
+      "type": "string",
+      "title": "Filename"
+     }
+    },
+    "type": "object",
+    "required": [
+     "filename"
+    ],
+    "title": "UploadUrlRequest"
    },
    "UserCreate": {
     "properties": {
@@ -3437,7 +5657,9 @@
      "store_id": {
       "anyOf": [
        {
-        "type": "integer"
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 1.0
        },
        {
         "type": "null"
@@ -3571,7 +5793,9 @@
      "store_id": {
       "anyOf": [
        {
-        "type": "integer"
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 1.0
        },
        {
         "type": "null"
@@ -3617,6 +5841,13 @@
      "type": {
       "type": "string",
       "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
      }
     },
     "type": "object",

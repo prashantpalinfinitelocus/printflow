@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import DataError
 
 from .config import settings
 from .db import Base, engine
@@ -58,6 +59,12 @@ def ready():
         log.exception("readiness check failed")
         return JSONResponse({"status": "unavailable", "database": "down"}, status_code=503)
     return {"status": "ok", "database": "ok"}
+
+
+@app.exception_handler(DataError)
+async def invalid_value(request: Request, exc: DataError) -> JSONResponse:
+    log.warning("rejected a value the database refused on %s %s: %s", request.method, request.url.path, exc.orig)
+    return JSONResponse({"detail": "The request contains a value that is not allowed."}, status_code=422)
 
 
 @app.middleware("http")

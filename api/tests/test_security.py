@@ -36,6 +36,25 @@ def test_largest_valid_id_is_a_plain_not_found(client, admin_headers):
     assert res.status_code == 404, res.text
 
 
+# --- StackHawk: a NUL byte in input used to reach Postgres and crash with a 500 -------
+
+def test_nul_byte_in_a_search_query_is_rejected(client, admin_headers):
+    res = client.get("/users", params={"q": "a\x00b"}, headers=admin_headers)
+    assert res.status_code == 422, res.text
+
+
+def test_nul_byte_in_a_login_name_is_rejected(client):
+    res = client.post("/campaign-admin/auth/login", json={"username": "x\x00", "password": "pw"})
+    assert res.status_code == 422, res.text
+
+
+# --- StackHawk: an over-long inbox file name used to crash with a 500 --------------
+
+def test_over_long_inbox_file_name_is_not_found(client, admin_headers):
+    res = client.post("/csv/import-from-inbox", json={"filename": "a" * 5000 + ".csv"}, headers=admin_headers)
+    assert res.status_code in (404, 422), res.text
+
+
 # --- StackHawk: every response says not to sniff the content type ------------------
 
 def test_responses_carry_nosniff(client, admin_headers):

@@ -1,0 +1,42 @@
+# Scans /campaign-admin/* with a campaign-admin login (stackhawk.yml covers staff routes).
+app:
+  applicationId: ${APP_ID:7773c38a-765e-436e-9399-a1cccf82cc5c}
+  env: ${APP_ENV:Development}
+  host: ${APP_HOST:http://localhost:8000}
+  openApiConf:
+    filePath: stackhawk-openapi.json
+  includePaths:
+    - "/campaign-admin.*"
+  authentication:
+    usernamePassword:
+      type: JSON
+      loginPath: /campaign-admin/auth/login
+      usernameField: username
+      passwordField: password
+      scanUsername: ${CAMPAIGN_SCAN_USERNAME}
+      scanPassword: ${CAMPAIGN_SCAN_PASSWORD}
+    tokenExtraction:
+      type: TOKEN_PATH
+      value: "$.token"
+    tokenAuthorization:
+      type: HEADER
+      value: Authorization
+      tokenType: Bearer
+    testPath:
+      path: /campaign-admin/auth/me
+      success: ".*200.*"
+  excludePaths:
+    - "/campaign-admin/auth/logout"
+
+hawk:
+  failureThreshold: high
+
+tags:
+  - name: _STACKHAWK_AGENT
+    value: ${HAWK_AGENT:none}
+  - name: _STACKHAWK_GIT_COMMIT_SHA
+    value: ${COMMIT_SHA:none}
+  - name: _STACKHAWK_GIT_BRANCH
+    value: ${BRANCH_NAME:none}
+  - name: git_origin
+    value: infinite-locus-product/cokeprintflow

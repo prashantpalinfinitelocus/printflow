@@ -374,12 +374,15 @@ class InboxFile(BaseModel):
     modified: datetime
 
 
+FileName = Annotated[str, Field(min_length=1, max_length=255)]
+
+
 class ImportFromPathRequest(BaseModel):
-    filename: str
+    filename: FileName
 
 
 class UploadUrlRequest(BaseModel):
-    filename: str
+    filename: FileName
 
 
 class UploadUrlOut(BaseModel):
