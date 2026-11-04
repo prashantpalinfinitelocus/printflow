@@ -32,6 +32,11 @@ describe("LegalPage", () => {
     expect(article.className).not.toMatch(/max-w-/);
   });
 
+  it("uses the homepage's logo size", () => {
+    render(<LegalPage title="Terms" html="<p>x</p>" />);
+    expect(screen.getByRole("img", { name: "Diet Coke" })).toHaveClass("h-[27px]", "w-[60px]", "lg:h-[49px]", "lg:w-[110px]");
+  });
+
   it("serves the logo at full quality", () => {
     renderTerms();
     expect(screen.getByRole("img", { name: "Diet Coke" }).getAttribute("src")).toMatch(/\?q=100$/);

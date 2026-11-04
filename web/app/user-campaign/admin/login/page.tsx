@@ -51,12 +51,12 @@ export default function AdminLoginPage() {
         src={logo}
         alt="Diet Coke"
         priority
-        className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
+        className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10 lg:h-[49px] lg:w-[110px]"
       />
 
       <div
         data-panel
-        className="relative w-full max-w-[362px] lg:absolute lg:top-1/2 lg:left-[59.03%] lg:w-[400px] lg:max-w-[min(400px,calc(100vw-59.03%-40px))] lg:-translate-y-1/2"
+        className="relative w-full max-w-[362px] lg:absolute lg:top-1/2 lg:left-[59.03%] lg:w-[401px] lg:max-w-[min(401px,calc(100vw-59.03%-40px))] lg:-translate-y-1/2"
       >
         <div
           data-content

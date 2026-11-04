@@ -32,8 +32,8 @@ export function AdminApp() {
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-white text-[#494949]">
-      <header className="flex h-[72px] w-full items-center justify-between gap-4 px-6 lg:h-[100px] lg:px-10">
-        <Image quality={IMAGE_QUALITY} src={logo} alt="Diet Coke" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] h-10 w-[90px] object-contain lg:h-[49.8px] lg:w-28" />
+      <header className="flex h-[72px] w-full items-center justify-between gap-4 px-6 lg:h-auto lg:px-10 lg:pt-10 lg:pb-4">
+        <Image quality={IMAGE_QUALITY} src={logo} alt="Diet Coke" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] h-[27px] w-[60px] object-contain lg:h-[49px] lg:w-[110px]" />
         {admin && (
           <div className="flex items-center gap-3">
             <p className="hidden text-right text-xs leading-4 sm:block">

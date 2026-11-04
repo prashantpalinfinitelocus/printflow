@@ -37,6 +37,14 @@ describe("AdminApp", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Daily winners" })).toBeInTheDocument();
   });
 
+  it("uses the homepage's logo size, 40px from the top on web", async () => {
+    api.adminGet.mockResolvedValue({ username: "ops" });
+    render(<AdminApp />);
+    const logo = await screen.findByRole("img", { name: "Diet Coke" });
+    expect(logo).toHaveClass("h-[27px]", "w-[60px]", "lg:h-[49px]", "lg:w-[110px]");
+    expect(logo.closest("header")).toHaveClass("lg:pt-10", "lg:px-10");
+  });
+
   it("signs out and returns to the campaign admin login", async () => {
     api.adminGet.mockResolvedValue({ username: "ops" });
     api.adminPost.mockResolvedValue(undefined);

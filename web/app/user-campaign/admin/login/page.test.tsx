@@ -45,12 +45,12 @@ describe("campaign admin login page", () => {
     const content = screen.getByRole("heading", { level: 1 }).closest("[data-content]");
     expect(content).toContainElement(screen.getByRole("form", { name: "Sign in form" }));
     expect(content?.className).not.toMatch(/\bbg-|rounded|shadow|backdrop-blur|text-center/);
-    expect(screen.getByRole("heading", { level: 1 }).closest("[data-panel]")).toHaveClass("lg:left-[59.03%]");
+    expect(screen.getByRole("heading", { level: 1 }).closest("[data-panel]")).toHaveClass("lg:left-[59.03%]", "lg:w-[401px]");
   });
 
   it("keeps the logo top right on phones and top left on web, where the landing has it", () => {
     render(<AdminLoginPage />);
-    expect(screen.getByRole("img", { name: "Diet Coke" })).toHaveClass("top-4", "right-4", "lg:top-10", "lg:left-10");
+    expect(screen.getByRole("img", { name: "Diet Coke" })).toHaveClass("top-4", "right-4", "h-[27px]", "w-[60px]", "lg:top-10", "lg:left-10", "lg:h-[49px]", "lg:w-[110px]");
   });
 
   it("has no line about asking for an account", () => {

@@ -22,7 +22,7 @@ export function LegalPage({ title, html }: { title: string; html: string }) {
             <span aria-hidden="true">←</span>
             Back
           </a>
-          <Image quality={IMAGE_QUALITY} src={logo} alt="Diet Coke" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] h-10 w-[90px] object-contain lg:h-[49.8px] lg:w-28" />
+          <Image quality={IMAGE_QUALITY} src={logo} alt="Diet Coke" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] h-[27px] w-[60px] object-contain lg:h-[49px] lg:w-[110px]" />
         </div>
       </header>
 
