@@ -111,12 +111,12 @@ describe("short laptop screens (under 900px tall)", () => {
 });
 
 describe("image quality", () => {
-  it("serves the can, stickers and logo at quality 90", async () => {
+  it("serves the can, stickers and logo at full quality", async () => {
     const { container } = renderCampaign(<CreatePage />, LOGGED_IN);
     await textField();
     const imgs = [...container.querySelectorAll("img")];
     expect(imgs.length).toBeGreaterThan(10);
-    for (const img of imgs) expect(img.getAttribute("src")).toMatch(/\?q=90$/);
+    for (const img of imgs) expect(img.getAttribute("src")).toMatch(/\?q=100$/);
   });
 });
 

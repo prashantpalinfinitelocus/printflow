@@ -36,10 +36,10 @@ describe("Success", () => {
     expect(phone?.getAttribute("imagesizes")).toBe("100vw");
   });
 
-  it("serves every image at quality 90, and preloads the same files", () => {
+  it("serves every image at full quality, and preloads the same files", () => {
     const { container } = render(<SuccessPage />);
-    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("src")).toMatch(/\?q=90$/);
-    for (const l of document.head.querySelectorAll('link[rel="preload"][as="image"]')) expect(l.getAttribute("imagesrcset")).toMatch(/\?q=90 /);
+    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("src")).toMatch(/\?q=100$/);
+    for (const l of document.head.querySelectorAll('link[rel="preload"][as="image"]')) expect(l.getAttribute("imagesrcset")).toMatch(/\?q=100 /);
   });
 
   it("preloads only the photo each screen size shows", () => {

@@ -78,11 +78,11 @@ describe("Landing", () => {
     expect(await screen.findByRole("button", { name: "Be on the can!" })).toHaveClass("disabled:opacity-100");
   });
 
-  it("serves every image at quality 90, and preloads the same files", async () => {
+  it("serves every image at full quality, and preloads the same files", async () => {
     const { container } = renderCampaign(await landing());
     await screen.findByRole("heading", { name: "Make it official. Make it yours!" });
-    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("src")).toMatch(/\?q=90$/);
-    for (const l of document.head.querySelectorAll('link[rel="preload"][as="image"]')) expect(l.getAttribute("imagesrcset")).toMatch(/\?q=90 /);
+    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("src")).toMatch(/\?q=100$/);
+    for (const l of document.head.querySelectorAll('link[rel="preload"][as="image"]')) expect(l.getAttribute("imagesrcset")).toMatch(/\?q=100 /);
   });
 
   it("links to the terms and privacy policy", async () => {

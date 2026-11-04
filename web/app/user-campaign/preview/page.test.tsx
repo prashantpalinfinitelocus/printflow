@@ -81,10 +81,10 @@ describe("tablet layout (481px to 1023px)", () => {
 });
 
 describe("image quality", () => {
-  it("serves the can and logo at quality 90", async () => {
+  it("serves the can and logo at full quality", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);
     await screen.findByRole("button", { name: "Make It Happen" });
-    for (const img of container.querySelectorAll("img:not([src^='blob:'])")) expect(img.getAttribute("src")).toMatch(/\?q=90$/);
+    for (const img of container.querySelectorAll("img:not([src^='blob:'])")) expect(img.getAttribute("src")).toMatch(/\?q=100$/);
   });
 });
 

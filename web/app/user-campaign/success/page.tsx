@@ -1,11 +1,11 @@
 import Image from "next/image";
 
 import logo from "@/app/user-campaign/_assets/logo.png";
-import successBg from "@/app/user-campaign/_assets/success-bg.jpg";
-import webSuccessBg from "@/app/user-campaign/_assets/web-success-bg.jpg";
+import successBg from "@/app/user-campaign/_assets/success-bg.png";
+import webSuccessBg from "@/app/user-campaign/_assets/web-success-bg.png";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { TrackOnce } from "@/lib/campaign/analytics";
-import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
+import { IMAGE_QUALITY, LOGO_SIZES } from "@/lib/campaign/imageQuality";
 
 const BG_SIZES = "100vw";
 
@@ -28,14 +28,14 @@ export default function SuccessPage() {
       {/* Web: the full-screen photo with the small logo top left. Figma also has the landing's large logo top right; it was left out on request. */}
       <div data-web-logos className="absolute inset-0 hidden lg:block" aria-hidden="true">
         <Image quality={IMAGE_QUALITY} src={webSuccessBg} alt="" fill placeholder="blur" sizes={BG_SIZES} className="object-cover" />
-        <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes="60px" className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
+        <Image quality={IMAGE_QUALITY} src={logo} alt="" sizes={LOGO_SIZES} className="absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
       </div>
       {/*
         Figma: the 302px block's top is at 254px on the 775px screen, kept as an offset from centre.
         Web: a 612px block 353px down the 900px screen, without the logo above it.
       */}
       <div className="absolute top-[calc(50%-133.5px)] left-1/2 flex w-[302px] -translate-x-1/2 flex-col items-center gap-4 lg:top-[39.23%] lg:w-[612px]">
-        <Image quality={IMAGE_QUALITY} src={logo} alt="Diet Coke" sizes="72px" className="h-8 w-[72px] object-contain lg:hidden" />
+        <Image quality={IMAGE_QUALITY} src={logo} alt="Diet Coke" sizes={LOGO_SIZES} className="h-8 w-[72px] object-contain lg:hidden" />
         <div className="flex flex-col gap-2 lg:gap-[13.6px]">
           <h1 className="flex flex-col">
             <span className="text-2xl leading-[27px] font-bold lg:text-[32px] lg:leading-[36.48px]">You ate!</span>

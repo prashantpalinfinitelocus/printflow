@@ -3,9 +3,9 @@ import Image from "next/image";
 
 import landingCan from "@/app/user-campaign/_assets/landing-can.png";
 import logo from "@/app/user-campaign/_assets/logo.png";
-import mobileBg from "@/app/user-campaign/_assets/mobile-bg.jpg";
-import webBg from "@/app/user-campaign/_assets/web-landing-bg.jpg";
-import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
+import mobileBg from "@/app/user-campaign/_assets/mobile-bg.png";
+import webBg from "@/app/user-campaign/_assets/web-landing-bg.png";
+import { IMAGE_QUALITY, LOGO_SIZES } from "@/lib/campaign/imageQuality";
 
 import { AdminLogin } from "./AdminLogin";
 
@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
         <div data-float-x className="animate-float-x absolute inset-0">
           <div className="animate-can-drop absolute inset-0">
             <div data-can className="animate-float-can absolute inset-0 rotate-[17.91deg]">
-              <Image quality={IMAGE_QUALITY} src={landingCan} alt="" fill priority placeholder="blur" sizes="(min-width: 1024px) 30vh, 80px" className="object-contain" />
+              <Image quality={IMAGE_QUALITY} src={landingCan} alt="" fill priority placeholder="blur" sizes="(min-width: 1024px) 45vh, 192px" className="object-contain" />
             </div>
           </div>
           <div className="animate-fade-in absolute top-[107.3%] left-[-25.3%] h-[2.6%] w-[98.2%]">
@@ -51,7 +51,7 @@ export default function AdminLoginPage() {
         src={logo}
         alt="Diet Coke"
         priority
-        sizes="60px"
+        sizes={LOGO_SIZES}
         className="absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
       />
 

@@ -99,7 +99,7 @@ function DesignRow({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={look.sticker} alt={`${look.name} sticker`} className="h-full w-full object-contain" />
           ) : (
-            <Image src={look.sticker} alt="" sizes="64px" className="h-full w-full object-contain" />
+            <Image src={look.sticker} alt="" sizes="192px" className="h-full w-full object-contain" />
           )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">

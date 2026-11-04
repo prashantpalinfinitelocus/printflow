@@ -6,16 +6,16 @@ import { useState } from "react";
 
 import landingCan from "@/app/user-campaign/_assets/landing-can.png";
 import logo from "@/app/user-campaign/_assets/logo.png";
-import mobileBg from "@/app/user-campaign/_assets/mobile-bg.jpg";
-import webBg from "@/app/user-campaign/_assets/web-landing-bg.jpg";
+import mobileBg from "@/app/user-campaign/_assets/mobile-bg.png";
+import webBg from "@/app/user-campaign/_assets/web-landing-bg.png";
 import { ImagePreload } from "@/components/campaign/ImagePreload";
 import { LoginFlow } from "@/components/campaign/LoginFlow";
 import { PillButton } from "@/components/campaign/ui";
 import { track, useTrackOnce } from "@/lib/campaign/analytics";
-import { IMAGE_QUALITY } from "@/lib/campaign/imageQuality";
+import { IMAGE_QUALITY, LOGO_SIZES } from "@/lib/campaign/imageQuality";
 import { useCampaign } from "@/lib/campaign/store";
 
-const CAN_SIZES = "(min-width: 1024px) 30vh, 45vw";
+const CAN_SIZES = "(min-width: 1024px) 45vh, 100vw";
 
 /** On hover or keyboard focus the text darkens to black and a 2px black underline grows out from the middle. */
 const LEGAL_LINK =
@@ -70,7 +70,7 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         src={logo}
         alt="Diet Coke"
         priority
-        sizes="60px"
+        sizes={LOGO_SIZES}
         className="absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
       />
 

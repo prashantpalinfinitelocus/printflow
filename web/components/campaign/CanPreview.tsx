@@ -39,7 +39,7 @@ export function CanPreview({
       className={`relative [container-type:inline-size] ${className}`}
       style={{ aspectRatio: `${canBlank.width} / ${canBlank.height}` }}
     >
-      <Image quality={IMAGE_QUALITY} src={canBlank} alt="" fill priority={priority} sizes="(max-width: 480px) 50vw, 240px" className="object-contain" />
+      <Image quality={IMAGE_QUALITY} src={canBlank} alt="" fill priority={priority} sizes="(min-width: 1024px) 40vh, 75vw" className="object-contain" />
       {typeof design.sticker === "string" ? (
         // An uploaded sticker: already re-saved and shrunk by the API, so it is shown as it is.
         // eslint-disable-next-line @next/next/no-img-element
@@ -49,7 +49,7 @@ export function CanPreview({
           quality={IMAGE_QUALITY}
           src={design.sticker}
           alt=""
-          sizes="(max-width: 480px) 30vw, 144px"
+          sizes="(min-width: 1024px) 40vh, 75vw"
           className="absolute object-contain"
           style={stickerBox}
         />

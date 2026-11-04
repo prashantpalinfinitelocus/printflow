@@ -257,7 +257,7 @@ export default function CreatePage() {
                         alt=""
                         width={d.thumb.w}
                         height={d.thumb.h}
-                        sizes="(min-width: 1024px) 160px, 120px"
+                        sizes="(min-width: 1024px) 384px, 256px"
                         className="dc-thumb object-fill"
                         // Placed by its centre on Figma's 115 × 80 card, so it stays right when cards narrow or grow.
                         style={

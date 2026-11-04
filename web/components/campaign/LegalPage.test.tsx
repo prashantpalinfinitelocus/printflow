@@ -32,9 +32,9 @@ describe("LegalPage", () => {
     expect(article.className).not.toMatch(/max-w-/);
   });
 
-  it("serves the logo at quality 90", () => {
+  it("serves the logo at full quality", () => {
     renderTerms();
-    expect(screen.getByRole("img", { name: "Diet Coke" }).getAttribute("src")).toMatch(/\?q=90$/);
+    expect(screen.getByRole("img", { name: "Diet Coke" }).getAttribute("src")).toMatch(/\?q=100$/);
   });
 
   it("has no footer section", () => {
