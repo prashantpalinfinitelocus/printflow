@@ -42,7 +42,7 @@ afterEach(() => {
 const downloadedAs = () =>
   (vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts.at(-1) as HTMLAnchorElement | undefined)?.download;
 
-const makeItHappen = () => screen.findByRole("button", { name: "Make It Happen" });
+const makeItHappen = () => screen.findByRole("button", { name: "Make it happen" });
 
 /** Download/share are enabled once the can PNG has been rendered. */
 async function imageReady(name: "Download My Can" | "Share My Look") {
@@ -74,16 +74,16 @@ describe("while loading", () => {
 describe("tablet layout (481px to 1023px)", () => {
   it("keeps the buttons and copy in a centred phone-width column", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);
-    await screen.findByRole("button", { name: "Make It Happen" });
+    await screen.findByRole("button", { name: "Make it happen" });
     expect(container.querySelector("main")).toHaveClass("px-[max(20px,calc(50%-220px))]", "lg:px-5");
-    expect(screen.getByRole("button", { name: "Make It Happen" }).parentElement).toHaveClass("inset-x-[max(20px,calc(50%-220px))]");
+    expect(screen.getByRole("button", { name: "Make it happen" }).parentElement).toHaveClass("inset-x-[max(20px,calc(50%-220px))]");
   });
 });
 
 describe("image quality", () => {
   it("serves the can and logo at full quality", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);
-    await screen.findByRole("button", { name: "Make It Happen" });
+    await screen.findByRole("button", { name: "Make it happen" });
     for (const img of container.querySelectorAll("img:not([src^='blob:'])")) expect(img.getAttribute("src")).toMatch(/\?q=100$/);
   });
 });
@@ -91,10 +91,10 @@ describe("image quality", () => {
 describe("web layout (1024px and up, Figma 518:6976)", () => {
   it("puts the can on a photo left panel with the round buttons stacked beside it", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);
-    await screen.findByRole("button", { name: "Make It Happen" });
+    await screen.findByRole("button", { name: "Make it happen" });
     expect(container.querySelector("[data-web-panel]")).toHaveClass("hidden", "lg:block", "w-[53.33%]");
     const actions = container.querySelector("[data-actions]");
-    expect(actions).toHaveClass("lg:absolute", "lg:top-[130px]", "lg:left-[50px]", "lg:flex-col-reverse", "lg:gap-4");
+    expect(actions).toHaveClass("lg:absolute", "lg:top-[130px]", "lg:left-10", "lg:flex-col-reverse", "lg:gap-4");
     // Back is an addition to Figma, agreed for editing: first in the tab order, shown after download and share on web.
     expect([...actions!.querySelectorAll("button")].map((b) => b.getAttribute("aria-label"))).toEqual([
       "Back to editing",
@@ -106,10 +106,10 @@ describe("web layout (1024px and up, Figma 518:6976)", () => {
 
   it("centres the headline, copy and button in the right part", async () => {
     const { container } = renderCampaign(<PreviewPage />, APPROVED);
-    await screen.findByRole("button", { name: "Make It Happen" });
+    await screen.findByRole("button", { name: "Make it happen" });
     expect(container.querySelector("[data-copy]")).toHaveClass("lg:absolute", "lg:left-[76.67%]", "lg:top-1/2", "lg:w-[454px]", "lg:gap-14");
     expect(screen.getByRole("heading", { name: "It’s giving iconic!" })).toHaveClass("lg:text-[56px]", "lg:leading-[84px]");
-    expect(screen.getByRole("button", { name: "Make It Happen" })).toHaveClass("lg:mx-auto", "lg:h-14", "lg:w-[280px]");
+    expect(screen.getByRole("button", { name: "Make it happen" })).toHaveClass("lg:mx-auto", "lg:h-14", "lg:w-[280px]");
   });
 });
 
@@ -188,20 +188,14 @@ describe("entry", () => {
     expect(submit.mock.calls[0][0].idempotencyKey).not.toBe("old-key");
   });
 
-  it("explains the closed window and disables entry after 10 PM IST", async () => {
-    vi.setSystemTime(ist(22, 30));
-    renderCampaign(<PreviewPage />, APPROVED);
-    expect(await screen.findByText(/today’s entry window is closed/i)).toBeInTheDocument();
-    expect(await makeItHappen()).toBeDisabled();
-  });
-
-  it("explains the window when it closes while the user is on this screen", async () => {
+  it("switches to the closed screen when the window closes while the user is on this screen", async () => {
     renderCampaign(<PreviewPage />, APPROVED);
     const button = await makeItHappen();
     await waitFor(() => expect(button).toBeEnabled());
     vi.setSystemTime(ist(22, 0));
     await userEvent.click(button);
-    expect(await screen.findByRole("alert", {}, { timeout: 2000 })).toHaveTextContent(/today’s entry window is closed/i);
+    expect(await screen.findByRole("heading", { level: 1, name: /Wrong time!/ }, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(router.push).not.toHaveBeenCalled();
   });
 
@@ -211,7 +205,7 @@ describe("entry", () => {
     renderCampaign(<PreviewPage />, APPROVED);
     await userEvent.click(await makeItHappen());
     expect(await screen.findByRole("alert")).toHaveTextContent("Closed now.");
-    expect(screen.getByRole("button", { name: "Make It Happen" })).not.toHaveAttribute("aria-busy");
+    expect(screen.getByRole("button", { name: "Make it happen" })).not.toHaveAttribute("aria-busy");
   });
 
   it("sends a text the server rejects at submit back to editing, with the friendly-content popup", async () => {
@@ -237,6 +231,38 @@ describe("entry", () => {
     await userEvent.click(await makeItHappen());
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?login=1"));
     expect(savedJourney()).toMatchObject({ session: null, text: "Aanya", approvedText: "Aanya" });
+  });
+});
+
+describe("outside the entry window (Figma 559:7847, 559:7823)", () => {
+  it("swaps the headline and copy, greys the button out and notes the hours", async () => {
+    vi.setSystemTime(ist(22, 30));
+    renderCampaign(<PreviewPage />, APPROVED);
+    const heading = await screen.findByRole("heading", { level: 1, name: /^Right vibe, Wrong time!/ });
+    expect(heading).toBeInTheDocument();
+    expect(screen.getByText("Your main-character moment starts at 10AM and ends at 10PM.")).toBeInTheDocument();
+    expect(screen.getByText("Entries open from 10AM to 10PM")).toBeInTheDocument();
+    expect(screen.queryByText(/It’s giving/)).not.toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Make it happen" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass("!text-[#B6B9BC]", "disabled:opacity-100", "lg:bg-[#E1E6EB]");
+  });
+
+  it("places the web block 319px down rather than centring it", async () => {
+    vi.setSystemTime(ist(22, 30));
+    const { container } = renderCampaign(<PreviewPage />, APPROVED);
+    await screen.findByRole("heading", { level: 1, name: /Wrong time!/ });
+    const copy = container.querySelector("[data-copy]");
+    expect(copy).toHaveClass("lg:top-[35.44%]", "lg:w-[572px]");
+    expect(copy).not.toHaveClass("lg:-translate-y-1/2");
+  });
+
+  it("doesn't promise opening hours while entries are paused", async () => {
+    vi.spyOn(campaignApi, "getWindowState").mockResolvedValue("PAUSED");
+    renderCampaign(<PreviewPage />, APPROVED);
+    await screen.findByRole("heading", { level: 1, name: /Wrong time!/ });
+    expect(screen.getByText(/Entries are currently unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText("Entries open from 10AM to 10PM")).not.toBeInTheDocument();
   });
 });
 

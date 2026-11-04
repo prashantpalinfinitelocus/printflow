@@ -32,7 +32,7 @@ describe("heads-up popup", () => {
 
   it("stays dismissed once acknowledged", async () => {
     renderCampaign(<CreatePage />, { session: SESSION });
-    await userEvent.click(await screen.findByRole("button", { name: "Let’s Do This" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Let’s do this" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await waitFor(() => expect(savedJourney().headsUpSeen).toBe(true));
   });
@@ -188,7 +188,7 @@ describe("Check my vibe", () => {
     const field = await textField();
     await userEvent.type(field, "stupid");
     await userEvent.click(screen.getByRole("button", { name: "Check my vibe" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Edit Text" }, { timeout: 2000 }));
+    await userEvent.click(await screen.findByRole("button", { name: "Edit text" }, { timeout: 2000 }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(field).toHaveFocus();
   });
@@ -215,7 +215,7 @@ describe("Check my vibe", () => {
   it("opens the friendly-content popup when sent back after a rejection at submit", async () => {
     renderCampaign(<CreatePage />, { ...LOGGED_IN, text: "Aanya", textRejected: true });
     expect(await screen.findByRole("dialog", { name: "Let’s keep it friendly" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Edit Text" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit text" }));
     await waitFor(() => expect(savedJourney().textRejected).toBe(false));
   });
 
@@ -487,7 +487,7 @@ describe("web popups (Figma 518:7053, 518:7066)", () => {
     expect(dialog).toHaveClass("max-w-[334px]", "lg:w-[372px]", "lg:max-w-[372px]");
     // Important, to beat the phone popup's !pt-6.
     expect(dialog.firstElementChild).toHaveClass("!pt-6", "lg:!p-8");
-    expect(screen.getByRole("button", { name: "Let’s Do This" })).toHaveClass("lg:h-14");
+    expect(screen.getByRole("button", { name: "Let’s do this" })).toHaveClass("lg:h-14");
     expect(screen.getByRole("heading", { name: "Quick Heads-Up!" })).toHaveClass("lg:text-[28px]", "lg:leading-[38px]");
   });
 
@@ -496,7 +496,7 @@ describe("web popups (Figma 518:7053, 518:7066)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Let’s keep it friendly" });
     expect(dialog.firstElementChild).toHaveClass("!pt-6", "lg:!pt-8");
     expect(screen.getByText(/didn’t make the cut/).parentElement).toHaveClass("lg:gap-[5px]");
-    expect(screen.getByRole("button", { name: "Edit Text" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
+    expect(screen.getByRole("button", { name: "Edit text" })).toHaveClass("lg:mx-auto", "lg:w-[280px]");
   });
 });
 

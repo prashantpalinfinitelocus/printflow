@@ -22,7 +22,7 @@ export function PhotoBackdrop() {
       {/* Web: the 768px photo panel behind the can, with the small logo. */}
       <div data-web-panel className="absolute inset-y-0 left-0 hidden w-[53.33%] lg:block" aria-hidden="true">
         <Image quality={IMAGE_QUALITY} src={webPanelBg} alt="" fill placeholder="blur" sizes="54vw" className="object-cover" />
-        <Image quality={IMAGE_QUALITY} src={logo} alt="" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
+        <Image quality={IMAGE_QUALITY} src={logo} alt="" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-10 left-10 h-[49px] w-[110px] object-contain" />
       </div>
     </>
   );

@@ -301,7 +301,7 @@ export default function CreatePage() {
 function HeadsUp({ onDone }: { onDone: () => void }) {
   return (
     // Figma's card is narrower than the other popups: 334px on phones with 24px padding, 372px on web with 32px.
-    <Modal onClose={onDone} className="max-w-[334px] lg:w-[372px] lg:max-w-[372px]" cardClassName="!pt-6 lg:!p-8">
+    <Modal onClose={onDone} className="max-w-[334px] lg:w-[372px] lg:max-w-[372px]" cardClassName="!pt-6 lg:!p-8 lg:shadow-[0_16px_20px_rgba(0,0,0,0.25)]">
       {(titleId) => (
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-4">
@@ -309,15 +309,13 @@ function HeadsUp({ onDone }: { onDone: () => void }) {
               Quick Heads-Up!
             </h2>
             <ol className="list-decimal pl-5 text-xs leading-[18px] text-[#8A8A8A]">
-              <li>Your main-character moment starts at 10AM and ends at 10PM</li>
+              <li>Your main-character moment starts at 10AM and ends at 10PM.</li>
               <li>Not every entry makes the cut. Only a few DC Paglus win the daily draw.</li>
               <li>If you win, you’ll receive an email soon.</li>
             </ol>
           </div>
           <PillButton type="button" onClick={onDone} className="lg:h-14 lg:rounded-[26px] lg:text-base lg:leading-[19.2px]">
-            <span>
-              Let’s <span className="lg:lowercase">Do This</span>
-            </span>
+            Let’s do this
           </PillButton>
         </div>
       )}
@@ -350,9 +348,7 @@ function Rejected({ onEdit }: { onEdit: () => void }) {
             </div>
           </div>
           <PillButton type="button" onClick={onEdit} className="lg:mx-auto lg:w-[280px] lg:rounded-[26px] lg:text-base lg:leading-[19.2px]">
-            <span>
-              Edit <span className="lg:lowercase">Text</span>
-            </span>
+            Edit text
           </PillButton>
         </div>
       )}

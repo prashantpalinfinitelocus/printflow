@@ -161,8 +161,10 @@ export default function PreviewPage() {
         return;
       }
       if (err instanceof CampaignError && err.code === "WINDOW_CLOSED") {
-        setError(err.message);
-        setWindowState(await campaignApi.getWindowState().catch(() => null));
+        const state = await campaignApi.getWindowState().catch(() => null);
+        setWindowState(state);
+        // A closed window has its own screen; the message is only needed if the re-check can't confirm it.
+        if (state === null || state === "OPEN") setError(err.message);
       } else {
         setError(errorMessage(err, "We couldn’t submit your entry. Your design is saved — please try again."));
       }
@@ -171,15 +173,17 @@ export default function PreviewPage() {
   }
 
   const closed = windowState !== null && windowState !== "OPEN";
+  // Figma's closed screen gives the opening hours, which wouldn't hold while entries are paused.
+  const paused = windowState === "PAUSED";
 
   return (
     <main className={`${PHOTO_PAGE} px-[max(20px,calc(50%-220px))] pt-4 lg:px-5`}>
       <PhotoBackdrop />
 
-      {/* Web: download and share stack 130px down, 50px in, 16px apart, with the added back circle after them. */}
+      {/* Web: download and share stack 130px down, 40px in, 16px apart, with the added back circle after them. */}
       <div
         data-actions
-        className="relative flex items-center justify-between lg:absolute lg:top-[130px] lg:left-[50px] lg:flex-col-reverse lg:gap-4"
+        className="relative flex items-center justify-between lg:absolute lg:top-[130px] lg:left-10 lg:flex-col-reverse lg:gap-4"
       >
         <CircleButton
           label="Back to editing"
@@ -252,35 +256,72 @@ export default function PreviewPage() {
       {/*
         On phones the headline sits at the top and the button at the foot. On web they are one
         454px block centred in the right part: headline, copy, then the button 56px below.
+        Outside the entry window (Figma 559:7847, 559:7823) the web block starts 319px down, wider,
+        with a note at the screen's foot; on phones the note sits 4px under the button.
       */}
       <div
         data-copy
-        className="contents lg:absolute lg:top-1/2 lg:left-[76.67%] lg:flex lg:w-[454px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:flex-col lg:gap-14"
+        className={`contents lg:absolute lg:left-[76.67%] lg:flex lg:-translate-x-1/2 lg:flex-col lg:gap-14 ${
+          closed ? "lg:top-[35.44%] lg:w-[572px]" : "lg:top-1/2 lg:w-[454px] lg:-translate-y-1/2"
+        }`}
       >
-        <div className="relative mx-auto mt-4 flex max-w-[316px] flex-col gap-2 text-center lg:mt-0 lg:max-w-none">
+        <div className={`relative mx-auto mt-4 flex flex-col gap-2 text-center lg:mt-0 lg:max-w-none ${closed ? "max-w-[324px]" : "max-w-[316px]"}`}>
           {/* Figma's box is 33px: the DM Serif ascent overflows the 28.8px line height. */}
-          <h1 className="font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-[#F40009] lg:text-[56px] lg:leading-[84px]">
-            It’s giving <em>iconic!</em>
-          </h1>
-          <p className="text-base leading-[1.2] text-[#8A8A8A] lg:text-2xl">
-            Your main character moment won’t wait forever. Don’t let it slip!
+          {closed ? (
+            <h1 className="font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-[#F40009] lg:mx-auto lg:w-[314px] lg:text-[56px] lg:leading-[62px]">
+              <span className="lg:hidden">
+                Right vibe, <em>Wrong time!</em>
+              </span>
+              <span className="hidden lg:inline">
+                Right <em>vibe</em>, wrong <em>time!</em>
+              </span>
+            </h1>
+          ) : (
+            <h1 className="font-[family-name:var(--dc-serif)] text-2xl leading-[33px] text-[#F40009] lg:text-[56px] lg:leading-[84px]">
+              It’s giving <em>iconic!</em>
+            </h1>
+          )}
+          <p className={`text-base leading-[1.2] text-[#8A8A8A] lg:mx-auto lg:text-2xl ${closed ? "lg:w-[454px] lg:leading-[29px]" : ""}`}>
+            {!closed
+              ? "Your main character moment won’t wait forever. Don’t let it slip!"
+              : paused
+                ? WINDOW_MESSAGE.PAUSED
+                : "Your main-character moment starts at 10AM and ends at 10PM."}
           </p>
         </div>
 
-        {/* Figma: the button's bottom edge sits 43px above the screen's. */}
-        <div className="absolute inset-x-[max(20px,calc(50%-220px))] bottom-[max(43px,env(safe-area-inset-bottom))] flex flex-col gap-2 lg:static">
+        {/* Figma: the button's bottom edge sits 43px above the screen's, with or without the note under it. */}
+        <div
+          className={`absolute inset-x-[max(20px,calc(50%-220px))] flex flex-col lg:static ${
+            closed ? "bottom-[max(27px,env(safe-area-inset-bottom))] gap-1" : "bottom-[max(43px,env(safe-area-inset-bottom))] gap-2"
+          }`}
+        >
           <p aria-live="polite" className="text-center text-[11px] text-[#8A8A8A] empty:hidden">
             {imageFailed ? "Couldn’t prepare your can image. Take a screenshot to keep it." : notice}
           </p>
-          {closed && !error && <p className="text-center text-xs text-[#494949]">{WINDOW_MESSAGE[windowState]}</p>}
           {error && (
             <div className="text-center">
               <FieldError className="justify-center">{error}</FieldError>
             </div>
           )}
-          <PillButton type="button" onClick={submit} busy={submitting} disabled={closed} className="!font-normal lg:mx-auto lg:h-14 lg:!font-semibold lg:w-[280px] lg:rounded-[26px] lg:text-base lg:leading-[19.2px]">
-            Make It Happen
+          <PillButton
+            type="button"
+            onClick={submit}
+            busy={submitting}
+            disabled={closed}
+            className={`lg:mx-auto lg:h-14 lg:w-[280px] lg:rounded-[26px] lg:text-base lg:leading-[19.2px] ${
+              closed
+                ? "bg-[linear-gradient(90deg,#E1E6EB,#F4FAFE_50.821%,#E1E6EB)] !text-[#B6B9BC] disabled:opacity-100 lg:bg-none lg:bg-[#E1E6EB]"
+                : ""
+            }`}
+          >
+            Make it happen
           </PillButton>
+          {closed && !paused && (
+            <p className="text-center text-[10px] leading-3 text-[#8A8A8A] lg:absolute lg:inset-x-0 lg:top-[calc(64.56dvh-47px)] lg:text-base lg:leading-[19px]">
+              Entries open from 10AM to 10PM
+            </p>
+          )}
         </div>
       </div>
     </main>

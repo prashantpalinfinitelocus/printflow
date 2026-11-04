@@ -28,7 +28,7 @@ export default function SuccessPage() {
       {/* Web: the full-screen photo with the small logo top left. Figma also has the landing's large logo top right; it was left out on request. */}
       <div data-web-logos className="absolute inset-0 hidden lg:block" aria-hidden="true">
         <Image quality={IMAGE_QUALITY} src={webSuccessBg} alt="" fill placeholder="blur" sizes={BG_SIZES} className="object-cover" />
-        <Image quality={IMAGE_QUALITY} src={logo} alt="" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-10 left-10 h-[27px] w-[60px] object-contain" />
+        <Image quality={IMAGE_QUALITY} src={logo} alt="" className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-10 left-10 h-[49px] w-[110px] object-contain" />
       </div>
       {/*
         Figma: the 302px block's top is at 254px on the 775px screen, kept as an offset from centre.

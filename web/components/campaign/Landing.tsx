@@ -70,7 +70,7 @@ export function Landing({ openLogin = false }: { openLogin?: boolean }) {
         src={logo}
         alt="Diet Coke"
         priority
-        className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10"
+        className="translate-x-[3.3%] translate-y-[1.9%] scale-[0.8626] absolute top-4 right-4 h-[27px] w-[60px] object-contain lg:top-10 lg:right-auto lg:left-10 lg:h-[49px] lg:w-[110px]"
       />
 
       {/* On web the headline, button and legal links are placed on the screen separately, so the wrapper steps aside. */}
