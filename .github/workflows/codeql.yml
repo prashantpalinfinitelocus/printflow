@@ -41,7 +41,7 @@ jobs:
           upload: never
 
       - name: Upload SARIF as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codeql-sarif-${{ matrix.language }}
           path: ./results/*.sarif
