@@ -94,7 +94,8 @@ class OtpSender(Protocol):
 
 
 def _mask(phone: str) -> str:
-    return f"{phone[:2]}******{phone[-2:]}"
+    masked = f"{phone[:2]}******{phone[-2:]}"
+    return masked.replace("\r", "").replace("\n", "")
 
 
 class InfobipOtpSender:

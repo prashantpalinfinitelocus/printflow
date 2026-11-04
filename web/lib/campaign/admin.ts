@@ -71,7 +71,7 @@ export const tiffUrl = (winnerId: number) => `${ADMIN_API}/winners/${winnerId}/t
 
 /** A day's winners sheet; its TIFF links point back at this route, so they open for a signed-in campaign admin. */
 export const sheetUrl = (day: string) =>
-  `${ADMIN_API}/days/${day}/winners.csv?link_base=${encodeURIComponent(`${window.location.origin}${ADMIN_API}`)}`;
+  `${ADMIN_API}/days/${encodeURIComponent(day)}/winners.csv?link_base=${encodeURIComponent(`${window.location.origin}${ADMIN_API}`)}`;
 
 /** Today's date in India time (YYYY-MM-DD), the campaign's calendar. */
 export const todayInIndia = (now: Date = new Date()) =>

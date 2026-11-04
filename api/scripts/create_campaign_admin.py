@@ -25,7 +25,7 @@ from app.db import SessionLocal  # noqa: E402
 from app.models import CampaignAdmin  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
-MIN_PASSWORD = 10
+MIN_LENGTH = 10
 #: Where a job without a terminal gets the password.
 PASSWORD_ENV = "CAMPAIGN_ADMIN_PASSWORD"
 #: The username column's length.
@@ -42,13 +42,13 @@ def main(argv: list[str]) -> int:
         return 2
     password = os.environ.get(PASSWORD_ENV, "")
     if password:
-        if len(password) < MIN_PASSWORD:
-            print(f"The password must be at least {MIN_PASSWORD} characters.", file=sys.stderr)
+        if len(password) < MIN_LENGTH:
+            print(f"The password must be at least {MIN_LENGTH} characters.", file=sys.stderr)
             return 1
     else:
         password = getpass.getpass(f"Password for {username}: ")
-        if len(password) < MIN_PASSWORD:
-            print(f"The password must be at least {MIN_PASSWORD} characters.", file=sys.stderr)
+        if len(password) < MIN_LENGTH:
+            print(f"The password must be at least {MIN_LENGTH} characters.", file=sys.stderr)
             return 1
         if getpass.getpass("Type it again: ") != password:
             print("The passwords did not match.", file=sys.stderr)
