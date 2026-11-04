@@ -234,6 +234,31 @@ describe("entry", () => {
   });
 });
 
+describe("where errors show", () => {
+  it("puts an error in the note's place at the foot, not above the button, so nothing moves", async () => {
+    const LIMIT = "You’ve made 5 entries today. Come back tomorrow from 10 AM IST for more.";
+    vi.spyOn(campaignApi, "submitEntry").mockRejectedValueOnce(new CampaignError("ENTRY_LIMIT_REACHED", LIMIT));
+    renderCampaign(<PreviewPage />, APPROVED);
+    const button = await makeItHappen();
+    await userEvent.click(button);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(LIMIT);
+    const slot = alert.closest("[data-foot-line]");
+    expect(slot).toHaveClass("absolute", "top-full", "lg:top-[calc(50dvh+84px)]");
+    // Inline with the text, so the icon stays on the first line when the message wraps.
+    expect(alert).toHaveClass("!block", "[&>svg]:inline-block", "[&>span]:inline");
+    // After the button in the page, and out of the flow, so the button keeps its place.
+    expect(button.compareDocumentPosition(slot!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("uses the same place for the hours note on the closed screen", async () => {
+    vi.setSystemTime(ist(22, 30));
+    renderCampaign(<PreviewPage />, APPROVED);
+    const note = await screen.findByText("Entries open from 10AM to 10PM");
+    expect(note.closest("[data-foot-line]")).toHaveClass("absolute", "top-full", "lg:top-[calc(64.56dvh-47px)]");
+  });
+});
+
 describe("outside the entry window (Figma 559:7847, 559:7823)", () => {
   it("swaps the headline and copy, greys the button out and notes the hours", async () => {
     vi.setSystemTime(ist(22, 30));

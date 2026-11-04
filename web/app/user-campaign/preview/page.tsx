@@ -290,20 +290,11 @@ export default function PreviewPage() {
           </p>
         </div>
 
-        {/* Figma: the button's bottom edge sits 43px above the screen's, with or without the note under it. */}
-        <div
-          className={`absolute inset-x-[max(20px,calc(50%-220px))] flex flex-col lg:static ${
-            closed ? "bottom-[max(27px,env(safe-area-inset-bottom))] gap-1" : "bottom-[max(43px,env(safe-area-inset-bottom))] gap-2"
-          }`}
-        >
+        {/* Figma: the button's bottom edge sits 43px above the screen's. */}
+        <div className="absolute inset-x-[max(20px,calc(50%-220px))] bottom-[max(43px,env(safe-area-inset-bottom))] flex flex-col gap-2 lg:static">
           <p aria-live="polite" className="text-center text-[11px] text-[#8A8A8A] empty:hidden">
             {imageFailed ? "Couldn’t prepare your can image. Take a screenshot to keep it." : notice}
           </p>
-          {error && (
-            <div className="text-center">
-              <FieldError className="justify-center">{error}</FieldError>
-            </div>
-          )}
           <PillButton
             type="button"
             onClick={submit}
@@ -317,10 +308,25 @@ export default function PreviewPage() {
           >
             Make it happen
           </PillButton>
-          {closed && !paused && (
-            <p className="text-center text-[10px] leading-3 text-[#8A8A8A] lg:absolute lg:inset-x-0 lg:top-[calc(64.56dvh-47px)] lg:text-base lg:leading-[19px]">
-              Entries open from 10AM to 10PM
-            </p>
+          {/*
+            One line in Figma's note position, out of the flow so nothing moves: 4px under the button on phones,
+            and at the foot of the screen on web. An error takes the note's place.
+          */}
+          {(error || (closed && !paused)) && (
+            <div
+              data-foot-line
+              className={`absolute inset-x-0 top-full mt-1 text-center lg:mt-0 ${
+                closed ? "lg:top-[calc(64.56dvh-47px)]" : "lg:-inset-x-[59px] lg:top-[calc(50dvh+84px)]"
+              }`}
+            >
+              {error ? (
+                <FieldError className="!block font-[family-name:var(--dc-text)] !text-[10px] !leading-3 lg:!text-base lg:!leading-[19px] [&>span]:inline [&>svg]:mr-1 [&>svg]:inline-block [&>svg]:h-3 [&>svg]:w-3 [&>svg]:align-[-2px] lg:[&>svg]:mr-2 lg:[&>svg]:h-4 lg:[&>svg]:w-4 lg:[&>svg]:align-[-1.5px]">
+                  {error}
+                </FieldError>
+              ) : (
+                <p className="text-[10px] leading-3 text-[#8A8A8A] lg:text-base lg:leading-[19px]">Entries open from 10AM to 10PM</p>
+              )}
+            </div>
           )}
         </div>
       </div>
