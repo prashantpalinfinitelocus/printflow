@@ -473,8 +473,9 @@ def test_infobip_sender_texts_the_diet_coke_template_like_thums_up(monkeypatch):
     from app.config import settings
     from app.services.otp import InfobipOtpSender
 
-    monkeypatch.setattr(settings, "campaign_infobip_base_url", "https://example.api.infobip.com/")
-    monkeypatch.setattr(settings, "campaign_infobip_api_key", "k3y")
+    # Secret Manager values copied with a trailing newline must still work.
+    monkeypatch.setattr(settings, "campaign_infobip_base_url", "https://example.api.infobip.com/\n")
+    monkeypatch.setattr(settings, "campaign_infobip_api_key", "k3y\n")
     monkeypatch.setattr(settings, "campaign_infobip_sender_id", "COKEBY")
     monkeypatch.setattr(settings, "campaign_infobip_dlt_entity_id", "1101393580000056521")
     monkeypatch.setattr(settings, "campaign_infobip_dlt_template_id", "1177179363488364821")
@@ -487,12 +488,14 @@ def test_infobip_sender_texts_the_diet_coke_template_like_thums_up(monkeypatch):
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen["url"] = str(request.url)
+        seen["auth"] = request.headers["authorization"]
         seen["body"] = json.loads(request.read())
         return httpx.Response(200, json={"messages": [{"messageId": "m1"}]})
 
     InfobipOtpSender(httpx.Client(transport=httpx.MockTransport(handler))).send("9876543210", "123456")
 
     assert seen["url"] == "https://example.api.infobip.com/sms/3/messages"
+    assert seen["auth"] == "App k3y"
     assert seen["body"] == {
         "messages": [
             {

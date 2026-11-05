@@ -64,11 +64,29 @@ def test_no_name_is_both_a_plain_env_var_and_a_secret(name):
     assert not env_names & set(_secret_names(text))
 
 
-def test_test_env_reads_the_bypass_code_and_infobip_key_from_secret_manager():
+def test_test_env_reads_the_bypass_code_from_secret_manager():
     names = _secret_names((ROOT / "cloudbuild-api.yaml").read_text())
 
     assert "PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE" in names
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_infobip_key_and_base_url_come_from_secret_manager(name):
+    text = (ROOT / name).read_text()
+    names = _secret_names(text)
+
     assert "PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY" in names
+    assert "PRINTFLOW_CAMPAIGN_INFOBIP_BASE_URL" in names
+    assert "_CAMPAIGN_INFOBIP_BASE_URL" not in _substitution_values(text)
+
+
+def test_test_texts_real_otps_and_prod_stays_off_until_test_is_checked():
+    test = _substitution_values((ROOT / "cloudbuild-api.yaml").read_text())
+    prod = _substitution_values((ROOT / "cloudbuild-prod-api.yaml").read_text())
+
+    assert test["_CAMPAIGN_INFOBIP_ENABLED"] == "true"
+    assert test["_CAMPAIGN_OTP_BYPASS"] == "false"
+    assert prod["_CAMPAIGN_INFOBIP_ENABLED"] == "false"
 
 
 def test_prod_does_not_depend_on_secrets_that_only_exist_in_test():

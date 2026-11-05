@@ -122,8 +122,9 @@ class InfobipOtpSender:
                 }
             ]
         }
-        url = f"{settings.campaign_infobip_base_url.rstrip('/')}/sms/3/messages"
-        headers = {"Authorization": f"App {settings.campaign_infobip_api_key}", "Accept": "application/json"}
+        # Both come from Secret Manager, where a copied value can carry a trailing newline.
+        url = f"{settings.campaign_infobip_base_url.strip().rstrip('/')}/sms/3/messages"
+        headers = {"Authorization": f"App {settings.campaign_infobip_api_key.strip()}", "Accept": "application/json"}
         client = self._client or httpx.Client(timeout=settings.campaign_infobip_timeout_seconds)
         try:
             res = client.post(url, json=payload, headers=headers)
