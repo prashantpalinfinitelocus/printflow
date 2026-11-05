@@ -464,3 +464,52 @@ def test_a_code_with_non_ascii_digits_is_rejected(client, bypass):
     res = client.post("/campaign/otp/verify", json={"phone": fresh_phone(), "email": EMAIL, "code": "\u0661\u0662\u0663\u0664\u0665\u0666"})
 
     assert res.status_code == 422
+
+
+def test_infobip_sender_texts_the_diet_coke_template_like_thums_up(monkeypatch):
+    """Same request shape as thums-up-be's SendOTP, on the Diet Coke DLT template."""
+    import json
+
+    from app.config import settings
+    from app.services.otp import InfobipOtpSender
+
+    monkeypatch.setattr(settings, "campaign_infobip_base_url", "https://example.api.infobip.com/")
+    monkeypatch.setattr(settings, "campaign_infobip_api_key", "k3y")
+    monkeypatch.setattr(settings, "campaign_infobip_sender_id", "COKEBY")
+    monkeypatch.setattr(settings, "campaign_infobip_dlt_entity_id", "1101393580000056521")
+    monkeypatch.setattr(settings, "campaign_infobip_dlt_template_id", "1177179363488364821")
+    monkeypatch.setattr(
+        settings,
+        "campaign_infobip_message",
+        "Your One Time Password for Diet Coke - Make It Yours is {otp}. Please do not share it with anyone.",
+    )
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["body"] = json.loads(request.read())
+        return httpx.Response(200, json={"messages": [{"messageId": "m1"}]})
+
+    InfobipOtpSender(httpx.Client(transport=httpx.MockTransport(handler))).send("9876543210", "123456")
+
+    assert seen["url"] == "https://example.api.infobip.com/sms/3/messages"
+    assert seen["body"] == {
+        "messages": [
+            {
+                "sender": "COKEBY",
+                "destinations": [{"to": "919876543210"}],
+                "content": {
+                    "text": "Your One Time Password for Diet Coke - Make It Yours is 123456. "
+                    "Please do not share it with anyone."
+                },
+                "options": {
+                    "regional": {
+                        "indiaDlt": {
+                            "principalEntityId": "1101393580000056521",
+                            "contentTemplateId": "1177179363488364821",
+                        }
+                    }
+                },
+            }
+        ]
+    }

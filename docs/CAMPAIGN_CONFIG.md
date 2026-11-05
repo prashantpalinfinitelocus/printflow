@@ -21,7 +21,7 @@ staff app stays under **`/offline-store`**. They are separate URL spaces served 
   With the bypass off too, login answers `503 OTP_UNAVAILABLE`.
 * **Infobip flag on:** a random code is generated, stored only as an HMAC-SHA256 hash, and texted through Infobip's
   `/sms/3/messages` on the DLT-approved template. If any Infobip setting below is blank the API answers
-  `503 OTP_UNAVAILABLE` and sends nothing. The Thums Up DLT ids are **not** reused: the defaults are blank.
+  `503 OTP_UNAVAILABLE` and sends nothing. The code defaults are blank; the Diet Coke template ids are set in the Cloud Build files (below).
 * **Send limit:** a phone may request 5 codes in 5 minutes; the 6th request blocks it for 2 hours (`429 OTP_BLOCKED`,
   with `retry_after` seconds in the body and a `Retry-After` header). A blocked phone cannot verify either.
 * **Verify limit:** 5 wrong codes lock verification for 2 hours (`429 OTP_LOCKED`).
@@ -57,7 +57,8 @@ Every value is an environment variable (prefix `PRINTFLOW_`). On Cloud Run they 
 | `CAMPAIGN_TIMEZONE` | Asia/Kolkata | `_CAMPAIGN_TIMEZONE` |
 | `CAMPAIGN_OTP_BYPASS` / `_CODE` | false / blank | test file only: `_CAMPAIGN_OTP_BYPASS` (substitution) and the code from Secret Manager `PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE`. **Prod hard-codes `false`.** |
 | `CAMPAIGN_INFOBIP_ENABLED` | **false** | `_CAMPAIGN_INFOBIP_ENABLED` |
-| `CAMPAIGN_INFOBIP_BASE_URL`, `_SENDER_ID`, `_DLT_ENTITY_ID`, `_DLT_TEMPLATE_ID`, `_MESSAGE` | blank | `_CAMPAIGN_INFOBIP_*` |
+| `CAMPAIGN_INFOBIP_BASE_URL` | blank | `_CAMPAIGN_INFOBIP_BASE_URL` (the Infobip account's own URL; still blank) |
+| `CAMPAIGN_INFOBIP_SENDER_ID`, `_DLT_ENTITY_ID`, `_DLT_TEMPLATE_ID`, `_MESSAGE` | blank | `_CAMPAIGN_INFOBIP_*`, set to the Diet Coke template below in both Cloud Build files |
 | `CAMPAIGN_INFOBIP_API_KEY` | blank | Secret Manager `PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY` (test: wired, value is a placeholder until the real key is added as a new version; prod: not wired yet) |
 
 `_MESSAGE` must match the DLT template text exactly with `{otp}` where the code goes. It must not contain `@`, `'` or `$`
@@ -65,7 +66,19 @@ Every value is an environment variable (prefix `PRINTFLOW_`). On Cloud Run they 
 
 ## Turning Infobip on
 
-1. Get the Diet Coke DLT entity id, template id, sender id and the approved text.
+1. DLT template (done, set in both Cloud Build files):
+
+   | Field | Value |
+   |---|---|
+   | Template name | Diet Coke Make It Yours |
+   | Header (sender id) | `COKEBY` |
+   | Entity | Coca-Cola India Private Limited, principal entity id `1101393580000056521` (same entity as Thums Up) |
+   | Content template id | `1177179363488364821` |
+   | Approved text | `Your One Time Password for Diet Coke - Make It Yours is {#num#}. Please do not share it with anyone.` |
+   | `_MESSAGE` | the same text with `{#num#}` written as `{otp}` |
+
+   The request matches thums-up-be's OTP SMS (`vendors/infobip.go`): `POST /sms/3/messages`, `Authorization: App <key>`,
+   `to` = `91` + the 10-digit number, and `options.regional.indiaDlt` carrying the entity and template ids.
 2. Create the secret and give the Cloud Run service account access:
    `gcloud secrets create PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY --data-file=-` then grant `secretmanager.secretAccessor`.
 3. Add `PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY=PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY:latest` to `--set-secrets` in the API

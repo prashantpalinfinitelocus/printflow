@@ -75,3 +75,34 @@ def test_prod_does_not_depend_on_secrets_that_only_exist_in_test():
     names = _secret_names((ROOT / "cloudbuild-prod-api.yaml").read_text())
 
     assert "PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE" not in names
+
+
+# The approved DLT template (header COKEBY). The text with {#num#} written as {otp}.
+DIET_COKE_DLT = {
+    "_CAMPAIGN_INFOBIP_SENDER_ID": "COKEBY",
+    "_CAMPAIGN_INFOBIP_DLT_ENTITY_ID": "1101393580000056521",
+    "_CAMPAIGN_INFOBIP_DLT_TEMPLATE_ID": "1177179363488364821",
+    "_CAMPAIGN_INFOBIP_MESSAGE": (
+        "Your One Time Password for Diet Coke - Make It Yours is {otp}. Please do not share it with anyone."
+    ),
+}
+
+
+def _substitution_values(text: str) -> dict[str, str]:
+    block = text.split("substitutions:", 1)[1].split("\nsteps:", 1)[0]
+    return {k: v.strip("'") for k, v in re.findall(r"^  (_[A-Z_]+): ?(.*)$", block, re.MULTILINE)}
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_infobip_uses_the_approved_diet_coke_dlt_template(name):
+    values = _substitution_values((ROOT / name).read_text())
+
+    assert {k: values[k] for k in DIET_COKE_DLT} == DIET_COKE_DLT
+
+
+@pytest.mark.parametrize("name", FILES)
+def test_the_dlt_message_survives_the_env_list_and_cloud_build(name):
+    message = _substitution_values((ROOT / name).read_text())["_CAMPAIGN_INFOBIP_MESSAGE"]
+
+    assert message.count("{otp}") == 1
+    assert not set("@'$") & set(message)
