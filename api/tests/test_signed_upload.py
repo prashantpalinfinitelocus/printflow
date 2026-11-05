@@ -95,12 +95,12 @@ def test_signing_refuses_when_no_bucket_is_configured(monkeypatch):
 # ---------------- integration: route ----------------
 
 
-def test_upload_url_is_503_without_a_bucket_so_the_page_falls_back(client, admin_headers, monkeypatch):
+def test_upload_url_is_404_without_a_bucket_so_the_page_falls_back(client, admin_headers, monkeypatch):
     from app.config import settings
 
     monkeypatch.setattr(settings, "upload_bucket", "")
     res = client.post("/csv/upload-url", json={"filename": "orders.csv"}, headers=admin_headers)
-    assert res.status_code == 503
+    assert res.status_code == 404
 
 
 def test_upload_url_returns_what_the_browser_needs(client, admin_headers, monkeypatch):

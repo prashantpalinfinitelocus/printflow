@@ -84,7 +84,8 @@ export async function requestUploadTarget(filename: string): Promise<UploadTarge
   try {
     return await post<UploadTarget>("/csv/upload-url", { filename });
   } catch (err) {
-    if (err instanceof ApiError && err.status === 503) return null;
+    // 404 from this API; 503 from an older one still deployed.
+    if (err instanceof ApiError && (err.status === 404 || err.status === 503)) return null;
     throw err;
   }
 }
