@@ -56,7 +56,7 @@ Every value is an environment variable (prefix `PRINTFLOW_`). On Cloud Run they 
 | `CAMPAIGN_OPEN_HOUR` / `CAMPAIGN_CLOSE_HOUR` | 10 / 22 (24 = midnight) | `_CAMPAIGN_OPEN_HOUR`, `_CAMPAIGN_CLOSE_HOUR` |
 | `CAMPAIGN_TIMEZONE` | Asia/Kolkata | `_CAMPAIGN_TIMEZONE` |
 | `CAMPAIGN_OTP_BYPASS` / `_CODE` | false / blank | test file only: `_CAMPAIGN_OTP_BYPASS` (substitution) and the code from Secret Manager `PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE`. **Prod hard-codes `false`.** |
-| `CAMPAIGN_INFOBIP_ENABLED` | **false** | `_CAMPAIGN_INFOBIP_ENABLED` (test: **true**, prod: false) |
+| `CAMPAIGN_INFOBIP_ENABLED` | **false** | `_CAMPAIGN_INFOBIP_ENABLED` (test and prod: false for now, see below) |
 | `CAMPAIGN_INFOBIP_BASE_URL` | blank | Secret Manager `PRINTFLOW_CAMPAIGN_INFOBIP_BASE_URL` (test and prod) |
 | `CAMPAIGN_INFOBIP_SENDER_ID`, `_DLT_ENTITY_ID`, `_DLT_TEMPLATE_ID`, `_MESSAGE` | blank | `_CAMPAIGN_INFOBIP_*`, set to the Diet Coke template below in both Cloud Build files |
 | `CAMPAIGN_INFOBIP_API_KEY` | blank | Secret Manager `PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY` (test and prod) |
@@ -82,7 +82,9 @@ Every value is an environment variable (prefix `PRINTFLOW_`). On Cloud Run they 
 2. Secrets (done 2026-11-05, test and prod): `PRINTFLOW_CAMPAIGN_INFOBIP_API_KEY` and `PRINTFLOW_CAMPAIGN_INFOBIP_BASE_URL`,
    copied from Thums Up's `INFOBIP_API_KEY` / `INFOBIP_BASE_URL` (same Infobip account), readable by each project's
    Cloud Run service account and listed in `--set-secrets` of both API Cloud Build files.
-3. Test (done): `_CAMPAIGN_INFOBIP_ENABLED=true` and `_CAMPAIGN_OTP_BYPASS=false`.
+3. Test: `_CAMPAIGN_INFOBIP_ENABLED=true` and `_CAMPAIGN_OTP_BYPASS=false`. Tried 2026-11-05: Infobip accepted the
+   SMS but the operator rejected it with `EC_TEMPLATE_NOT_FOUND` (template not approved, or registered under another
+   principal entity id). Test is back on the bypass code with Infobip off until the DLT side is fixed.
 4. Prod: after a real phone receives the code on test, set `_CAMPAIGN_INFOBIP_ENABLED=true` in `cloudbuild-prod-api.yaml`.
 
 ## Edge protection

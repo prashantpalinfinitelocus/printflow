@@ -80,12 +80,11 @@ def test_infobip_key_and_base_url_come_from_secret_manager(name):
     assert "_CAMPAIGN_INFOBIP_BASE_URL" not in _substitution_values(text)
 
 
-def test_test_texts_real_otps_and_prod_stays_off_until_test_is_checked():
+def test_test_has_a_way_to_log_in_and_prod_stays_off_until_test_is_checked():
     test = _substitution_values((ROOT / "cloudbuild-api.yaml").read_text())
     prod = _substitution_values((ROOT / "cloudbuild-prod-api.yaml").read_text())
 
-    assert test["_CAMPAIGN_INFOBIP_ENABLED"] == "true"
-    assert test["_CAMPAIGN_OTP_BYPASS"] == "false"
+    assert "true" in (test["_CAMPAIGN_INFOBIP_ENABLED"], test["_CAMPAIGN_OTP_BYPASS"])
     assert prod["_CAMPAIGN_INFOBIP_ENABLED"] == "false"
 
 

@@ -35,15 +35,17 @@ substitutions:
   # Infobip SMS on the Diet Coke DLT template (header COKEBY, Coca-Cola India Private Limited; same
   # principal entity as Thums Up, own template). Sent like thums-up-be's OTP: POST /sms/3/messages with indiaDlt.
   # The Infobip base URL and API key come from Secret Manager (PRINTFLOW_CAMPAIGN_INFOBIP_BASE_URL / _API_KEY).
-  _CAMPAIGN_INFOBIP_ENABLED: 'true'
+  # Off again 2026-11-05: operators reject the SMS with EC_TEMPLATE_NOT_FOUND until DLT template
+  # 1177179363488364821 is approved/linked. Turn back on (and the bypass off) once it is.
+  _CAMPAIGN_INFOBIP_ENABLED: 'false'
   _CAMPAIGN_INFOBIP_SENDER_ID: COKEBY
   _CAMPAIGN_INFOBIP_DLT_ENTITY_ID: '1101393580000056521'
   _CAMPAIGN_INFOBIP_DLT_TEMPLATE_ID: '1177179363488364821'
   # The approved text with {#num#} written as {otp}. Must match the DLT template exactly.
   _CAMPAIGN_INFOBIP_MESSAGE: 'Your One Time Password for Diet Coke - Make It Yours is {otp}. Please do not share it with anyone.'
   # TEST ONLY: when 'true', the bypass code (Secret Manager: PRINTFLOW_CAMPAIGN_OTP_BYPASS_CODE) logs in as any number.
-  # Off now that real OTPs are texted on test.
-  _CAMPAIGN_OTP_BYPASS: 'false'
+  # On while Infobip is off (DLT template not found), so testers can log in.
+  _CAMPAIGN_OTP_BYPASS: 'true'
 
   # Moderation runs on Vertex AI with the Cloud Run service account (no API key).
   _MODERATION_MODEL: gemini-3.5-flash
